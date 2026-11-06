@@ -183,6 +183,12 @@ function DocTable({
                 <div className="ml-6 mt-0.5 font-mono text-[10.5px] text-subtle" title={d.sha256}>
                   sha256 {d.sha256.slice(0, 12)}…
                 </div>
+                <Link
+                  to={`/p/${pid}/documents/${d.id}`}
+                  className="ml-6 mt-1 inline-block text-[12px] font-medium text-teal-700 hover:underline"
+                >
+                  {t("How it was processed")} →
+                </Link>
                 {d.profile.warnings.map((w) => (
                   <div key={w} className="ml-6 mt-1 flex items-start gap-1 text-[12px] text-amber-700">
                     <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {w}

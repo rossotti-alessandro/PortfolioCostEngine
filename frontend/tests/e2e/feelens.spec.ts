@@ -131,3 +131,41 @@ test("09 Italian interface", async ({ page }) => {
   await shot(page, "10-costs-italiano");
   await page.getByRole("button", { name: "English" }).click();
 });
+
+test("10 pipeline: every processing step of a document, with details on demand", async ({ page }) => {
+  await page.goto(`/p/${pid}/documents`);
+  await page
+    .getByRole("row", { name: /delta_situazione_patrimoniale/ })
+    .getByRole("link", { name: /How it was processed/ })
+    .click();
+  await expect(page.getByRole("heading", { name: "How this document was processed" })).toBeVisible();
+  for (const title of [
+    "Upload and fingerprint",
+    "Reading the text",
+    "Recognising the document",
+    "Finding the values",
+    "Human review",
+    "Cross-checks",
+    "Cost layers",
+    "Effect on the total",
+  ])
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  const values = page.locator("#stage-extract");
+  await expect(values.getByText(/values found, \d+ with their exact place/)).toBeVisible();
+  await values.getByRole("button", { name: "Show details" }).click();
+  await expect(values.getByText(/^p\.\d+$/).first()).toBeVisible(); // every value names its page
+  await expect(page.locator("#stage-validate").getByText(/checks passed/)).toBeVisible();
+  await shot(page, "11-pipeline-statement");
+
+  await page.goto(`/p/${pid}/documents`);
+  await page
+    .getByRole("row", { name: /kid_ZZFBILIT0018_it/ })
+    .getByRole("link", { name: /How it was processed/ })
+    .click();
+  const layers = page.locator("#stage-categorize");
+  await layers.getByRole("button", { name: "Show details" }).click();
+  await expect(layers.getByText("Counted in the total").first()).toBeVisible();
+  await page.getByRole("button", { name: "Italiano" }).click();
+  await expect(page.getByRole("heading", { name: "Come è stato elaborato questo documento" })).toBeVisible();
+  await page.getByRole("button", { name: "English" }).click();
+});
