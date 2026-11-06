@@ -1,8 +1,9 @@
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { BOUND_TEXT, chf, cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Check, ChevronRight, FileSearch, MessageSquarePlus, Trophy, XCircle } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, FileSearch, Info, MessageSquarePlus, Trophy, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { type ContactDetail, type StageId, crm, today } from "./api";
@@ -18,7 +19,7 @@ function StageTrack({ c, onMove }: { c: ContactDetail; onMove: (s: StageId) => v
   const far = Math.max(...c.history.map((h) => OPEN.indexOf(h.to_stage)), c.stage === "won" ? OPEN.length : -1);
   return (
     <Card className="p-4">
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Pipeline stages">
+      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label={t("Pipeline stages")}>
         {OPEN.map((s, i) => {
           const label = meta?.stages.find((x) => x.id === s)?.label ?? s;
           const state = c.stage === s ? "current" : i <= far || reached.has(s) ? "done" : "todo";
@@ -29,7 +30,7 @@ function StageTrack({ c, onMove }: { c: ContactDetail; onMove: (s: StageId) => v
                 disabled={c.stage === s}
                 onClick={() => onMove(s)}
                 aria-current={state === "current" ? "step" : undefined}
-                title={state === "current" ? "Current stage" : `Move to ${label}`}
+                title={state === "current" ? t("Current stage") : t("Move to {stage}", { stage: label })}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-[12.5px] font-medium",
                   state === "current" && "border-navy-900 bg-navy-900 text-white",
@@ -49,7 +50,7 @@ function StageTrack({ c, onMove }: { c: ContactDetail; onMove: (s: StageId) => v
                 >
                   {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
                 </span>
-                {label}
+                {t(label)}
               </button>
             </li>
           );
@@ -58,30 +59,30 @@ function StageTrack({ c, onMove }: { c: ContactDetail; onMove: (s: StageId) => v
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
         <span className="mr-auto text-[13px] text-muted">
           {c.stage === "won" ? (
-            <span className="font-medium text-green-700">Client since {c.updated_at.slice(0, 10)}</span>
+            <span className="font-medium text-green-700">
+              {t("Client since {date}", { date: c.updated_at.slice(0, 10) })}
+            </span>
           ) : c.stage === "lost" ? (
             <span className="font-medium text-red-700">
-              Lost: {meta?.lost_reasons.find((r) => r.id === c.lost_reason)?.label ?? c.lost_reason}
+              {t("Lost")}: {t(meta?.lost_reasons.find((r) => r.id === c.lost_reason)?.label ?? c.lost_reason ?? "")}
             </span>
           ) : (
-            <>
-              Step {cur + 1} of {OPEN.length}
-            </>
+            <>{t("Step {n} of {total}", { n: cur + 1, total: OPEN.length })}</>
           )}
         </span>
         {c.stage !== "won" && (
           <Button variant="accent" size="sm" onClick={() => onMove("won")}>
-            <Trophy className="h-4 w-4" /> Mark as won
+            <Trophy className="h-4 w-4" /> {t("Mark as won")}
           </Button>
         )}
         {c.stage !== "lost" && c.stage !== "won" && (
           <Button variant="danger" size="sm" onClick={() => onMove("lost")}>
-            <XCircle className="h-4 w-4" /> Mark as lost
+            <XCircle className="h-4 w-4" /> {t("Mark as lost")}
           </Button>
         )}
         {(c.stage === "lost" || c.stage === "won") && (
           <Button variant="outline" size="sm" onClick={() => onMove("qualified")}>
-            Reopen
+            {t("Reopen")}
           </Button>
         )}
       </div>
@@ -115,26 +116,33 @@ function CostReviewPanel({ pid, code }: { pid: number; code: string | null }) {
   return (
     <Card>
       <CardHeader
-        title={`Cost review ${code ?? ""}`}
-        subtitle="Evidence-based analysis of what this portfolio costs today, and what the proposal would cost."
+        title={`${t("Cost review")} ${code ?? ""}`}
+        subtitle={t("Evidence-based analysis of what this portfolio costs today, and what the proposal would cost.")}
         actions={
           <Button size="sm" onClick={() => nav(`/p/${pid}/${next.to}`)}>
-            {done.report ? "Open client report" : `Continue: ${next.label}`} <ArrowRight className="h-4 w-4" />
+            {done.report ? t("Open client report") : t("Continue: {step}", { step: t(next.label) })}{" "}
+            <ArrowRight className="h-4 w-4" />
           </Button>
         }
       />
       {a && (
         <div className="grid grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-4">
           {[
-            ["Assets", chf(a.aum.total)],
+            [t("Assets"), chf(a.aum.total)],
             [
-              "Known annual cost",
+              t("Known annual cost"),
               a.current.total_bps
                 ? `${chf(a.current.total_known)} · ${Number(a.current.total_bps).toFixed(0)} bps`
                 : chf(a.current.total_known),
             ],
-            ["Saving, same holdings", cmp ? `${BOUND_TEXT[cmp.bound] ?? ""} ${chf(cmp.annual_saving)}`.trim() : "–"],
-            ["Evidence", a.current.is_complete ? "Complete" : `${a.current.unknown.length} costs not determined`],
+            [
+              t("Saving, same holdings"),
+              cmp ? `${t(BOUND_TEXT[cmp.bound] ?? "")} ${chf(cmp.annual_saving)}`.trim() : "–",
+            ],
+            [
+              t("Evidence"),
+              a.current.is_complete ? t("Complete") : t("{n} costs not determined", { n: a.current.unknown.length }),
+            ],
           ].map(([k, v]) => (
             <div key={k} className="bg-surface px-4 py-3">
               <div className="text-[11.5px] font-medium uppercase tracking-wide text-subtle">{k}</div>
@@ -143,7 +151,7 @@ function CostReviewPanel({ pid, code }: { pid: number; code: string | null }) {
           ))}
         </div>
       )}
-      <ol className="grid gap-2 p-4 sm:grid-cols-5" aria-label="Cost review steps">
+      <ol className="grid gap-2 p-4 sm:grid-cols-5" aria-label={t("Cost review steps")}>
         {STEPS.map((s, i) => (
           <li key={s.to}>
             <Link
@@ -162,16 +170,19 @@ function CostReviewPanel({ pid, code }: { pid: number; code: string | null }) {
                 >
                   {done[s.to] ? <Check className="h-3 w-3" /> : i + 1}
                 </span>
-                {s.label}
+                {t(s.label)}
               </div>
               <div className="mt-1 text-[12px] leading-snug text-muted">
                 {s.to === "documents" && docs
-                  ? `${docs.length} documents`
+                  ? t("{n} documents", { n: docs.length })
                   : s.to === "review" && a
-                    ? `${a.review.reviewed + a.review.rejected} of ${a.review.facts} figures checked`
+                    ? t("{n} of {total} figures checked", {
+                        n: a.review.reviewed + a.review.rejected,
+                        total: a.review.facts,
+                      })
                     : s.to === "costs" && openReq
-                      ? `${openReq} documents to request`
-                      : s.hint}
+                      ? t("{n} documents to request", { n: openReq })
+                      : t(s.hint)}
               </div>
             </Link>
           </li>
@@ -194,14 +205,14 @@ function StartCostReview({ c }: { c: ContactDetail }) {
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
       <div>
-        <h2 className="text-[15px] font-semibold text-navy-900">No cost review yet</h2>
+        <h2 className="text-[15px] font-semibold text-navy-900">{t("No cost review yet")}</h2>
         <p className="mt-0.5 text-[13px] text-muted">
-          Start one to upload this contact's bank documents, validate each figure and compare with your proposal.
+          {t("Start one to upload this contact's bank documents, validate each figure and compare with your proposal.")}
         </p>
         {m.error && <ErrorBox error={m.error} />}
       </div>
       <Button onClick={() => m.mutate()} loading={m.isPending}>
-        <FileSearch className="h-4 w-4" /> Start cost review
+        <FileSearch className="h-4 w-4" /> {t("Start cost review")}
       </Button>
     </Card>
   );
@@ -218,7 +229,7 @@ function NextAction({ c }: { c: ContactDetail }) {
   const dirty = text !== c.next_action || due !== (c.next_action_due ?? "");
   return (
     <Card>
-      <CardHeader title="Next action" />
+      <CardHeader title={t("Next action")} />
       <form
         className="space-y-3 px-5 py-4"
         onSubmit={(e) => {
@@ -226,17 +237,17 @@ function NextAction({ c }: { c: ContactDetail }) {
           m.mutate();
         }}
       >
-        <Field label="What">
+        <Field label={t("What")}>
           <input className={inputCls} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
         </Field>
-        <Field label="Due">
+        <Field label={t("Due")}>
           <input className={inputCls} type="date" value={due} onChange={(e) => setDue(e.target.value)} />
         </Field>
-        {c.next_action_due && c.next_action_due < today() && <Badge tone="amber">Overdue</Badge>}
+        {c.next_action_due && c.next_action_due < today() && <Badge tone="amber">{t("Overdue")}</Badge>}
         {m.error && <ErrorBox error={m.error} />}
         {dirty && (
           <Button type="submit" size="sm" loading={m.isPending}>
-            Save next action
+            {t("Save next action")}
           </Button>
         )}
       </form>
@@ -260,7 +271,9 @@ function Timeline({ c }: { c: ContactDetail }) {
     ...c.history.map((h) => ({
       at: h.at,
       key: `s-${h.at}-${h.to_stage}`,
-      title: h.from_stage ? `Moved to ${h.to_label}` : `Created as ${h.to_label}`,
+      title: h.from_stage
+        ? t("Moved to {stage}", { stage: t(h.to_label) })
+        : t("Created as {stage}", { stage: t(h.to_label) }),
       body: h.note,
       user: h.user,
       stage: true,
@@ -268,7 +281,7 @@ function Timeline({ c }: { c: ContactDetail }) {
     ...c.activities.map((a) => ({
       at: a.at,
       key: `a-${a.id}`,
-      title: a.kind,
+      title: t(a.kind),
       body: a.summary,
       user: a.user,
       stage: false,
@@ -276,7 +289,10 @@ function Timeline({ c }: { c: ContactDetail }) {
   ].sort((a, b) => b.at.localeCompare(a.at));
   return (
     <Card>
-      <CardHeader title="Activity and stage history" subtitle="Every stage change is recorded with who and when." />
+      <CardHeader
+        title={t("Activity and stage history")}
+        subtitle={t("Every stage change is recorded with who and when.")}
+      />
       <form
         className="flex flex-wrap gap-2 border-b border-line px-5 py-3"
         onSubmit={(e) => {
@@ -285,20 +301,20 @@ function Timeline({ c }: { c: ContactDetail }) {
         }}
       >
         <label>
-          <span className="sr-only">Activity type</span>
+          <span className="sr-only">{t("Activity type")}</span>
           <select className={cn(inputCls, "w-28")} value={kind} onChange={(e) => setKind(e.target.value)}>
             {meta?.activity_kinds.map((k) => (
               <option key={k} value={k}>
-                {k}
+                {t(k)}
               </option>
             ))}
           </select>
         </label>
         <label className="min-w-[200px] flex-1">
-          <span className="sr-only">Activity summary</span>
+          <span className="sr-only">{t("Activity summary")}</span>
           <input
             className={inputCls}
-            placeholder="Log a call, meeting or note"
+            placeholder={t("Log a call, meeting or note")}
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             maxLength={2000}
@@ -306,7 +322,7 @@ function Timeline({ c }: { c: ContactDetail }) {
           />
         </label>
         <Button type="submit" variant="outline" loading={m.isPending}>
-          <MessageSquarePlus className="h-4 w-4" /> Add
+          <MessageSquarePlus className="h-4 w-4" /> {t("Add")}
         </Button>
       </form>
       <ol className="divide-y divide-line">
@@ -338,7 +354,7 @@ export default function ContactPage() {
   const { data: meta } = useMeta();
   const [to, setTo] = useState<StageId | null>(null);
   if (isLoading) return <Spinner />;
-  if (error || !c) return <ErrorBox error={error ?? "Contact not found"} />;
+  if (error || !c) return <ErrorBox error={error ?? t("Contact not found")} />;
   const label = (list: { id: string; label: string }[] | undefined, v: string) =>
     list?.find((x) => x.id === v)?.label ?? v;
   return (
@@ -348,23 +364,27 @@ export default function ContactPage() {
         <div className="mx-auto max-w-[1200px] px-4 py-4 sm:px-8">
           <div className="flex items-center gap-1.5 text-[12px] text-subtle">
             <Link to="/crm" className="hover:text-ink">
-              Clients & pipeline
+              {t("Clients & pipeline")}
             </Link>
             <ChevronRight className="h-3 w-3" />
-            <span>{c.lifecycle === "client" ? "Client" : c.lifecycle === "lost" ? "Lost" : "Prospect"}</span>
+            <span>{t(c.lifecycle === "client" ? "Client" : c.lifecycle === "lost" ? "Lost" : "Prospect")}</span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold text-navy-900">{c.name}</h1>
-            <StageBadge stage={c.stage} label={c.stage_label} />
+            <StageBadge stage={c.stage} label={t(c.stage_label)} />
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 text-[13px] text-muted">
             <span className="num font-medium text-ink">
-              {c.estimated_aum ? chf(c.estimated_aum) : "Assets not estimated"}
+              {c.estimated_aum ? chf(c.estimated_aum) : t("Assets not estimated")}
             </span>
-            <span>{label(meta?.kinds, c.kind)}</span>
-            <span>Domicile {c.domicile}</span>
-            <span>Source: {label(meta?.sources, c.source)}</span>
-            <span>Owner: {c.owner}</span>
+            <span>{t(label(meta?.kinds, c.kind))}</span>
+            <span>{t("Domicile {code}", { code: c.domicile })}</span>
+            <span>
+              {t("Source")}: {t(label(meta?.sources, c.source))}
+            </span>
+            <span>
+              {t("Owner")}: {c.owner}
+            </span>
           </div>
         </div>
       </div>
@@ -376,17 +396,21 @@ export default function ContactPage() {
           <div className="space-y-4">
             <NextAction key={`${c.id}-${c.updated_at}`} c={c} />
             <Card>
-              <CardHeader title="Details" />
-              <dl className="grid grid-cols-[110px_1fr] gap-y-2 px-5 py-4 text-[13px]">
-                <dt className="text-subtle">Current banks</dt>
-                <dd>{c.current_banks.join(", ") || "–"}</dd>
-                <dt className="text-subtle">Email</dt>
-                <dd className="break-all">{c.email || "–"}</dd>
-                <dt className="text-subtle">Phone</dt>
-                <dd>{c.phone || "–"}</dd>
-                <dt className="text-subtle">Created</dt>
-                <dd className="num">{c.created_at.slice(0, 10)}</dd>
-              </dl>
+              <details>
+                <summary className="flex cursor-pointer items-center gap-2 px-5 py-3.5 text-[15px] font-semibold text-navy-900">
+                  <Info className="h-4 w-4 text-subtle" /> {t("Details")}
+                </summary>
+                <dl className="grid grid-cols-[110px_1fr] gap-y-2 px-5 py-4 text-[13px]">
+                  <dt className="text-subtle">{t("Current banks")}</dt>
+                  <dd>{c.current_banks.join(", ") || "–"}</dd>
+                  <dt className="text-subtle">{t("Email")}</dt>
+                  <dd className="break-all">{c.email || "–"}</dd>
+                  <dt className="text-subtle">{t("Phone")}</dt>
+                  <dd>{c.phone || "–"}</dd>
+                  <dt className="text-subtle">{t("Created")}</dt>
+                  <dd className="num">{c.created_at.slice(0, 10)}</dd>
+                </dl>
+              </details>
             </Card>
           </div>
         </div>

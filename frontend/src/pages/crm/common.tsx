@@ -1,5 +1,6 @@
 import { Badge, Button, Dialog, ErrorBox, Field, inputCls } from "@/components/ui";
 import { cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, KanbanSquare, List, Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -16,7 +17,7 @@ export function StageBadge({ stage, label }: { stage: StageId; label: string }) 
 export function SyntheticBanner() {
   return (
     <div className="border-b border-amber-700/20 bg-amber-50 px-4 py-1 text-center text-[12.5px] text-amber-700">
-      SYNTHETIC demo data. Contacts, banks and amounts are invented.
+      {t("SYNTHETIC demo data. Contacts, banks and amounts are invented.")}
     </div>
   );
 }
@@ -36,22 +37,22 @@ export function CrmHeader({ actions, synthetic }: { actions?: ReactNode; synthet
         <div className="mx-auto max-w-[1440px] px-4 pt-5 sm:px-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold text-navy-900">Clients & pipeline</h1>
+              <h1 className="text-xl font-semibold text-navy-900">{t("Clients & pipeline")}</h1>
               <p className="mt-1 max-w-2xl text-[13.5px] text-muted">
-                Track every relationship from first contact to signed mandate, and see where prospects drop out.
+                {t("Track every relationship from first contact to signed mandate, and see where prospects drop out.")}
               </p>
             </div>
             {actions && <div className="flex flex-wrap gap-2 pb-1">{actions}</div>}
           </div>
-          <nav aria-label="Pipeline views" className="mt-4 flex gap-5">
+          <nav aria-label={t("Pipeline views")} className="mt-4 flex gap-5">
             <NavLink to="/crm" end className={tabCls}>
-              <KanbanSquare className="h-4 w-4" /> Board
+              <KanbanSquare className="h-4 w-4" /> {t("Board")}
             </NavLink>
             <NavLink to="/crm/list" className={tabCls}>
-              <List className="h-4 w-4" /> Contacts
+              <List className="h-4 w-4" /> {t("Contacts")}
             </NavLink>
             <NavLink to="/crm/funnel" className={tabCls}>
-              <BarChart3 className="h-4 w-4" /> Funnel
+              <BarChart3 className="h-4 w-4" /> {t("Funnel")}
             </NavLink>
           </nav>
         </div>
@@ -65,7 +66,7 @@ export function NewContactButton() {
   return (
     <>
       <Button onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4" /> New contact
+        <Plus className="h-4 w-4" /> {t("New contact")}
       </Button>
       <NewContactDialog open={open} onOpenChange={setOpen} />
     </>
@@ -105,8 +106,8 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="New contact"
-      description="A lead or prospect. It becomes a client when you mark it as won."
+      title={t("New contact")}
+      description={t("A lead or prospect. It becomes a client when you mark it as won.")}
     >
       <form
         className="grid gap-3 sm:grid-cols-2"
@@ -116,11 +117,11 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         }}
       >
         <div className="sm:col-span-2">
-          <Field label="Name">
+          <Field label={t("Name")}>
             <input className={inputCls} value={f.name} onChange={set("name")} required maxLength={200} />
           </Field>
         </div>
-        <Field label="Type">
+        <Field label={t("Type")}>
           <select className={inputCls} value={f.kind} onChange={set("kind")}>
             {meta?.kinds.map((k) => (
               <option key={k.id} value={k.id}>
@@ -129,7 +130,7 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             ))}
           </select>
         </Field>
-        <Field label="Source">
+        <Field label={t("Source")}>
           <select className={inputCls} value={f.source} onChange={set("source")}>
             {meta?.sources.map((k) => (
               <option key={k.id} value={k.id}>
@@ -138,7 +139,7 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             ))}
           </select>
         </Field>
-        <Field label="Estimated assets (CHF)" hint="Leave empty if unknown. It is not counted as zero.">
+        <Field label={t("Estimated assets (CHF)")} hint={t("Leave empty if unknown. It is not counted as zero.")}>
           <input
             className={inputCls}
             inputMode="decimal"
@@ -146,7 +147,7 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             onChange={set("estimated_aum")}
           />
         </Field>
-        <Field label="Tax domicile">
+        <Field label={t("Tax domicile")}>
           <select className={inputCls} value={f.domicile} onChange={set("domicile")}>
             {["CH", "IT", "DE", "FR", "GB", "US"].map((d) => (
               <option key={d}>{d}</option>
@@ -154,11 +155,11 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           </select>
         </Field>
         <div className="sm:col-span-2">
-          <Field label="Current banks" hint="Comma separated.">
+          <Field label={t("Current banks")} hint={t("Comma separated.")}>
             <input className={inputCls} value={banks} onChange={(e) => setBanks(e.target.value)} />
           </Field>
         </div>
-        <Field label="Starting stage">
+        <Field label={t("Starting stage")}>
           <select className={inputCls} value={f.stage} onChange={set("stage")}>
             {meta?.stages
               .filter((s) => s.open)
@@ -169,7 +170,7 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               ))}
           </select>
         </Field>
-        <Field label="Email">
+        <Field label={t("Email")}>
           <input className={inputCls} type="email" value={f.email ?? ""} onChange={set("email")} />
         </Field>
         {m.error && (
@@ -179,10 +180,10 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         )}
         <div className="flex justify-end gap-2 pt-2 sm:col-span-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button type="submit" loading={m.isPending}>
-            Create contact
+            {t("Create contact")}
           </Button>
         </div>
       </form>
@@ -207,7 +208,7 @@ export function MoveDialog({ contactId, to, onClose }: { contactId: number; to: 
   });
   const label = meta?.stages.find((s) => s.id === to)?.label ?? to ?? "";
   return (
-    <Dialog open={to !== null} onOpenChange={(o) => !o && onClose()} title={`Move to ${label}`}>
+    <Dialog open={to !== null} onOpenChange={(o) => !o && onClose()} title={t("Move to {stage}", { stage: label })}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -216,9 +217,9 @@ export function MoveDialog({ contactId, to, onClose }: { contactId: number; to: 
         }}
       >
         {to === "lost" && (
-          <Field label="Why was it lost?">
+          <Field label={t("Why was it lost?")}>
             <select className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} required>
-              <option value="">Choose a reason</option>
+              <option value="">{t("Choose a reason")}</option>
               {meta?.lost_reasons.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.label}
@@ -227,7 +228,7 @@ export function MoveDialog({ contactId, to, onClose }: { contactId: number; to: 
             </select>
           </Field>
         )}
-        <Field label="Note (optional)">
+        <Field label={t("Note (optional)")}>
           <textarea
             className={cn(inputCls, "h-20 py-2")}
             value={note}
@@ -238,10 +239,10 @@ export function MoveDialog({ contactId, to, onClose }: { contactId: number; to: 
         {m.error && <ErrorBox error={m.error} />}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button type="submit" variant={to === "lost" ? "danger" : "primary"} loading={m.isPending}>
-            Move to {label}
+            {t("Move to {stage}", { stage: label })}
           </Button>
         </div>
       </form>

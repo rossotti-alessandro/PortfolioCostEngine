@@ -1,5 +1,6 @@
 /** CRM API client (/api/crm). Same demo identity headers as the rest of the app (lib/api.ts). */
 import { ApiError, getRole } from "@/lib/api";
+import { t } from "@/lib/i18n";
 
 export type StageId = "lead" | "qualified" | "documents_received" | "cost_review" | "proposal_sent" | "won" | "lost";
 export type Lifecycle = "prospect" | "client" | "lost";
@@ -161,7 +162,7 @@ export const crm = {
 
 /** Ratio string from the API ("0.4250") → "42.5%"; null stays "Not determined" (never 0). */
 export function ratioPct(v: string | null | undefined, d = 1): string {
-  return v === null || v === undefined ? "Not determined" : `${(Number(v) * 100).toFixed(d)}%`;
+  return v === null || v === undefined ? t("Not determined") : `${(Number(v) * 100).toFixed(d)}%`;
 }
 
 export const STAGE_TONE: Record<StageId, string> = {
