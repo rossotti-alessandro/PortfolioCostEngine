@@ -33,8 +33,10 @@ def sha256(path: Path) -> str:
 
 
 def download(url: str, dest: Path) -> None:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=90) as resp:  # noqa: S310 - URLs come from the reviewed manifest
+    if not url.startswith("https://"):
+        raise ValueError("only https URLs are fetched")
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310 - https only, checked above
+    with urllib.request.urlopen(req, timeout=90) as resp:  # noqa: S310
         data = resp.read()
     if not data.startswith(b"%PDF"):
         raise ValueError("response is not a PDF")
@@ -56,7 +58,7 @@ def main() -> int:
             try:
                 download(row["url"], path)
                 time.sleep(1)  # be polite to publishers
-            except Exception as exc:  # noqa: BLE001 - report and continue with the next file
+            except Exception as exc:
                 print(f"FAILED   {row['file']}: {exc}")
                 counts["failed"] += 1
                 continue
@@ -69,7 +71,9 @@ def main() -> int:
             continue
         changed = path.with_suffix(".new.pdf")
         path.replace(changed)
-        print(f"CHANGED  {row['file']}: publisher's copy differs from the manifest hash, kept as {changed.name}")
+        print(
+            f"CHANGED  {row['file']}: publisher's copy differs from the manifest hash, kept as {changed.name}"
+        )
         counts["changed"] += 1
     print(f"{len(rows)} rows: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
     return 0 if counts["ok"] == len(rows) else 1

@@ -134,7 +134,7 @@ def run_one(row: dict) -> dict:
         rec["rejected"] = str(exc)
         rec["seconds"] = round(time.perf_counter() - t0, 2)
         return rec
-    except Exception as exc:  # noqa: BLE001 - a crash on a real file is a result, not a stop
+    except Exception as exc:
         rec["error"] = f"{type(exc).__name__}: {exc}"
         rec["traceback"] = traceback.format_exc(limit=4)
         rec["seconds"] = round(time.perf_counter() - t0, 2)
@@ -165,14 +165,22 @@ def run_one(row: dict) -> dict:
         key_fields=key_hits(exp_type, facts, isins) if exp_type else {},
         facts=[
             {k: f[k] for k in ("key", "value", "isin", "fee_code", "measurement")}
-            | {"page": f["evidence"].get("page"), "bbox": f["evidence"].get("bbox"),
-               "snippet": f["evidence"].get("snippet", "")[:160]}
+            | {
+                "page": f["evidence"].get("page"),
+                "bbox": f["evidence"].get("bbox"),
+                "snippet": f["evidence"].get("snippet", "")[:160],
+            }
             for f in facts
         ],
     )
     if row.get("expected"):
         ok, total, misses = check_expected(row["expected"], facts)
-        rec.update(expected_ok=ok, expected_total=total, expected_misses=misses)
+        rec.update(
+            expected_ok=ok,
+            expected_total=total,
+            expected_misses=misses,
+            expected_source=row.get("expected_source") or "unspecified",
+        )
     return rec
 
 
@@ -192,8 +200,8 @@ def write_md(results: list[dict]) -> None:
         "",
         "## Per category",
         "",
-        "| Category | Files | Crashed | Rejected at intake | Type right | ≥1 fact | Facts | With bbox | Bbox in page | "
-        "Key fields hit | Expected values right | Needs review |",
+        "| Category | Files | Crashed | Rejected at intake | Type right | ≥1 fact | Facts | With bbox | "
+        "Bbox in page | Key fields hit | Expected values right | Needs review |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     tot = Counter()
@@ -218,23 +226,36 @@ def write_md(results: list[dict]) -> None:
         )
         tot.update(row)
         lines.append(
-            f"| {cat} | {row['files']} | {row['crashed']} | {row['rejected']} | {pct(row['typed'], len(ok))} | "
+            f"| {cat} | {row['files']} | {row['crashed']} | {row['rejected']} | "
+            f"{pct(row['typed'], len(ok))} | "
             f"{pct(row['anyfact'], len(ok))} | {row['facts']} | {row['bbox']} | {row['inpage']} | "
             f"{pct(row['kf_hit'], row['kf_all'])} | {pct(row['exp_ok'], row['exp_all'])} | "
             f"{pct(row['review'], len(ok))} |"
         )
     n_ok = tot["files"] - tot["crashed"] - tot["rejected"]
     lines.append(
-        f"| **All** | {tot['files']} | {tot['crashed']} | {tot['rejected']} | {pct(tot['typed'], n_ok)} | {pct(tot['anyfact'], n_ok)} | "
+        f"| **All** | {tot['files']} | {tot['crashed']} | {tot['rejected']} | "
+        f"{pct(tot['typed'], n_ok)} | {pct(tot['anyfact'], n_ok)} | "
         f"{tot['facts']} | {tot['bbox']} | {tot['inpage']} | {pct(tot['kf_hit'], tot['kf_all'])} | "
         f"{pct(tot['exp_ok'], tot['exp_all'])} | {pct(tot['review'], n_ok)} |"
     )
+    by_src: dict[str, Counter] = defaultdict(Counter)
+    for r in results:
+        if r.get("expected_total"):
+            by_src[r["expected_source"]].update(ok=r["expected_ok"], all=r["expected_total"])
+    lines += [
+        "",
+        "Expected values by source: "
+        + "; ".join(f"{k} {pct(v['ok'], v['all'])}" for k, v in sorted(by_src.items()))
+        + ". `claude-read` and `demo-thread` were read on the page; `pdftotext-regex` is an independent "
+        "extractor (poppler + regex), so it measures agreement, not truth.",
+    ]
     lines += [
         "",
         "Key fields per family: KID = ISIN linked, ongoing, transaction, entry, exit; tariff = custody rate, "
         "brokerage rate, a minimum, issuing entity; termsheet = ISIN linked, entry cost, distribution fee; "
         "cost report = at least one observed fee. Factsheets and prospectuses have no parser yet, so "
-        "\"type right\" means the pipeline honestly returned `unknown`.",
+        '"type right" means the pipeline honestly returned `unknown`.',
         "",
         "## Per file",
         "",
@@ -245,13 +266,15 @@ def write_md(results: list[dict]) -> None:
     for r in sorted(results, key=lambda r: (r["category"], r["file"])):
         if "rejected" in r:
             lines.append(
-                f"| {r['file']} | {r['category']} | {r['language']} | {r['expected_pipeline_type']} → rejected | "
+                f"| {r['file']} | {r['category']} | {r['language']} | "
+                f"{r['expected_pipeline_type']} → rejected | "
                 f"| | | | | {r.get('seconds', '')} | {r['rejected'][:120]} |"
             )
             continue
         if "error" in r:
             lines.append(
-                f"| {r['file']} | {r['category']} | {r['language']} | {r['expected_pipeline_type']} → crash | "
+                f"| {r['file']} | {r['category']} | {r['language']} | "
+                f"{r['expected_pipeline_type']} → crash | "
                 f"| | | | | {r.get('seconds', '')} | {r['error'][:120]} |"
             )
             continue
@@ -272,8 +295,11 @@ def main() -> None:
     results = []
     for row in rows:
         r = run_one(row)
-        print(f"{r['file']:<60} {r.get('predicted_type', 'ERR'):<12} facts={r.get('n_facts', '-')}"
-              f" {r.get('error', r.get('rejected', ''))}", flush=True)
+        print(
+            f"{r['file']:<60} {r.get('predicted_type', 'ERR'):<12} facts={r.get('n_facts', '-')}"
+            f" {r.get('error', r.get('rejected', ''))}",
+            flush=True,
+        )
         results.append(r)
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")

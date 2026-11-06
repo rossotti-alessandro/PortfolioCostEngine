@@ -29,11 +29,17 @@ def table(rows: list[dict], key: str) -> list[str]:
     ]
     for k in sorted(counts, key=lambda k: -sum(counts[k].values())):
         c = counts[k]
-        out.append(f"| {k} | " + " | ".join(str(c[lang] or "·") for lang in LANGS)
-                   + f" | {sum(c.values())} | {len(issuers[k])} |")
+        out.append(
+            f"| {k} | "
+            + " | ".join(str(c[lang] or "·") for lang in LANGS)
+            + f" | {sum(c.values())} | {len(issuers[k])} |"
+        )
     tot = Counter(r["language"] if r["language"] in LANGS else "other" for r in rows)
-    out.append("| **All** | " + " | ".join(str(tot[lang]) for lang in LANGS)
-               + f" | {len(rows)} | {len({r['issuer'].strip().lower() for r in rows})} |")
+    out.append(
+        "| **All** | "
+        + " | ".join(str(tot[lang]) for lang in LANGS)
+        + f" | {len(rows)} | {len({r['issuer'].strip().lower() for r in rows})} |"
+    )
     return out
 
 

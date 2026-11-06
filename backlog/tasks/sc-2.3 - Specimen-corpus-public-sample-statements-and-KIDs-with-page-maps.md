@@ -9,7 +9,7 @@ progress: 90
 branch: "claude/project-thread-coe0g4"
 pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/7"
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-06 15:57"
+updated_date: "2026-11-06 16:34"
 labels:
   - research
 dependencies:
@@ -65,15 +65,16 @@ evaluator imports its parser.
 
 ## Outcome
 
-72 real public PDFs from 58 issuers (27 de, 20 it, 14 en, 11 fr): 25 fund/ETF KIDs, 3 Swiss FinSA KIDs,
-6 factsheets, 24 bank tariffs (CH, IT, EU), 5 cost disclosures, 7 termsheets, 3 structured KIDs, 2 insurance
-KIDs. Each row has URL, retrieval date, SHA-256, licence and robots note. Every file ran through
-`extract()`: 0 crashes; after the demo thread's fixes 63/72 typed right, 189 facts all with in-page bbox,
-26/31 page-read values matched. Tariff precision problems sent to the demo thread. See
-`docs/research/SPECIMENS.md` and `data/specimens/RESULTS.md`.
+395 real public PDFs from 285 institutions (152 de, 91 it, 90 fr, 62 en) across 14 categories: fund, ETF,
+Swiss, structured and insurance KIDs, factsheets, prospectuses and annual reports, CH/IT/EU bank tariffs,
+FinSA/MiFID ex-ante cost disclosures, termsheets, and 25 published client-document specimens. Each row has
+URL, retrieval date, SHA-256, licence and robots note. Every file ran through `extract()` (parser 16d5225):
+1 crash, 10 intake refusals, 314/384 typed right, 592 facts all with in-page bbox. Bugs sent to the demo
+thread after each run. See `docs/research/SPECIMENS.md`, `docs/research/CLIENT_DOCUMENTS.md`,
+`data/specimens/COVERAGE.md` and `data/specimens/RESULTS.md`.
 
-AC #2 is partly met: well over 2 ETF KIDs, 2 active KIDs and 1 tariff are in, and every fact records its page,
-but there is no hand-written page map per specimen yet. Status stays In Progress for that.
+AC #2 is partly met: far more than 2 ETF KIDs, 2 active KIDs and 1 tariff are in, and every fact records its
+page, but there is no hand-written page map per specimen yet. Status stays In Progress for that.
 
 ## Issues Encountered
 
