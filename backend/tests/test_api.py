@@ -1,4 +1,6 @@
+import json
 import os
+import re
 import tempfile
 
 os.environ["PCE_DATA_DIR"] = tempfile.mkdtemp(prefix="pce-test-")
@@ -39,6 +41,8 @@ def test_analysis_hides_internal_and_internal_requires_role():
     pid = seeded()
     r = client.get(f"/api/prospects/{pid}/analysis", headers=A).json()
     assert "internal" not in r
+    assert "internal" not in r["proposal_inputs"]  # servicing cost and minimum margin are firm-only
+    assert not re.search(r"min_margin_pct|servicing_cost|annual_contribution", json.dumps(r))
     assert client.get(f"/api/prospects/{pid}/internal", headers=A).status_code == 403
     assert (
         client.get(f"/api/prospects/{pid}/internal", headers=SENIOR).json()["internal"]["verdict"]

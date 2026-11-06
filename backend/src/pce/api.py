@@ -711,8 +711,14 @@ def fact_history(fid: int, db: DB, c: C) -> list[dict]:
 @app.get("/api/prospects/{pid}/analysis")
 def analysis(pid: int, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
-    r = compute(db, c, p)
-    r.pop("internal", None)  # internal economics only via /internal with an authorised role
+    return client_safe(compute(db, c, p))  # internal economics only via /internal with an authorised role
+
+
+def client_safe(r: dict) -> dict:
+    """Drop internal economics: the computed margin and the firm's cost and minimum-margin inputs."""
+    r.pop("internal", None)
+    if "proposal_inputs" in r:  # copy: the inputs may be shared with the stored proposal
+        r["proposal_inputs"] = {k: v for k, v in r["proposal_inputs"].items() if k != "internal"}
     return r
 
 
@@ -859,8 +865,9 @@ def report_pdf(pid: int, db: DB, c: C) -> Response:
     from .report import render_client_report
 
     p = get_prospect(db, c, pid)
-    r = compute(db, c, p)
-    r.pop("internal", None)  # defence in depth: the client report never receives internal economics
+    r = client_safe(
+        compute(db, c, p)
+    )  # defence in depth: the client report never receives internal economics
     pdf = render_client_report(r)
     audit(
         db,
