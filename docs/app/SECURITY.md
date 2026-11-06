@@ -24,10 +24,11 @@ the web surface. Engineering notes, not a certification.
 
 ### On Render
 
-`render.yaml` sets `PCE_ADMIN_USERNAME=ale` and lets Render generate `PCE_SECRET_KEY` and
-`PCE_ADMIN_PASSWORD`. To read the password: Render dashboard → `feelens-demo` → Environment →
-`PCE_ADMIN_PASSWORD` → reveal. To choose your own: edit that value (12+ characters) and save; Render
-redeploys. Never paste it in chat, git, issues or screenshots.
+`render.yaml` declares `PCE_ADMIN_USERNAME=ale` and generated `PCE_SECRET_KEY` / `PCE_ADMIN_PASSWORD`,
+but generation only happens for Blueprint-synced services. `feelens-demo` was created through the API, so
+set the two secrets by hand: Render dashboard → `feelens-demo` → Environment → add `PCE_SECRET_KEY`
+(32+ random characters) and `PCE_ADMIN_PASSWORD` (12+ characters), save, redeploy. Change the password the
+same way. Never paste it in chat, git, issues or screenshots.
 
 ## Request pipeline (`pce/security.py`)
 
