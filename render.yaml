@@ -12,3 +12,11 @@ services:
         value: "1"
       - key: PCE_ALLOW_EXTERNAL_AI
         value: "false"
+      # Sign-in (docs/app/SECURITY.md). Render generates the secrets once; read the password in the
+      # dashboard (Environment tab). Never commit a value here.
+      - key: PCE_SECRET_KEY
+        generateValue: true
+      - key: PCE_ADMIN_USERNAME
+        value: ale
+      - key: PCE_ADMIN_PASSWORD
+        generateValue: true

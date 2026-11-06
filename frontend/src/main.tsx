@@ -16,6 +16,7 @@ import CostsPage from "./pages/Costs";
 import DocumentsPage from "./pages/Documents";
 import HowItWorksPage from "./pages/HowItWorks";
 import InternalPage from "./pages/Internal";
+import { RequireAuth } from "./pages/Login";
 import ProspectsPage from "./pages/Prospects";
 import ReportPage from "./pages/Report";
 import ReviewPage from "./pages/Review";
@@ -55,7 +56,11 @@ const router = createBrowserRouter([
 /** Re-mounts the tree when the language changes, so every t() call re-renders. */
 function Root() {
   const lang = useLang();
-  return <RouterProvider key={lang} router={router} />;
+  return (
+    <RequireAuth>
+      <RouterProvider key={lang} router={router} />
+    </RequireAuth>
+  );
 }
 
 createRoot(document.getElementById("root")!).render(

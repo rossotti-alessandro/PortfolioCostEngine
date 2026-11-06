@@ -722,4 +722,13 @@ export const IT: Record<string, string> = {
   "{open} open · {won} won · {lost} lost": "{open} aperti · {won} acquisiti · {lost} persi",
   "Show details": "Mostra dettagli",
   "Hide details": "Nascondi dettagli",
+  "Sign in": "Accedi",
+  "Sign out": "Esci",
+  Username: "Nome utente",
+  Password: "Password",
+  "Wrong username or password.": "Nome utente o password errati.",
+  "Too many failed attempts. Wait 15 minutes and try again.": "Troppi tentativi falliti. Attendi 15 minuti e riprova.",
+  "Sign-in is not available right now.": "Accesso non disponibile al momento.",
+  "Signed in as {user}": "Accesso come {user}",
+  Role: "Ruolo",
 };
