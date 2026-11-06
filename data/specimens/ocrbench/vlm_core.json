@@ -1,5 +1,5 @@
 {
- "about": "Core page subset for the slow VLM engines on CPU (one page per stratum, the scan, three simulated scans, one fee-trap page). Fast engines run on every page. 'mini' is the 8-page set every VLM runs on CPU (EN/DE/FR/IT, KIDs, tariffs, fee table, a true scan and a simulated one); 'pages' is for a GPU box.",
+ "about": "Core page subset for the slow VLM engines on CPU (one page per stratum, the scan, three simulated scans, one fee-trap page). Fast engines run on every page. 'mini' is the 8-page set every VLM runs on CPU (EN/DE/FR/IT, KIDs, tariffs, fee table, a true scan and a simulated one); 'pages' (23) is the full VLM set, about 1 min per page per model on 4 CPU cores when nothing else runs.",
  "pages": [
   "kid-21shares-ch0454664001-en-p3",
   "kid-ff-ch0228419740-p3",

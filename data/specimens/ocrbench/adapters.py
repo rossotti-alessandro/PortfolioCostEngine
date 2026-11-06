@@ -334,16 +334,21 @@ MAX_TIME = 600.0  # seconds per generate call
 
 def _load_vlm(repo: str, **kw: Any):
     torch = _torch()
+    import transformers
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
     if repo not in _vlm:
         proc = AutoProcessor.from_pretrained(repo, **kw)
-        model = AutoModelForImageTextToText.from_pretrained(repo, dtype=torch.bfloat16, **kw).eval()
+        # LightOnOCR-2's config says mistral3, but its weights use LightOnOCR names: the Auto class
+        # silently leaves the vision tower random (the model then "sees" a blank page).
+        cls = transformers.LightOnOcrForConditionalGeneration if "LightOnOCR" in repo else AutoModelForImageTextToText
+        model = cls.from_pretrained(repo, dtype=torch.bfloat16, **kw).eval()
         _vlm[repo] = (proc, model)
     return _vlm[repo]
 
 
-def _chat(repo: str, img: Image.Image, prompt: str | None, max_new: int, **kw: Any) -> str:
+def _chat(repo: str, img: Image.Image, prompt: str | None, max_new: int, keep_special: bool = False,
+          **kw: Any) -> str:
     torch = _torch()
     proc, model = _load_vlm(repo, **kw)
     content: list[dict] = [{"type": "image", "image": img.convert("RGB")}]
@@ -358,7 +363,7 @@ def _chat(repo: str, img: Image.Image, prompt: str | None, max_new: int, **kw: A
         # Some repos ship use_cache=false in generation_config: 8x slower decoding on CPU.
         # max_time caps one call on CPU; a cut-off answer is scored as it stands, never padded.
         gen = model.generate(**inputs, max_new_tokens=max_new, do_sample=False, use_cache=True, max_time=MAX_TIME)
-    return proc.decode(gen[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    return proc.decode(gen[0][inputs["input_ids"].shape[1]:], skip_special_tokens=not keep_special)
 
 
 def _fit(img: Image.Image, longest: int) -> Image.Image:
@@ -439,7 +444,9 @@ def _otsl_to_html(s: str) -> str:
 
 
 def run_granite_docling(img: Image.Image, **_: Any) -> Result:
-    text = _chat("ibm-granite/granite-docling-258M", img, "Convert this page to docling.", 4096)
+    # DocTags (<text>, <loc_n>, <otsl>…) are special tokens: skipping them would return an empty page.
+    text = _chat("ibm-granite/granite-docling-258M", img, "Convert this page to docling.", 4096, keep_special=True)
+    text = re.sub(r"<end_of_utterance>|<\|end_of_text\|>", "", text)
     out = empty()
     W, H = img.size
     loc = r"<loc_(\d+)><loc_(\d+)><loc_(\d+)><loc_(\d+)>"
