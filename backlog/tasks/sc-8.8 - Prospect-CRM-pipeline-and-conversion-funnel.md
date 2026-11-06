@@ -98,3 +98,4 @@ Funnel metrics are computed in one pass over stage events; fine for thousands of
 | ------ | ---- | ---- | ----------- |
 | claude/project-thread-ms8qbh | 70f7540 | 2026-11-06 | feat(api): CRM contacts, stage history and conversion funnel |
 | claude/project-thread-ms8qbh | 6511adc | 2026-11-06 | feat(ui): CRM pipeline board, contact page and conversion funnel |
+| claude/project-thread-ms8qbh | 395dc46 | 2026-11-06 | feat(ui): pipeline as home page, cost review drill-down |
