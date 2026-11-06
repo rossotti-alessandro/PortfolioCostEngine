@@ -228,6 +228,27 @@ function imgSize(file) {
     s.addNotes("Full taxonomy of 31 document types with IT/DE/EN names is in data/taxonomy/document_types.csv. In Switzerland the annual cost report is often only provided on request, so the engine drafts that request.");
   }
   {
+    const s = content("Real documents", "What Swiss banks publish, and what only the client has", "How it works");
+    const head = ["DOCUMENT", "PUBLIC?", "WHAT WE FOUND", "WHERE FEELENS GETS IT"];
+    const rows = [
+      ["Bank price list", ["Yes", "obs"], "ZKB, Raiffeisen Locarno, Julius Baer Europe (Luxembourg). UBS publishes one; this environment could not download it", "Bank website, checked for date and booking entity"],
+      ["Fund KID", ["Yes", "obs"], "Every fund share class, e.g. iShares Core MSCI World (IE00B4L5Y983)", "Official source, by ISIN"],
+      ["Mandate / advisory fee", ["No", "unk"], "Julius Baer: “not part of this document”. UBS Manage pages give no rates", "The client’s contract or fee advice"],
+      ["Statement of assets", ["No", "unk"], "UBS: ordered free in e-banking as a PDF. No public specimen from UBS or Julius Baer", "The client"],
+      ["Annual cost report", ["On request", "est"], "UBS: cost details “on request” from the client advisor (FinSA page)", "The client asks the bank; FeeLens drafts the letter"],
+      ["Retrocession report", ["On request", "est"], "Julius Baer: reports on inducements; UBS: on request", "The client asks the bank"],
+    ];
+    const hdr = { bold: true, color: C.accent6, fill: { color: X.mutedSurface }, fontSize: 11 };
+    s.addTable([head.map((h) => ({ text: h, options: hdr }))].concat(rows.map((r) => [
+      { text: r[0], options: { bold: true, fontSize: 13 } },
+      { text: r[1][0], options: { bold: true, fontSize: 12, align: "center", color: KIND[r[1][1]][1], fill: { color: KIND[r[1][1]][0] } } },
+      { text: r[2], options: { fontSize: 12 } },
+      { text: r[3], options: { fontSize: 12, color: C.accent6 } },
+    ])), { x: 0.6, y: 1.6, w: 12.1, colW: [2.3, 1.3, 5.2, 3.3], rowH: 0.68, border: { type: "solid", color: X.border, pt: 0.5 }, margin: [0.04, 0.12, 0.04, 0.12], valign: "middle" });
+    s.addText("So the demo uses real public price lists and KIDs, and synthetic client statements. A real anonymised statement from Safe Capital is the next step.", tb({ x: 0.6, y: 6.45, w: 12.1, h: 0.4, fontSize: 13, color: C.accent6 }));
+    s.addNotes("Checked on 6 Nov 2026. UBS FinSA page (ubs.com/ch/en/collections/fidleg.html, UBS Switzerland AG): 'Costs and fees may be incurred both by UBS and by third parties (e.g. fund managers)... On request, your client advisor will be happy to provide you with detailed information about the costs and fees of your financial transactions.' UBS statement of assets: help page ubs.com/ch/de/help/account/order-statement-of-assets.html, no field list published. UBS price list for private clients exists at ubs.com/content/dam/ubs/ch/swissbank/private/zahlen-und-sparen/konten/dienstleistungen-und-preise.pdf but automated reading was refused; download it manually. Julius Baer: schedule PU00505EN (Bank Julius Baer Europe S.A., Luxembourg) and 'Investment services at Julius Baer, basic client information' (May 2025). No Julius Baer Switzerland price list was found.");
+  }
+  {
     const s = content("Real documents", "Real public documents, and the figures FeeLens takes from them", "How it works");
     const docs = [
       ["Bank price list", "Zürcher Kantonalbank", "Preisübersicht Anlagegeschäft · Sept 2025 · German", [
@@ -265,6 +286,39 @@ function imgSize(file) {
     }
     s.addText("Figures quoted as printed by each issuer; every value keeps its page. Client statements in the demo stay synthetic for privacy. Fees change: FeeLens checks the document date and the issuing entity.", tb({ x: 0.6, y: 6.5, w: 12.1, h: 0.4, fontSize: 12, color: C.accent6 }));
     s.addNotes("Public sources, read on 6 Nov 2026. ZKB: zkb.ch/media/zkb/dokumente/legal/preisuebersichten/preisuebersicht_anlagegeschaeft_de_sept2025.pdf. Raiffeisenbank Locarno: raiffeisen.ch/content/dam/www/locarno/pdf/de-prezzi-servizi-2025/dienstleistungspreise-anlegen-ab-01-2025. KID for IE00B4L5Y983 (BlackRock Asset Management Ireland, created 3 Sep 2026), also confirmed by the iShares factsheet (TER 0.20%). Quoted for illustration only; no endorsement or comparison of these banks is implied. Example: CHF 1m of foreign-held securities at ZKB would cost 0.40% = CHF 4'000 a year in custody alone.");
+  }
+  {
+    const s = content("Real documents · anatomy", "A real price list, field by field: Julius Baer Europe", "How it works");
+    card(s, 0.6, 1.6, 4.2, 4.75, X.navy, "doc id card");
+    s.addText([
+      { text: "SCHEDULE OF PRICES AND SERVICES", options: { bold: true, fontSize: 13, color: "9FB3C8", breakLine: true } },
+      { text: "Banking and custody", options: { bold: true, fontSize: 22, color: C.background1, breakLine: true } },
+      { text: " ", options: { fontSize: 8, breakLine: true } },
+      { text: "Bank Julius Baer Europe S.A., Luxembourg", options: { fontSize: 14, color: C.background1, breakLine: true } },
+      { text: "Publ. No. PU00505EN · June 2025 · English", options: { fontSize: 13, color: "9FB3C8", breakLine: true } },
+      { text: " ", options: { fontSize: 8, breakLine: true } },
+      { text: "“FOR CLIENTS BOOKED IN LUXEMBOURG ONLY”", options: { fontSize: 14, bold: true, color: "F5C77E" } },
+    ], tb({ x: 0.9, y: 1.85, w: 3.7, h: 2.6 }));
+    s.addText("FeeLens reads the cover line too: this tariff is valid only for Luxembourg-booked accounts. For a client booked in Switzerland it is rejected, exactly the check on the reconciliation slide.", tb({ x: 0.9, y: 4.55, w: 3.7, h: 1.6, fontSize: 13, color: "D9E2EC" }));
+    const f = [
+      ["Custody fee, cumulative bands", "0.300% to 5m · 0.250% 5–10m · 0.200% 10–20m · 0.150% over 20m", "p.3"],
+      ["Custody minimum", "EUR 360 per quarter", "p.3"],
+      ["Equities, main markets", "1.500% to 50k, falling to 0.400% over 1m · min EUR 200", "p.4"],
+      ["Equity funds", "1.250% to 50k, falling to 0.500% over 1m", "p.4"],
+      ["FX spot", "up to 3.000%", "p.6"],
+      ["Banking service fee (Premium)", "EUR 400 per quarter", "p.7"],
+      ["Transfer out to another bank", "EUR 100 per position", "p.8"],
+      ["Advisory fee", "“not part of this document”", ""],
+    ];
+    f.forEach((r, j) => {
+      const y = 1.6 + j * 0.58;
+      if (j) s.addShape(pres.shapes.LINE, { x: 5.2, y: y - 0.04, w: 7.5, h: 0, line: { color: X.border, width: 0.5 }, objectName: "jb" + j });
+      s.addText(r[0], tb({ x: 5.2, y, w: 2.9, h: 0.48, fontSize: 13, color: C.accent6, valign: "middle" }));
+      s.addText(r[1], tb({ x: 8.1, y, w: 4.0, h: 0.48, fontSize: 13, bold: true, valign: "middle", color: j === 7 ? C.accent2 : C.text1 }));
+      s.addText(r[2], tb({ x: 12.15, y, w: 0.55, h: 0.48, fontSize: 12, color: C.accent1, align: "right", valign: "middle" }));
+    });
+    s.addText("Quoted as printed. Shown as an example of a public document; no comparison with Julius Baer is implied.", tb({ x: 5.2, y: 6.45, w: 7.5, h: 0.4, fontSize: 12, color: C.accent6 }));
+    s.addNotes("Source: juliusbaer.com/fileadmin/legal/schedule-of-prices-and-services-banking-and-custody.pdf, read 6 Nov 2026. Page numbers as printed in the document. Every field becomes a contract term with its page, and the transfer fee per position feeds the switching-cost estimate. Example: EUR 3m custody at 0.300% would be EUR 9'000 a year before VAT, but only for a Luxembourg-booked account.");
   }
   {
     const s = content("Data", "Everything extracted becomes one of five kinds of data", "How it works");

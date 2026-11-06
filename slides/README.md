@@ -1,6 +1,6 @@
 # Executive deck: FeeLens for Safe Capital
 
-Audience: Massimo (Safe Capital, Lugano), non-technical. 27 slides, English: 23 main slides and a 4-slide deep-dive appendix.
+Audience: Massimo (Safe Capital, Lugano), non-technical. 29 slides, English: 25 main slides and a 4-slide deep-dive appendix.
 FeeLens is the product's working name, chosen by Ale on 6 Nov 2026. It still needs a trademark check.
 
 - `FeeLens_Executive_Deck.pptx`: editable deck, with speaker notes and sections
@@ -13,19 +13,21 @@ FeeLens is the product's working name, chosen by Ale on 6 Nov 2026. It still nee
 ## Storyline
 
 1. Why: the problem (40'160 shown vs 61'450 real), what FeeLens does and its three rules (slides 1–3)
-2. How it works (4–10):
+2. How it works (4–12):
    - swimlane workflow (client / FeeLens / analyst / output)
    - documents table: what we read, what it proves, what it cannot prove
+   - what Swiss banks publish vs what only the client has (UBS, Julius Baer)
    - real public documents (ZKB and Raiffeisen Locarno price lists, the iShares Core MSCI World KID) with the figures quoted as printed and the page of each
+   - the Julius Baer Europe price list (PU00505EN) field by field
    - five kinds of data
    - ten cost layers in four places
    - evidence statuses
    - reconciliation checks
-3. The screens (11–14): costs overview with coverage, drill-down to the source page, review of scans, checks and request letter
-4. The result (15–17): stacked comparison, year one and payback, client report
-5. Data & privacy (18–19): hosting options, confidentiality controls
-6. Next steps (20–23): people vs machine, phases, six decisions, close
-7. Deep dive (24–27): the ten layers in detail, the pipeline and guardrails, the extraction stack and licences, a glossary
+3. The screens (13–16): costs overview with coverage, drill-down to the source page, review of scans, checks and request letter
+4. The result (17–19): stacked comparison, year one and payback, client report
+5. Data & privacy (20–21): hosting options, confidentiality controls
+6. Next steps (22–25): people vs machine, phases, six decisions, close
+7. Deep dive (26–29): the ten layers in detail, the pipeline and guardrails, the extraction stack and licences, a glossary
 
 ## Every figure is synthetic
 
@@ -46,12 +48,19 @@ The numbers are the output of the demo engine (branch `claude/project-thread-ste
 - Switching costs are 1'500 and 4'000. The payback is 2.8 and 3.3 months.
 - The app thread fixed a synthetic-data bug on 6 Nov 2026: the current-side VAT was 486 and is now 2'559.60.
 
-## Real public documents quoted (slide 6)
+## Real public documents quoted (slides 6–8)
 
 Read on 6 Nov 2026 as text, with figures quoted as printed. The PDFs are not stored in the repo.
 - Zürcher Kantonalbank, *Preisübersicht Anlagegeschäft, Preise ab September 2025*: https://www.zkb.ch/media/zkb/dokumente/legal/preisuebersichten/preisuebersicht_anlagegeschaeft_de_sept2025.pdf
 - Raiffeisenbank Locarno, *Dienstleistungspreise Anlegen, gültig ab 1. Januar 2025*: https://www.raiffeisen.ch/content/dam/www/locarno/pdf/de-prezzi-servizi-2025/dienstleistungspreise-anlegen-ab-01-2025
 - BlackRock, PRIIPs KID for iShares Core MSCI World UCITS ETF USD (Acc), IE00B4L5Y983, created 3 Sep 2026 (copy hosted by LV 1871): https://fsl.lv1871.de/product/IE00B4L5Y983/kid. The iShares factsheet gives a TER of 0.20%.
+- Bank Julius Baer Europe S.A. (Luxembourg), *Schedule of prices and services, banking and custody*, PU00505EN, June 2025, "for clients booked in Luxembourg only": https://www.juliusbaer.com/fileadmin/legal/schedule-of-prices-and-services-banking-and-custody.pdf
+- Julius Baer, *Investment services at Julius Baer, basic client information* (May 2025): https://www.juliusbaer.com/fileadmin/legal/investment-services-basic-client_-information.pdf
+- UBS Switzerland AG, FinSA page (cost details "on request"): https://www.ubs.com/ch/en/collections/fidleg.html
+
+Not reachable or not public: the UBS private-client price list (automated reading refused; download it manually from https://www.ubs.com/content/dam/ubs/ch/swissbank/private/zahlen-und-sparen/konten/dienstleistungen-und-preise.pdf), any UBS or Julius Baer mandate fee rates, and any public specimen of a statement of assets or an ex-post cost report.
+
+Live online version of the deck: https://claude.ai/artifact/CWsTBHgfGCQex6jbXeHbPM (one image per slide, with speaker notes; private until shared).
 
 ## Facts the deck relies on, and what is not verified
 
