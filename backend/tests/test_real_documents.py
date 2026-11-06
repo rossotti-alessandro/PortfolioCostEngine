@@ -61,3 +61,37 @@ def test_public_document_matches_manifest(name):
         got = facts[key]
         assert Dec(str(got["value"])) == Dec(want.split()[0]), key
         assert got["evidence"]["page"] >= 1 and got["evidence"]["bbox"], key  # every value has a source box
+
+
+def _pdf(tmp_path: Path, name: str, title: str, rows: list[tuple[str, str]]) -> tuple[dict, list]:
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / name, title)
+    d.header("Synthetic Fund Management Ltd", "Dublin, Ireland", title, "ISIN IE00B4L5Y983")
+    for label, value in rows:
+        d.row([(50, label, "l"), (400, value, "l")])
+    d.save()
+    res, _ = extract(name, (tmp_path / name).read_bytes())
+    return res.model_dump(mode="json"), res.facts
+
+
+def test_kid_with_wrapped_cost_label_and_curly_apostrophe(tmp_path):
+    # Real KIDs wrap "Frais de gestion et autres frais administratifs..." over two lines (corpus finding).
+    res, facts = _pdf(
+        tmp_path,
+        "kid_fr.pdf",
+        "Document d’informations clés",
+        [("Frais de gestion et", "0,20 % de la valeur de votre investissement par an"), ("autres frais", "")],
+    )
+    assert res["profile"]["doc_type"] == "kid"
+    assert {f.key: f.value for f in facts}.get("kid:FUND_ONGOING") == "0.20"
+
+
+def test_fund_factsheet_is_not_a_statement_or_kid(tmp_path):
+    res, _ = _pdf(
+        tmp_path,
+        "factsheet.pdf",
+        "Monthly factsheet · Key information document available",
+        [("Positions", "Market value"), ("Ongoing charges", "0.20%")],
+    )
+    assert res["profile"]["doc_type"] == "unknown"

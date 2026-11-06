@@ -116,6 +116,9 @@ def _fee_fact(label: str, value: Decimal, ln: Line, page: PageInfo, prof: Docume
 
 
 # ---------------------------------------------------------------- classification
+_FACTSHEET = re.compile(
+    r"\bfact ?sheet\b|\bmonthly report\b|\bscheda prodotto\b|\bfonds-?portrait\b|\breporting mensuel\b"
+)
 _AS_OF = re.compile(
     r"valuation|valuta|bewertung|évaluation|as of|stichtag|valid from|production|gültig ab|"
     r"valido dal|erstellt|realizzazione",
@@ -128,8 +131,8 @@ _LEGAL_ENTITY = re.compile(
 
 
 def classify(pages: list[PageInfo]) -> DocumentProfile:
-    first = " ".join(ln.text for ln in pages[0].lines) if pages else ""
-    alltext = " ".join(ln.text for p in pages for ln in p.lines)
+    first = " ".join(ln.text for ln in pages[0].lines).replace("’", "'") if pages else ""
+    alltext = " ".join(ln.text for p in pages for ln in p.lines).replace("’", "'")
     low_first, low_all = first.lower(), alltext.lower()
     scores: dict[str, float] = {}
     for dt, kws in DOC_TYPE_KEYWORDS.items():
@@ -140,6 +143,12 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
     score = scores.get(best, 0.0)
     doc_type = DocType(best) if score >= 2.0 else DocType.UNKNOWN
     warnings = []
+    if _FACTSHEET.search(low_first) and doc_type in (DocType.PORTFOLIO_STATEMENT, DocType.KID):
+        # A fund factsheet lists a fund's holdings and costs, not the client's: never a statement or a KID.
+        doc_type = DocType.UNKNOWN
+        warnings.append(
+            "Looks like a fund factsheet: use the KID for costs and the bank statement for holdings."
+        )
     ranked = sorted(scores.values(), reverse=True)
     if doc_type != DocType.UNKNOWN and len(ranked) > 1 and ranked[1] >= score - 0.5 and ranked[1] > 0:
         warnings.append("Document type is close between two candidates; please confirm.")
@@ -669,8 +678,9 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
         ),
         (
             re.compile(
-                r"management fees and other administrative|ongoing charges|spese correnti|laufende kosten|"
-                r"verwaltungsgebühren und|frais de gestion et autres",
+                # KID tables wrap the label, so the first cell often holds only its first words.
+                r"^management fees and|ongoing charges|spese correnti|laufende kosten|"
+                r"^verwaltungsgebühren|^commissioni di gestione|^frais de gestion",
                 re.I,
             ),
             "FUND_ONGOING",
@@ -724,7 +734,7 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             if not pm:
                 continue
             for pat, code, meas in mapping:
-                if pat.search(label):
+                if pat.search(label) and not any(f.key == f"kid:{code}" for f in facts):
                     facts.append(
                         Fact(
                             key=f"kid:{code}",
