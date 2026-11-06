@@ -167,3 +167,38 @@ def test_holdings_table_with_cost_columns_and_symbol_in_header(tmp_path):
     assert res.profile.doc_type == "portfolio_statement"
     assert pos == {"ALPHA EQUITY I ACC": ("2500.00", "GBP"), "BETA BOND FUND INC": ("2000.00", "GBP")}
     assert {f.key: f.value for f in res.facts}["total:assets"] == "4500.00"
+
+
+def test_possible_misses_flag_unread_cost_lines_only():
+    from pce.extraction.layout import Cell, Line, PageInfo
+    from pce.extraction.models import Evidence, Fact
+    from pce.extraction.parsers import _possible_misses
+
+    def line(y: float, *cells: str) -> Line:
+        return Line(
+            page=1,
+            cells=[Cell(c, (50.0 + 200 * i, y, 150.0 + 200 * i, y + 10)) for i, c in enumerate(cells)],
+            engine="t",
+        )
+
+    page = PageInfo(
+        1,
+        595,
+        842,
+        "t",
+        [
+            line(100, "Custody fee", "0.15%"),  # read below: covered
+            line(130, "Brokerage commission", "CHF 1,250.00"),  # not read: a possible miss
+            line(160, "Custody account maintenance", "06"),  # table of contents page number: ignored
+        ],
+    )
+    read = Fact(
+        key="fee:CUSTODY_FEE",
+        kind="fee_rule",
+        field="rate",
+        label="Custody fee",
+        value="0.15",
+        evidence=Evidence(page=1, bbox=[250, 100, 350, 110]),
+    )
+    misses = _possible_misses([page], [read])
+    assert [m["text"] for m in misses] == ["Brokerage commission CHF 1,250.00"]

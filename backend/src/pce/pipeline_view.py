@@ -24,6 +24,29 @@ KIND_LABELS = {
     "meta": "Document details",
 }
 REVIEWED = ("accepted", "corrected", "manual")
+# What the reader looks for in each document type; "not found" is shown, never assumed to be zero.
+EXPECTED: dict[str, list[tuple[str, str]]] = {
+    "portfolio_statement": [("position", "Holdings"), ("total", "Printed total")],
+    "cost_report": [
+        ("fee_observed", "Service costs charged"),
+        ("total", "Total costs"),
+        ("RETRO_RECEIVED", "Retrocessions"),
+    ],
+    "cash_statement": [("cash_debit", "Fee debits")],
+    "tariff": [
+        ("CUSTODY_FEE", "Custody fee"),
+        ("BROKERAGE", "Brokerage"),
+        ("ADVISORY_FEE", "Advisory or mandate fee"),
+    ],
+    "kid": [
+        ("FUND_ONGOING", "Ongoing costs"),
+        ("FUND_TRANSACTION", "Transaction costs"),
+        ("FUND_ENTRY_CHARGE", "Entry charge"),
+        ("FUND_EXIT_CHARGE", "Exit charge"),
+        ("FUND_PERFORMANCE", "Performance fee"),
+    ],
+    "termsheet": [("SP_ENTRY_COST", "Entry costs"), ("SP_ONGOING", "Ongoing costs")],
+}
 
 
 def _stage(key: str, status: str, summary: str, ms: int | None = None, **kw: Any) -> dict:
@@ -112,14 +135,21 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
 
     kinds = Counter(f.kind for f in facts)
     located = sum(1 for f in facts if (f.evidence or {}).get("bbox") or (f.evidence or {}).get("cell"))
+    misses: list[dict] = prof.get("possible_misses") or []
+    found = {f.fee_code for f in facts} | {f.kind for f in facts} | {f.key.split(":")[0] for f in facts}
+    looked_for = [{"label": label, "found": code in found} for code, label in EXPECTED.get(used, [])]
     stages.append(
         _stage(
             "extract",
-            "ok" if facts else ("warn" if used != "unknown" else "skipped"),
+            ("warn" if misses else "ok") if facts else ("warn" if used != "unknown" else "skipped"),
             "{n} values found, {located} with their exact place in the file",
             ms.get("extract"),
             vars={"n": len(facts), "located": located},
             details=[{"label": KIND_LABELS.get(k, k), "value": str(n)} for k, n in kinds.most_common()],
+            warnings=["{n} cost lines on the page were not read: check them"] if misses else [],
+            warning_vars={"n": len(misses)},
+            looked_for=looked_for,
+            misses=misses,
             values=[
                 {
                     "id": f.id,
@@ -129,6 +159,8 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
                     "where": f"p.{f.evidence['page']}"
                     if (f.evidence or {}).get("page")
                     else f"{(f.evidence or {}).get('sheet')}!{(f.evidence or {}).get('cell')}",
+                    "engine": (f.evidence or {}).get("engine") or "",
+                    "confidence": (f.evidence or {}).get("confidence"),
                     "status": f.status,
                 }
                 for f in facts

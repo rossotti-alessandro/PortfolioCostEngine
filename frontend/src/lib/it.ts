@@ -805,4 +805,30 @@ export const IT: Record<string, string> = {
   "Adds no cost to the total; used for holdings, checks or as corroboration":
     "Non aggiunge costi al totale; serve per posizioni, controlli o come conferma",
   "Page {n}": "Pagina {n}",
+  "Looked for": "Cercato",
+  found: "trovato",
+  "not found": "non trovato",
+  "Found on the page": "Trovato sulla pagina",
+  "Each box is a value read from the file. Click a box or a row to match them.":
+    "Ogni riquadro è un valore letto dal file. Clicca un riquadro o una riga per abbinarli.",
+  cell: "cella",
+  text: "testo",
+  "Cost lines not read": "Righe di costo non lette",
+  "These lines name a fee and print a rate or amount, but no value was taken from them. Check whether they apply.":
+    "Queste righe nominano una commissione e riportano un tasso o un importo, ma non ne è stato preso alcun valore. Verifica se si applicano.",
+  "{n} cost lines on the page were not read: check them":
+    "{n} righe di costo nel documento non sono state lette: verificale",
+  "Printed total": "Totale stampato",
+  "Service costs charged": "Costi di servizio addebitati",
+  "Total costs": "Costi totali",
+  Retrocessions: "Retrocessioni",
+  "Custody fee": "Commissione di custodia",
+  Brokerage: "Commissioni di intermediazione",
+  "Advisory or mandate fee": "Commissione di consulenza o mandato",
+  "Ongoing costs": "Costi correnti",
+  "Transaction costs": "Costi di transazione",
+  "Entry charge": "Costi di ingresso",
+  "Exit charge": "Costi di uscita",
+  "Performance fee": "Commissione di performance",
+  "Entry costs": "Costi di entrata",
 };

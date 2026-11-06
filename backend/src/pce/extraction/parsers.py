@@ -1077,6 +1077,38 @@ PARSERS = {
 }
 
 
+def _possible_misses(pages: list[PageInfo], facts: list[Fact], limit: int = 40) -> list[dict]:
+    """Lines that name a fee and print a rate or an amount, but no extracted value sits on them.
+    Not errors: a recall signal shown to the analyst, so nothing a parser skipped stays invisible."""
+    taken: dict[int, list[tuple[float, float]]] = {}
+    for f in facts:
+        ev = f.evidence
+        if ev.page and ev.bbox:
+            taken.setdefault(ev.page, []).append((ev.bbox[1], ev.bbox[3]))
+    out: list[dict] = []
+    for page in pages:
+        for ln in page.lines:
+            code = map_fee_label(ln.text)
+            # a bare "06" after a heading is a table-of-contents page number, not an amount
+            money = any(re.search(r"[.,'’]\d", ln.cells[i].text) for i, _ in _amount_cells(ln))
+            if not code or not (PERCENT.search(ln.text) or money):
+                continue
+            _x0, y0, _x1, y1 = ln.bbox
+            if any(a <= y1 and y0 <= b for a, b in taken.get(page.number, [])):
+                continue
+            out.append(
+                {
+                    "page": page.number,
+                    "bbox": [round(v, 2) for v in ln.bbox],
+                    "text": ln.text[:160],
+                    "fee_code": code,
+                }
+            )
+            if len(out) >= limit:
+                return out
+    return out
+
+
 def _ms(start: float, end: float | None = None) -> int:
     return round(((end if end is not None else time.perf_counter()) - start) * 1000)
 
@@ -1098,6 +1130,7 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
     parser = PARSERS.get(prof.doc_type)
     facts = parser(pages, prof) if parser else []
     prof.timings_ms = {"read": _ms(t0, t1), "classify": _ms(t1, t2), "extract": _ms(t2)}
+    prof.possible_misses = _possible_misses(pages, facts)
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None
     )

@@ -1,9 +1,10 @@
+import { PdfEvidence } from "@/components/EvidenceViewer";
 import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, ErrorBox, InfoTip, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, LAYER, chf, cn, num } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import type { PipelineStage, StageStatus } from "@/lib/types";
+import type { DocumentPipeline, PipelineStage, StageStatus } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, XCircle } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -99,19 +100,21 @@ export default function PipelinePage() {
       </div>
       <ol className="space-y-3">
         {p.stages.map((s, i) => (
-          <StageCard key={s.key} n={i + 1} s={s} />
+          <StageCard key={s.key} n={i + 1} s={s} doc={p.document} />
         ))}
       </ol>
     </div>
   );
 }
 
-function StageCard({ n, s }: { n: number; s: PipelineStage }) {
+type Doc = DocumentPipeline["document"];
+
+function StageCard({ n, s, doc }: { n: number; s: PipelineStage; doc: Doc }) {
   const meta = STAGES[s.key] ?? { title: s.key, help: "" };
   const st = STATUS[s.status];
   const vars = s.key === "classify" ? { ...s.vars, type: t(DOC_TYPES[String(s.vars.type)] ?? "") } : s.vars;
   const [open, setOpen] = useState(false);
-  const hasMore = s.details.length || s.values?.length || s.checks?.length || s.atoms?.length;
+  const hasMore = s.details.length || s.values?.length || s.checks?.length || s.atoms?.length || s.misses?.length;
   return (
     <li>
       <Card className="px-5 py-4" id={`stage-${s.key}`}>
@@ -126,6 +129,22 @@ function StageCard({ n, s }: { n: number; s: PipelineStage }) {
                 {meta.help && <InfoTip>{t(meta.help)}</InfoTip>}
               </div>
               <p className="mt-0.5 text-[13.5px] text-ink">{t(s.summary, vars)}</p>
+              {s.looked_for && s.looked_for.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+                  <span className="text-muted">{t("Looked for")}:</span>
+                  {s.looked_for.map((l) => (
+                    <Badge key={l.label} tone={l.found ? "teal" : "grey"}>
+                      {l.found ? (
+                        <CheckCircle2 className="h-3 w-3" aria-hidden />
+                      ) : (
+                        <CircleDashed className="h-3 w-3" aria-hidden />
+                      )}
+                      {t(l.label)}
+                      <span className="sr-only">{l.found ? t("found") : t("not found")}</span>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -138,7 +157,7 @@ function StageCard({ n, s }: { n: number; s: PipelineStage }) {
         </div>
         {s.warnings?.map((w) => (
           <div key={w} className="ml-9 mt-2 flex items-start gap-1.5 text-[12.5px] text-amber-700">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {w}
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {t(w, s.warning_vars)}
           </div>
         ))}
         {hasMore ? (
@@ -154,7 +173,7 @@ function StageCard({ n, s }: { n: number; s: PipelineStage }) {
             </button>
             {open && (
               <div className="mt-2 rounded-md bg-paper px-3 py-2.5">
-                <StageDetails s={s} />
+                <StageDetails s={s} doc={doc} />
               </div>
             )}
           </div>
@@ -164,7 +183,14 @@ function StageCard({ n, s }: { n: number; s: PipelineStage }) {
   );
 }
 
-function StageDetails({ s }: { s: PipelineStage }) {
+function StageDetails({ s, doc }: { s: PipelineStage; doc: Doc }) {
+  const [active, setActive] = useState<{ id: number; page: number } | null>(null);
+  const isPdf = doc.filename.toLowerCase().endsWith(".pdf");
+  const facts = useQuery({
+    queryKey: ["facts", doc.id],
+    queryFn: () => api.facts(doc.id),
+    enabled: !!s.values && isPdf,
+  });
   return (
     <div className="space-y-3 text-[12.5px]">
       {s.details.length > 0 && (
@@ -177,12 +203,40 @@ function StageDetails({ s }: { s: PipelineStage }) {
           ))}
         </dl>
       )}
+      {s.values && isPdf && facts.data && facts.data.length > 0 && (
+        <div>
+          <div className="mb-1.5 font-semibold text-navy-900">{t("Found on the page")}</div>
+          <p className="mb-2 text-muted">
+            {t("Each box is a value read from the file. Click a box or a row to match them.")}
+          </p>
+          <PdfEvidence
+            docId={doc.id}
+            facts={facts.data}
+            activeId={active?.id ?? null}
+            page={active?.page}
+            onSelect={(f) => setActive({ id: f.id, page: f.evidence.page ?? 1 })}
+            compact
+          />
+        </div>
+      )}
       {s.values && s.values.length > 0 && (
-        <Table head={[t("Value"), t("Where"), t("Review"), t("Amount")]}>
+        <Table head={[t("Value"), t("Where"), t("Read by"), t("Review"), t("Amount")]}>
           {s.values.map((v) => (
-            <tr key={v.id} className="border-t border-line">
-              <td className="py-1 pr-3">{v.label}</td>
+            <tr key={v.id} className={cn("border-t border-line", active?.id === v.id && "bg-teal-50")}>
+              <td className="py-1 pr-3">
+                <button
+                  type="button"
+                  className="text-left hover:underline"
+                  onClick={() => setActive({ id: v.id, page: Number(v.where.slice(2)) || 1 })}
+                >
+                  {v.label}
+                </button>
+              </td>
               <td className="py-1 pr-3 font-mono text-[11.5px] text-subtle">{v.where}</td>
+              <td className="py-1 pr-3 text-muted">
+                {v.engine === "tesseract-ocr" ? "OCR" : v.engine === "openpyxl" ? t("cell") : t("text")}
+                {v.confidence !== null && v.confidence < 1 && ` · ${Math.round(v.confidence * 100)}%`}
+              </td>
               <td className="py-1 pr-3 text-muted">{t(REVIEW[v.status] ?? v.status)}</td>
               <td className="num py-1 text-right whitespace-nowrap">
                 {v.value === null ? "–" : num(v.value, 2)} {v.currency ?? ""}
@@ -190,6 +244,24 @@ function StageDetails({ s }: { s: PipelineStage }) {
             </tr>
           ))}
         </Table>
+      )}
+      {s.misses && s.misses.length > 0 && (
+        <div>
+          <div className="mb-1 font-semibold text-navy-900">{t("Cost lines not read")}</div>
+          <p className="mb-1.5 text-muted">
+            {t(
+              "These lines name a fee and print a rate or amount, but no value was taken from them. Check whether they apply.",
+            )}
+          </p>
+          <ul className="space-y-1">
+            {s.misses.map((m) => (
+              <li key={`${m.page}-${m.bbox.join()}`} className="flex gap-3">
+                <span className="font-mono text-[11.5px] text-subtle">p.{m.page}</span>
+                <span className="text-ink">{m.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {s.checks?.map((c) => (
         <div key={c.title} className="flex items-start gap-2">

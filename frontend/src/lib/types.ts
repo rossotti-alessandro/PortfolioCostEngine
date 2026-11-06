@@ -326,9 +326,14 @@ export interface PipelineStage {
   ms: number | null;
   details: { label: string; value: string }[];
   warnings?: string[];
+  warning_vars?: Record<string, string | number>;
+  looked_for?: { label: string; found: boolean }[];
+  misses?: { page: number; bbox: number[]; text: string; fee_code: string }[];
   values?: {
     id: number;
     label: string;
+    engine: string;
+    confidence: number | null;
     value: string | null;
     currency: string | null;
     where: string;

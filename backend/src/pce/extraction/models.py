@@ -71,6 +71,8 @@ class DocumentProfile(BaseModel):
     engines: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     timings_ms: dict[str, int] = Field(default_factory=dict)  # per pipeline stage, shown to the analyst
+    # Cost-looking lines (fee word + rate or amount) that produced no value: the analyst's recall check.
+    possible_misses: list[dict] = Field(default_factory=list)
 
 
 class ExtractionResult(BaseModel):
