@@ -95,3 +95,18 @@ def test_fund_factsheet_is_not_a_statement_or_kid(tmp_path):
         [("Positions", "Market value"), ("Ongoing charges", "0.20%")],
     )
     assert res["profile"]["doc_type"] == "unknown"
+
+
+def test_kid_value_on_the_line_below_its_label(tmp_path):
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / "kid_it.pdf", "Documento contenente le informazioni chiave")
+    d.header(
+        "Synthetic SGR S.p.A.", "Milano", "Documento contenente le informazioni chiave", "ISIN IE00B4L5Y983"
+    )
+    d.row([(50, "Commissioni di gestione e", "l")])
+    d.row([(50, "altri costi amministrativi", "l"), (400, "1,20 % del valore", "l")])
+    d.row([(50, "Totale", "l"), (400, "250,000", "l")])  # an ambiguous amount must not fail the document
+    d.save()
+    res, _ = extract("kid_it.pdf", (tmp_path / "kid_it.pdf").read_bytes())
+    assert {f.key: f.value for f in res.facts}.get("kid:FUND_ONGOING") == "1.20"

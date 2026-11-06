@@ -465,10 +465,13 @@ def _band_upper(label: str) -> tuple[bool, Decimal | None]:
     t = label.strip()
     if _BAND_OPEN.search(t):
         return True, None
-    if _BAND_FIRST.search(t) and (m := _BAND_NUM.search(t)):
-        return True, num(m.group(1), m.group(2))
-    if m := _BAND_RANGE.search(t):
-        return True, num(m.group(1), m.group(2))
+    try:  # "250,000" alone is ambiguous: not a band we can bound, never a reason to drop the document
+        if _BAND_FIRST.search(t) and (m := _BAND_NUM.search(t)):
+            return True, num(m.group(1), m.group(2))
+        if m := _BAND_RANGE.search(t):
+            return True, num(m.group(1), m.group(2))
+    except ValueError:
+        return False, None
     return False, None
 
 
@@ -551,7 +554,10 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 target = last_code or section
                 amt = _amount_cells(ln)
                 cm = _CCY_AMOUNT.search(" ".join(c.text for c in ln.cells[1:]))
-                value = amt[0][1] if amt else (parse_amount(cm.group(2).rstrip(".,")) if cm else None)
+                try:
+                    value = amt[0][1] if amt else (parse_amount(cm.group(2).rstrip(".,")) if cm else None)
+                except ValueError:  # ambiguous separator: skip this value, keep the document
+                    value = None
                 if value is not None:
                     per = (
                         "quarter"
@@ -717,18 +723,20 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
         (re.compile(r"exit costs|costi di uscita|ausstiegskosten", re.I), "FUND_EXIT_CHARGE", "maximum"),
     ]
     for page in pages:
-        for ln in page.lines:
+        for li, ln in enumerate(page.lines):
             label = ln.cells[0].text if ln.cells else ""
             if re.search(
                 r"total costs if you exit after 1 year|^gesamtkosten$|^costi totali$|^coûts totaux$",
                 label,
                 re.I,
             ):
-                amt = _amount_cells(ln) or [
-                    (1, parse_amount(m.group(1)))
-                    for m in [re.match(r"([\d'’.,]+)\s*(?:USD|EUR|CHF|GBP)$", ln.cells[1].text.strip())]
-                    if m and len(ln.cells) > 1
-                ]
+                amt = _amount_cells(ln)
+                if not amt and len(ln.cells) > 1:  # "20 USD": amount with a trailing currency
+                    m = re.match(r"([\d'’.,]+)\s*(?:USD|EUR|CHF|GBP)$", ln.cells[1].text.strip())
+                    try:
+                        amt = [(1, parse_amount(m.group(1)))] if m else []
+                    except ValueError:
+                        amt = []
                 if amt:
                     facts.append(
                         Fact(
@@ -746,6 +754,13 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                     )
                 continue
             pm = PERCENT.search(" ".join(c.text for c in ln.cells[1:])) if len(ln.cells) > 1 else None
+            src = ln
+            if not pm and li + 1 < len(page.lines) and any(p.search(label) for p, _c, _m in mapping):
+                # The value sits on the line below its wrapped label ("Commissioni di gestione e" / "1,20 %").
+                nxt = page.lines[li + 1]
+                nlabel = nxt.cells[0].text if nxt.cells else ""
+                if not any(p.search(nlabel) for p, _c, _m in mapping):
+                    pm, src = PERCENT.search(nxt.text), nxt
             if not pm:
                 continue
             for pat, code, meas in mapping:
@@ -764,7 +779,7 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                                 "included_in": "FUND_ONGOING" if code == "FUND_MGMT_FEE" else None,
                                 "document_date": prof.as_of,
                             },
-                            evidence=_ev(ln, page),
+                            evidence=_ev(src, page),
                         )
                     )
                     break
