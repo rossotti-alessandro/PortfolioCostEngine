@@ -16,6 +16,7 @@ import CostsPage from "./pages/Costs";
 import DocumentsPage from "./pages/Documents";
 import HowItWorksPage from "./pages/HowItWorks";
 import InternalPage from "./pages/Internal";
+import PipelinePage from "./pages/Pipeline";
 import ProspectsPage from "./pages/Prospects";
 import ReportPage from "./pages/Report";
 import ReviewPage from "./pages/Review";
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="costs" replace /> },
           { path: "documents", element: <DocumentsPage /> },
+          { path: "documents/:did", element: <PipelinePage /> },
           { path: "review", element: <ReviewPage /> },
           { path: "costs", element: <CostsPage /> },
           { path: "compare", element: <ComparePage /> },

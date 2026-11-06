@@ -1,4 +1,13 @@
-import type { Analysis, DocumentRow, Fact, InternalView, ProposalConfig, ProspectRow, Taxonomy } from "./types";
+import type {
+  Analysis,
+  DocumentPipeline,
+  DocumentRow,
+  Fact,
+  InternalView,
+  ProposalConfig,
+  ProspectRow,
+  Taxonomy,
+} from "./types";
 
 export type Role = "analyst" | "senior" | "relationship_manager";
 
@@ -85,6 +94,7 @@ export const api = {
   },
   setDocType: (docId: number, doc_type: string) => req(`/api/documents/${docId}`, json({ doc_type }, "PATCH")),
   facts: (docId: number) => req<Fact[]>(`/api/documents/${docId}/facts`),
+  pipeline: (docId: number) => req<DocumentPipeline>(`/api/documents/${docId}/pipeline`),
   sheet: (docId: number) =>
     req<{ sheets: { name: string; rows: (string | null)[][] }[] }>(`/api/documents/${docId}/sheet`),
   review: (factId: number, b: { action: string; value?: string; reason?: string }) =>

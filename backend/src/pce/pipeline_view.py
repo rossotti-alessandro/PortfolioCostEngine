@@ -70,7 +70,7 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
             "warn" if ocr else ("ok" if pages or sheet else "fail"),
             "Spreadsheet read cell by cell"
             if sheet
-            else ("{n} pages read, some with OCR" if ocr else "{n} pages read as digital text"),
+            else ("Pages read: {n}, some with OCR" if ocr else "Pages read as digital text: {n}"),
             ms.get("read"),
             vars={"n": len(pages)},
             details=[

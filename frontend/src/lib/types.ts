@@ -316,3 +316,38 @@ export interface Taxonomy {
   fees: FeeRow[];
   public_sources: PublicSourceRow[];
 }
+
+export type StageStatus = "ok" | "warn" | "fail" | "skipped";
+export interface PipelineStage {
+  key: string;
+  status: StageStatus;
+  summary: string;
+  vars: Record<string, string | number>;
+  ms: number | null;
+  details: { label: string; value: string }[];
+  warnings?: string[];
+  values?: {
+    id: number;
+    label: string;
+    value: string | null;
+    currency: string | null;
+    where: string;
+    status: string;
+  }[];
+  checks?: { title: string; status: string; detail: string }[];
+  atoms?: {
+    label: string;
+    fee_label: string;
+    layer: string;
+    measurement: string;
+    role: string;
+    amount: string | null;
+    formula: string;
+  }[];
+}
+export interface DocumentPipeline {
+  document: { id: number; filename: string; doc_type: string; prospect_id: number };
+  extractor_version: string;
+  total_ms: number | null;
+  stages: PipelineStage[];
+}
