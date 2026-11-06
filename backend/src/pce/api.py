@@ -438,32 +438,58 @@ def patch_prospect(pid: int, body: ProspectPatch, db: DB, c: C) -> dict:
 
 @app.post("/api/demo/seed")
 def seed_demo(db: DB, c: C) -> dict:
-    """Create the synthetic two-bank prospect from data/synthetic (regenerated if missing)."""
+    """Create the SYNTHETIC demo prospects from data/synthetic (regenerated if missing).
+
+    P-1042: two Swiss/EU banks. P-2077: an Italian bank (EUR) and a US-style broker (USD), plus the real
+    public iShares KID when it has been fetched (python -m pce.demo.public_corpus): public, not client data.
+    """
+    from .demo import archetypes, public_corpus
     from .demo.generate import generate
 
-    folder = Path(__file__).resolve().parents[3] / "data" / "synthetic" / "prospect_p1042"
-    if not folder.exists() or not any(folder.iterdir()):
-        generate(folder)
-    p = db.scalar(select(Prospect).where(Prospect.tenant_id == c.tenant, Prospect.code == spec.PROSPECT_CODE))
-    if not p:
-        p = Prospect(
-            tenant_id=c.tenant,
-            code=spec.PROSPECT_CODE,
-            label=spec.PROSPECT_LABEL,
-            domicile=spec.CLIENT_DOMICILE,
-            synthetic=True,
-            proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)),
-        )
-        db.add(p)
-        db.flush()
-        audit(db, c, p.id, "prospect.created", code=p.code, synthetic=True)
-    added = 0
-    for f in sorted(folder.iterdir()):
-        if f.is_file() and f.suffix in ALLOWED:
-            _d, new = ingest(db, c, p, f.name, f.read_bytes())
-            added += int(new)
+    root = Path(__file__).resolve().parents[3] / "data" / "synthetic"
+    plans = [
+        (
+            spec.PROSPECT_CODE,
+            spec.PROSPECT_LABEL,
+            spec.CLIENT_DOMICILE,
+            root / "prospect_p1042",
+            generate,
+            [],
+        ),
+        (
+            archetypes.PROSPECT_CODE,
+            archetypes.PROSPECT_LABEL,
+            archetypes.CLIENT_DOMICILE,
+            root / "prospect_p2077",
+            archetypes.generate,
+            [public_corpus.TARGET / "kid_IE00B4L5Y983.pdf"],
+        ),
+    ]
+    ids, added = [], 0
+    for code, label, domicile, folder, gen, extras in plans:
+        if not folder.exists() or not any(folder.iterdir()):
+            gen(folder)
+        p = db.scalar(select(Prospect).where(Prospect.tenant_id == c.tenant, Prospect.code == code))
+        if not p:
+            p = Prospect(
+                tenant_id=c.tenant,
+                code=code,
+                label=label,
+                domicile=domicile,
+                synthetic=True,
+                proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)),
+            )
+            db.add(p)
+            db.flush()
+            audit(db, c, p.id, "prospect.created", code=p.code, synthetic=True)
+        files = [f for f in sorted(folder.iterdir()) if f.is_file()] + [f for f in extras if f.exists()]
+        for f in files:
+            if f.suffix in ALLOWED:
+                _d, new = ingest(db, c, p, f.name, f.read_bytes())
+                added += int(new)
+        ids.append(p.id)
     db.commit()
-    return {"id": p.id, "documents_added": added}
+    return {"id": ids[0], "ids": ids, "documents_added": added}
 
 
 @app.get("/api/prospects/{pid}")

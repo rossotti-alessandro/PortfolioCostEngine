@@ -9,6 +9,7 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "./index.css";
+import { useLang } from "./lib/i18n";
 import CataloguePage from "./pages/Catalogue";
 import ComparePage from "./pages/Compare";
 import CostsPage from "./pages/Costs";
@@ -49,10 +50,16 @@ const router = createBrowserRouter([
   },
 ]);
 
+/** Re-mounts the tree when the language changes, so every t() call re-renders. */
+function Root() {
+  const lang = useLang();
+  return <RouterProvider key={lang} router={router} />;
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
+      <Root />
     </QueryClientProvider>
   </StrictMode>,
 );

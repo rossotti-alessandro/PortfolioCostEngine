@@ -1,6 +1,7 @@
 import { ROLE_LABEL, type Role, api, getRole, setRole } from "@/lib/api";
 import { PRODUCT } from "@/lib/brand";
 import { chf, cn } from "@/lib/format";
+import { setLang, t, useLang } from "@/lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Workflow } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -16,6 +17,31 @@ export function Brand() {
         <div className="text-[11px] text-subtle">{PRODUCT.tagline}</div>
       </div>
     </Link>
+  );
+}
+
+function LangSwitch() {
+  const lang = useLang();
+  return (
+    <fieldset
+      className="mb-3 flex rounded-md border border-line bg-surface p-0.5 text-[12px]"
+      aria-label={t("Language")}
+    >
+      {(["en", "it"] as const).map((l) => (
+        <button
+          key={l}
+          type="button"
+          aria-pressed={lang === l}
+          onClick={() => setLang(l)}
+          className={cn(
+            "flex-1 rounded px-2 py-1 font-medium",
+            lang === l ? "bg-navy-900 text-white" : "text-muted hover:text-ink",
+          )}
+        >
+          {l === "en" ? "English" : "Italiano"}
+        </button>
+      ))}
+    </fieldset>
   );
 }
 
@@ -131,6 +157,7 @@ export function AppShell() {
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             Processed on this server. No document content is sent to external AI.
           </div>
+          <LangSwitch />
           <RoleSwitch />
         </div>
       </aside>
