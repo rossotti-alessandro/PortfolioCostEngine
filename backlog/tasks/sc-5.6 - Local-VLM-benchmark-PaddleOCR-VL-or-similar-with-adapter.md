@@ -1,15 +1,15 @@
 ---
 id: SC-5.6
 title: Local VLM benchmark (PaddleOCR-VL or similar) with adapter
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Benchmark local OCR and layout models"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-rfm5yy"
 pr: ""
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-06 15:05"
+updated_date: "2026-11-06 17:39"
 labels:
   - extraction
   - qa
