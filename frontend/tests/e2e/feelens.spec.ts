@@ -107,7 +107,9 @@ test("07 roles: analysts cannot see internal margin, seniors can", async ({ page
   await page.getByLabel("Demo role").selectOption("senior");
   await expect(page.getByRole("heading", { name: "Internal economics" })).toBeVisible();
   await shot(page, "09-internal-senior");
-  const client = await (await page.request.get(`/api/prospects/${id}/analysis`, { headers: { "X-Tenant-Id": "demo-firm" } })).text();
+  const client = await (
+    await page.request.get(`/api/prospects/${id}/analysis`, { headers: { "X-Tenant-Id": "demo-firm" } })
+  ).text();
   expect(client).not.toMatch(/min_margin_pct|servicing_cost|annual_contribution/);
 });
 

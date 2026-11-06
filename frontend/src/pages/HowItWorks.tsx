@@ -1,5 +1,6 @@
 import { Page, PageTitle } from "@/components/Shell";
 import { Card, CardHeader } from "@/components/ui";
+import { t } from "@/lib/i18n";
 
 const STEPS = [
   {
@@ -89,11 +90,13 @@ export default function HowItWorksPage() {
   return (
     <Page>
       <PageTitle
-        title="How it works"
-        subtitle="From a pile of bank documents to a verified, like-for-like cost comparison. No source, no verified figure. Missing is never zero."
+        title={t("How it works")}
+        subtitle={t(
+          "From a pile of bank documents to a verified, like-for-like cost comparison. No source, no verified figure. Missing is never zero.",
+        )}
       />
       <Card className="mb-4">
-        <CardHeader title="Workflow" />
+        <CardHeader title={t("Workflow")} />
         <ol className="grid gap-px overflow-hidden bg-line p-px sm:grid-cols-2 xl:grid-cols-4">
           {STEPS.map((s) => (
             <li key={s.n} className="bg-surface p-4">
@@ -101,41 +104,42 @@ export default function HowItWorksPage() {
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-900 text-[12px] font-semibold text-white">
                   {s.n}
                 </span>
-                <span className="font-semibold text-navy-900">{s.t}</span>
+                <span className="font-semibold text-navy-900">{t(s.t)}</span>
               </div>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{s.d}</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{t(s.d)}</p>
             </li>
           ))}
         </ol>
         <div className="border-t border-line px-5 py-3 text-[12.5px] text-muted">
-          People decide at steps 4 and 8. Every number on every screen links back to its page and rectangle in the
-          original document.
+          {t(
+            "People decide at steps 4 and 8. Every number on every screen links back to its page and rectangle in the original document.",
+          )}
         </div>
       </Card>
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Card>
-          <CardHeader title="Reconciliation checks" subtitle="Run automatically on every change." />
+          <CardHeader title={t("Reconciliation checks")} subtitle={t("Run automatically on every change.")} />
           <table className="w-full text-[13px]">
             <tbody className="divide-y divide-line align-top">
-              {CHECKS.map(([t, d, src]) => (
-                <tr key={t}>
-                  <td className="w-44 px-5 py-2.5 font-medium text-ink">{t}</td>
-                  <td className="px-3 py-2.5 text-muted">{d}</td>
-                  <td className="px-5 py-2.5 text-[12px] text-subtle">{src}</td>
+              {CHECKS.map(([h, d, src]) => (
+                <tr key={h}>
+                  <td className="w-44 px-5 py-2.5 font-medium text-ink">{t(h)}</td>
+                  <td className="px-3 py-2.5 text-muted">{t(d)}</td>
+                  <td className="px-5 py-2.5 text-[12px] text-subtle">{t(src)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Card>
         <Card>
-          <CardHeader title="Evidence status of every cost" />
+          <CardHeader title={t("Evidence status of every cost")} />
           <table className="w-full text-[13px]">
             <tbody className="divide-y divide-line align-top">
-              {STATUSES.map(([t, d, c]) => (
-                <tr key={t}>
-                  <td className="px-5 py-2.5 font-medium">{t}</td>
-                  <td className="px-3 py-2.5 text-muted">{d}</td>
-                  <td className="px-5 py-2.5 text-[12px] text-subtle">{c}</td>
+              {STATUSES.map(([h, d, c]) => (
+                <tr key={h}>
+                  <td className="px-5 py-2.5 font-medium">{t(h)}</td>
+                  <td className="px-3 py-2.5 text-muted">{t(d)}</td>
+                  <td className="px-5 py-2.5 text-[12px] text-subtle">{t(c)}</td>
                 </tr>
               ))}
             </tbody>

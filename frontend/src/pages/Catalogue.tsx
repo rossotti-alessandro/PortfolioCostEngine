@@ -2,6 +2,7 @@ import { Page, PageTitle } from "@/components/Shell";
 import { Badge, Card, CardHeader, ErrorBox, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Search } from "lucide-react";
 import { useState } from "react";
@@ -31,16 +32,18 @@ export default function CataloguePage() {
   return (
     <Page>
       <PageTitle
-        title="Data catalogue"
-        subtitle="The document types an analyst can upload, the data extracted from each, what each document can and cannot prove, and the fee codes every cost is mapped to."
+        title={t("Data catalogue")}
+        subtitle={t(
+          "The document types an analyst can upload, the data extracted from each, what each document can and cannot prove, and the fee codes every cost is mapped to.",
+        )}
       />
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-md border border-line bg-surface p-0.5 text-[13px]" role="tablist">
           {(
             [
-              ["docs", `Document types (${q.data.document_types.length})`],
-              ["fees", `Fee codes (${q.data.fees.length})`],
-              ["sources", `Official sources (${q.data.public_sources.length})`],
+              ["docs", t("Document types ({n})", { n: q.data.document_types.length })],
+              ["fees", t("Fee codes ({n})", { n: q.data.fees.length })],
+              ["sources", t("Official sources ({n})", { n: q.data.public_sources.length })],
             ] as const
           ).map(([k, l]) => (
             <button
@@ -62,10 +65,10 @@ export default function CataloguePage() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-subtle" />
           <input
             className={cn(inputCls, "pl-8")}
-            placeholder="Filter"
+            placeholder={t("Filter")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            aria-label="Filter"
+            aria-label={t("Filter")}
           />
         </label>
       </div>
@@ -76,11 +79,11 @@ export default function CataloguePage() {
             <table className="w-full text-[13px]">
               <thead className="bg-paper text-left text-[11.5px] uppercase tracking-wide text-subtle">
                 <tr>
-                  <th className="px-4 py-2 font-medium">Document</th>
-                  <th className="px-3 py-2 font-medium">Data extracted</th>
-                  <th className="px-3 py-2 font-medium">Proves</th>
-                  <th className="px-3 py-2 font-medium">Cannot prove</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">{t("Document")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Data extracted")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Proves")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Cannot prove")}</th>
+                  <th className="px-4 py-2 font-medium">{t("Status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line align-top">
@@ -91,7 +94,8 @@ export default function CataloguePage() {
                       <td className="px-4 py-2.5">
                         <div className="font-medium text-ink">{d.label_en}</div>
                         <div className="text-[12px] text-subtle">
-                          {d.label_it} · {FAMILY[d.family] ?? d.family} · priority {d.priority}
+                          {d.label_it} · {FAMILY[d.family] ? t(FAMILY[d.family]) : d.family} ·{" "}
+                          {t("priority {n}", { n: d.priority })}
                         </div>
                       </td>
                       <td className="max-w-[280px] px-3 py-2.5 text-[12.5px] text-muted">
@@ -100,7 +104,7 @@ export default function CataloguePage() {
                       <td className="px-3 py-2.5 text-[12.5px]">{d.proves}</td>
                       <td className="px-3 py-2.5 text-[12.5px] text-muted">{d.cannot_prove}</td>
                       <td className="px-4 py-2.5">
-                        {d.parser ? <Badge tone="green">Parsed in demo</Badge> : <Badge>Planned</Badge>}
+                        {d.parser ? <Badge tone="green">{t("Parsed in demo")}</Badge> : <Badge>{t("Planned")}</Badge>}
                       </td>
                     </tr>
                   ))}
@@ -116,12 +120,12 @@ export default function CataloguePage() {
             <table className="w-full text-[13px]">
               <thead className="bg-paper text-left text-[11.5px] uppercase tracking-wide text-subtle">
                 <tr>
-                  <th className="px-4 py-2 font-medium">Layer</th>
-                  <th className="px-3 py-2 font-medium">Fee</th>
-                  <th className="px-3 py-2 font-medium">Basis</th>
-                  <th className="px-3 py-2 font-medium">Paid how</th>
-                  <th className="px-3 py-2 font-medium">Overlaps</th>
-                  <th className="px-4 py-2 font-medium">Best evidence</th>
+                  <th className="px-4 py-2 font-medium">{t("Layer")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Fee")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Basis")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Paid how")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Overlaps")}</th>
+                  <th className="px-4 py-2 font-medium">{t("Best evidence")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line align-top">
@@ -132,7 +136,7 @@ export default function CataloguePage() {
                       <td className="px-4 py-2.5">
                         <span className="inline-flex items-center gap-1.5 text-[12.5px]">
                           <span className="h-2.5 w-2.5 rounded-sm" style={{ background: LAYER[r.layer]?.color }} />
-                          {LAYER[r.layer]?.short ?? r.layer}
+                          {LAYER[r.layer] ? t(LAYER[r.layer].short) : r.layer}
                         </span>
                       </td>
                       <td className="px-3 py-2.5">
@@ -156,8 +160,10 @@ export default function CataloguePage() {
       {tab === "sources" && (
         <Card>
           <CardHeader
-            title="Official public documents"
-            subtitle="Real published price lists and KIDs, quoted with page and URL. Public list prices are weak evidence for a specific client (status: public tariff) and never replace the client's own documents."
+            title={t("Official public documents")}
+            subtitle={t(
+              "Real published price lists and KIDs, quoted with page and URL. Public list prices are weak evidence for a specific client (status: public tariff) and never replace the client's own documents.",
+            )}
           />
           <ul className="divide-y divide-line">
             {q.data.public_sources
@@ -173,13 +179,16 @@ export default function CataloguePage() {
                       rel="noreferrer noopener"
                       className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-teal-700 hover:underline"
                     >
-                      Source{s.page && `, page ${s.page}`} <ExternalLink className="h-3 w-3" />
+                      {s.page ? t("Source, page {page}", { page: s.page }) : t("Source")}{" "}
+                      <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="font-mono text-[11px] text-subtle">{s.fee_code}</span>
-                      <Badge tone={s.jurisdiction === "CH" ? "navy" : "amber"}>Booked in {s.jurisdiction}</Badge>
+                      <Badge tone={s.jurisdiction === "CH" ? "navy" : "amber"}>
+                        {t("Booked in {code}", { code: s.jurisdiction })}
+                      </Badge>
                     </div>
                     <div className="mt-0.5">{s.figure}</div>
                     <div className="text-[12px] text-subtle">{s.note}</div>

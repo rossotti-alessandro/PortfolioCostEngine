@@ -3,6 +3,7 @@ import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Kpi, Spinner, StatusBadge, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { BOUND_TEXT, LAYER, chf, cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { Analysis, Atom, Comparison, Ledger, ProposalConfig } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, History, Plus, Trash2 } from "lucide-react";
@@ -16,7 +17,7 @@ export default function ComparePage() {
   const q = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
   const [mode, setMode] = useState<"same" | "optimized">("same");
   const [atom, setAtom] = useState<Atom | null>(null);
-  if (q.isLoading) return <Spinner label="Calculating" />;
+  if (q.isLoading) return <Spinner label={t("Calculating")} />;
   if (q.error || !q.data) return <ErrorBox error={q.error ?? "no data"} />;
   const a = q.data;
   const sc = mode === "same" ? a.scenarios.same_holdings : a.scenarios.optimized;
@@ -25,13 +26,15 @@ export default function ComparePage() {
   return (
     <div className="space-y-4">
       <PageTitle
-        title="Compare with the proposal"
-        subtitle={`Same assets, same trading volume, same period. The proposal includes the external asset manager fee and the partner custodian's fees.`}
+        title={t("Compare with the proposal")}
+        subtitle={t(
+          "Same assets, same trading volume, same period. The proposal includes the external asset manager fee and the partner custodian's fees.",
+        )}
         actions={
           <div
             className="flex rounded-md border border-line bg-surface p-0.5 text-[13px]"
             role="tablist"
-            aria-label="Scenario"
+            aria-label={t("Scenario")}
           >
             {(
               [
@@ -50,7 +53,7 @@ export default function ComparePage() {
                   mode === k ? "bg-navy-900 text-white" : "text-muted hover:text-ink",
                 )}
               >
-                {l}
+                {t(l)}
               </button>
             ))}
           </div>
@@ -62,39 +65,47 @@ export default function ComparePage() {
           role="note"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Not like-for-like: this scenario replaces instruments. The difference mixes fee savings with changes in
-          product and risk, and needs suitability review before it is shown to a client.
+          {t(
+            "Not like-for-like: this scenario replaces instruments. The difference mixes fee savings with changes in product and risk, and needs suitability review before it is shown to a client.",
+          )}
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi
-          label="Today (comparable)"
+          label={t("Today (comparable)")}
           value={chf(cmp.current_known)}
-          sub={a.scenarios.current_comparable.is_complete ? "complete" : "known costs only, at least"}
+          sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
         />
         <Kpi
-          label={`With ${firm}`}
+          label={t("With {firm}", { firm })}
           value={chf(cmp.proposal_known)}
           sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
         />
         <Kpi
-          label="Annual saving"
+          label={t("Annual saving")}
           tone="teal"
           value={
             <>
-              <span className="mr-1 text-[14px] font-medium">{BOUND_TEXT[cmp.bound]}</span>
+              <span className="mr-1 text-[14px] font-medium">{t(BOUND_TEXT[cmp.bound])}</span>
               {chf(cmp.annual_saving)}
             </>
           }
-          sub={cmp.annual_saving_bps ? `${Number(cmp.annual_saving_bps).toFixed(1)} bps of assets` : undefined}
+          sub={
+            cmp.annual_saving_bps
+              ? t("{bps} bps of assets", { bps: Number(cmp.annual_saving_bps).toFixed(1) })
+              : undefined
+          }
         />
         <Kpi
-          label="Switching cost"
+          label={t("Switching cost")}
           value={chf(cmp.migration_one_off)}
           sub={
             cmp.payback_months
-              ? `Paid back in ${cmp.payback_months} months · first year ${chf(cmp.first_year_net)}`
-              : "Not paid back by the saving"
+              ? t("Paid back in {months} months · first year {amount}", {
+                  months: cmp.payback_months,
+                  amount: chf(cmp.first_year_net),
+                })
+              : t("Not paid back by the saving")
           }
         />
       </div>
@@ -102,7 +113,7 @@ export default function ComparePage() {
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <LayerCompare cur={a.scenarios.current_comparable} prop={sc.ledger} cmp={cmp} firm={firm} />
         <Card>
-          <CardHeader title="Why the saving is a bound" />
+          <CardHeader title={t("Why the saving is a bound")} />
           <ul className="space-y-2 p-5 text-[13px] text-ink">
             {cmp.caveats.map((c) => (
               <li key={c} className="flex gap-2">
@@ -113,19 +124,28 @@ export default function ComparePage() {
             {a.comparison_exclusions.map((e) => (
               <li key={e.fee_code} className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
-                {e.label} ({chf(e.amount)}) is left out of both sides: {e.reason}
+                {t("{label} ({amount}) is left out of both sides: {reason}", {
+                  label: e.label,
+                  amount: chf(e.amount),
+                  reason: e.reason,
+                })}
               </li>
             ))}
             <li className="flex gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
-              Client domicile {a.client_domicile}: Swiss VAT{" "}
-              {a.client_domicile === "CH" ? `${a.proposal_inputs.vat_pct}% applies` : "does not apply"} to management
-              and custody fees on both sides.
+              {a.client_domicile === "CH"
+                ? t("Client domicile {code}: Swiss VAT {pct}% applies to management and custody fees on both sides.", {
+                    code: a.client_domicile,
+                    pct: a.proposal_inputs.vat_pct,
+                  })
+                : t("Client domicile {code}: Swiss VAT does not apply to management and custody fees on both sides.", {
+                    code: a.client_domicile,
+                  })}
             </li>
             {Object.entries(a.scenarios.same_holdings.migration_items).map(([k, v]) => (
               <li key={k} className="flex gap-2 text-muted">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong" />
-                Switching: {k.replaceAll("_", " ")} {chf(v)}
+                {t("Switching: {item} {amount}", { item: k.replaceAll("_", " "), amount: chf(v) })}
               </li>
             ))}
           </ul>
@@ -135,17 +155,19 @@ export default function ComparePage() {
       {mode === "optimized" && (
         <Card>
           <CardHeader
-            title="Instrument changes"
-            subtitle={`Rebuild trading cost ${chf(a.scenarios.optimized.rebuild_trading_cost)} is included in switching costs.`}
+            title={t("Instrument changes")}
+            subtitle={t("Rebuild trading cost {amount} is included in switching costs.", {
+              amount: chf(a.scenarios.optimized.rebuild_trading_cost),
+            })}
           />
           <table className="w-full text-[13px]">
             <thead className="bg-paper text-left text-[11.5px] uppercase tracking-wide text-subtle">
               <tr>
-                <th className="px-5 py-2 font-medium">From</th>
+                <th className="px-5 py-2 font-medium">{t("From")}</th>
                 <th />
-                <th className="px-3 py-2 font-medium">To</th>
-                <th className="px-3 py-2 text-right font-medium">Value</th>
-                <th className="px-5 py-2 text-right font-medium">Product cost p.a.</th>
+                <th className="px-3 py-2 font-medium">{t("To")}</th>
+                <th className="px-3 py-2 text-right font-medium">{t("Value")}</th>
+                <th className="px-5 py-2 text-right font-medium">{t("Product cost p.a.")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -164,7 +186,7 @@ export default function ComparePage() {
                   </td>
                   <td className="num px-3 py-2 text-right">{chf(s.value)}</td>
                   <td className="num px-5 py-2 text-right">
-                    {s.from_rate_pct ? `${s.from_rate_pct}%` : "not determined"} → {s.to_rate_pct}%
+                    {s.from_rate_pct ? `${s.from_rate_pct}%` : t("not determined")} → {s.to_rate_pct}%
                   </td>
                 </tr>
               ))}
@@ -193,11 +215,11 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
   return (
     <Card>
       <CardHeader
-        title="Cost by layer, today vs proposal"
+        title={t("Cost by layer, today vs proposal")}
         actions={
           <div className="flex items-center gap-3 text-[12px] text-muted">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[var(--chart-taxes)]" /> Today
+              <span className="h-2.5 w-2.5 rounded-sm bg-[var(--chart-taxes)]" /> {t("Today")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-sm bg-teal-700" /> {firm}
@@ -208,19 +230,19 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
       <table className="w-full text-[13px]">
         <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
           <tr>
-            <th className="px-5 pt-3 pb-1 font-medium">Layer</th>
+            <th className="px-5 pt-3 pb-1 font-medium">{t("Layer")}</th>
             <th className="w-[38%] px-2 pt-3 pb-1 font-medium" />
-            <th className="px-2 pt-3 pb-1 text-right font-medium">Today</th>
-            <th className="px-2 pt-3 pb-1 text-right font-medium">Proposal</th>
-            <th className="px-5 pt-3 pb-1 text-right font-medium">Difference</th>
+            <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Today")}</th>
+            <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Proposal")}</th>
+            <th className="px-5 pt-3 pb-1 text-right font-medium">{t("Difference")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.k} className="border-t border-line/70">
               <td className="px-5 py-2.5">
-                {LAYER[r.k].name}
-                {r.u && <div className="text-[11.5px] text-red-700">today: part not determined</div>}
+                {t(LAYER[r.k].name)}
+                {r.u && <div className="text-[11.5px] text-red-700">{t("today: part not determined")}</div>}
               </td>
               <td className="px-2 py-2.5">
                 <div className="space-y-1">
@@ -249,12 +271,14 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
           ))}
           <tr className="border-t-2 border-navy-900/20 bg-paper font-semibold">
             <td className="px-5 py-2.5" colSpan={2}>
-              Total
+              {t("Total")}
             </td>
             <td className="num px-2 py-2.5 text-right">{chf(cmp.current_known)}</td>
             <td className="num px-2 py-2.5 text-right">{chf(cmp.proposal_known)}</td>
             <td className="num px-5 py-2.5 text-right text-teal-700">
-              {BOUND_TEXT[cmp.bound] && <span className="mr-1 text-[11.5px] font-normal">{BOUND_TEXT[cmp.bound]}</span>}
+              {BOUND_TEXT[cmp.bound] && (
+                <span className="mr-1 text-[11.5px] font-normal">{t(BOUND_TEXT[cmp.bound])}</span>
+              )}
               {chf(cmp.annual_saving)}
             </td>
           </tr>
@@ -269,8 +293,10 @@ function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: A
   return (
     <Card>
       <CardHeader
-        title={`${firm}: every line of the proposal`}
-        subtitle="Service fees come from the proposal inputs below; product costs reuse the same KID evidence as today."
+        title={t("{firm}: every line of the proposal", { firm })}
+        subtitle={t(
+          "Service fees come from the proposal inputs below; product costs reuse the same KID evidence as today.",
+        )}
       />
       <table className="w-full text-[13px]">
         <tbody className="divide-y divide-line">
@@ -286,12 +312,12 @@ function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: A
                 <div className="font-medium">{x.label}</div>
                 <div className="font-mono text-[11.5px] text-subtle">{x.formula}</div>
               </td>
-              <td className="px-3 py-2 text-[12.5px] text-muted">{LAYER[x.layer]?.short}</td>
+              <td className="px-3 py-2 text-[12.5px] text-muted">{LAYER[x.layer] && t(LAYER[x.layer].short)}</td>
               <td className="px-3 py-2">
                 <StatusBadge m={x.measurement} />
               </td>
               <td className="num px-5 py-2 text-right">
-                {x.amount === null ? <span className="text-red-700">Not determined</span> : chf(x.amount, 2)}
+                {x.amount === null ? <span className="text-red-700">{t("Not determined")}</span> : chf(x.amount, 2)}
               </td>
             </tr>
           ))}
@@ -329,8 +355,8 @@ function ProposalEditor({ a }: { a: Analysis }) {
   return (
     <Card>
       <CardHeader
-        title="Proposal inputs"
-        subtitle="Each save creates a new version; the comparison above recalculates from these inputs."
+        title={t("Proposal inputs")}
+        subtitle={t("Each save creates a new version; the comparison above recalculates from these inputs.")}
         actions={
           <Button
             variant="primary"
@@ -339,41 +365,43 @@ function ProposalEditor({ a }: { a: Analysis }) {
             loading={save.isPending}
             onClick={() => save.mutate(cfg)}
           >
-            Save as new version
+            {t("Save as new version")}
           </Button>
         }
       />
       {save.error && <ErrorBox error={save.error} />}
       <div className="grid gap-6 p-5 lg:grid-cols-[1fr_1fr_260px]">
         <div className="space-y-3">
-          <Field label="Firm name (shown to the client)">
+          <Field label={t("Firm name (shown to the client)")}>
             <input className={inputCls} value={cfg.firm_name} onChange={(e) => set("firm_name", e.target.value)} />
           </Field>
-          <Field label="Custodian">
+          <Field label={t("Custodian")}>
             <input className={inputCls} value={cfg.custodian} onChange={(e) => set("custodian", e.target.value)} />
           </Field>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[12.5px] font-medium">Management fee tiers</span>
+              <span className="text-[12.5px] font-medium">{t("Management fee tiers")}</span>
               <select
                 className="h-7 rounded border border-line-strong bg-surface px-1.5 text-[12px]"
                 value={cfg.eam_tier_method}
                 onChange={(e) => set("eam_tier_method", e.target.value)}
-                aria-label="Tier method"
+                aria-label={t("Tier method")}
               >
-                <option value="marginal">Marginal (each band at its rate)</option>
-                <option value="whole_base">Whole base (one rate for all)</option>
+                <option value="marginal">{t("Marginal (each band at its rate)")}</option>
+                <option value="whole_base">{t("Whole base (one rate for all)")}</option>
               </select>
             </div>
             <div className="mt-1.5 space-y-1.5">
               {cfg.eam_tiers.map(([up, rate], i) => (
                 <div key={`${i}-${up}`} className="flex items-center gap-2 text-[12.5px]">
-                  <span className="w-12 text-muted">{i === 0 ? "Up to" : up === null ? "Above" : "Up to"}</span>
+                  <span className="w-12 text-muted">
+                    {i === 0 ? t("Up to") : up === null ? t("Above") : t("Up to")}
+                  </span>
                   <input
                     className={cn(inputCls, "h-8")}
-                    placeholder="no limit"
+                    placeholder={t("no limit")}
                     value={up ?? ""}
-                    aria-label="Band upper limit CHF"
+                    aria-label={t("Band upper limit CHF")}
                     onChange={(e) =>
                       set(
                         "eam_tiers",
@@ -386,7 +414,7 @@ function ProposalEditor({ a }: { a: Analysis }) {
                   <input
                     className={cn(inputCls, "h-8 w-24")}
                     value={rate}
-                    aria-label="Rate bps"
+                    aria-label={t("Rate bps")}
                     onChange={(e) =>
                       set(
                         "eam_tiers",
@@ -398,7 +426,7 @@ function ProposalEditor({ a }: { a: Analysis }) {
                   {cfg.eam_tiers.length > 1 && (
                     <button
                       type="button"
-                      aria-label="Remove band"
+                      aria-label={t("Remove band")}
                       className="text-subtle hover:text-red-700"
                       onClick={() =>
                         set(
@@ -423,14 +451,14 @@ function ProposalEditor({ a }: { a: Analysis }) {
                   ])
                 }
               >
-                <Plus className="h-3.5 w-3.5" /> Add band
+                <Plus className="h-3.5 w-3.5" /> {t("Add band")}
               </Button>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {NUM_FIELDS.map((f) => (
-            <Field key={f.k} label={f.label} hint={f.hint}>
+            <Field key={f.k} label={t(f.label)} hint={f.hint && t(f.hint)}>
               <input
                 className={inputCls}
                 inputMode="decimal"
@@ -442,10 +470,12 @@ function ProposalEditor({ a }: { a: Analysis }) {
         </div>
         <div>
           <div className="flex items-center gap-1.5 text-[12.5px] font-medium">
-            <History className="h-3.5 w-3.5" /> Versions
+            <History className="h-3.5 w-3.5" /> {t("Versions")}
           </div>
           <ul className="mt-2 space-y-1.5 text-[12.5px]">
-            {(p.data?.history ?? []).length === 0 && <li className="text-subtle">Default inputs, not yet saved.</li>}
+            {(p.data?.history ?? []).length === 0 && (
+              <li className="text-subtle">{t("Default inputs, not yet saved.")}</li>
+            )}
             {p.data?.history.map((h) => (
               <li key={h.version} className="rounded-md bg-paper px-2.5 py-1.5">
                 <div className="flex justify-between">
@@ -453,12 +483,12 @@ function ProposalEditor({ a }: { a: Analysis }) {
                   <span className="text-subtle">{h.at.slice(0, 16).replace("T", " ")}</span>
                 </div>
                 <div className="text-muted">
-                  {h.user} · saving {BOUND_TEXT[h.summary.bound] ?? ""} {chf(h.summary.annual_saving)}
+                  {h.user} · {t("saving")} {t(BOUND_TEXT[h.summary.bound] ?? "")} {chf(h.summary.annual_saving)}
                 </div>
               </li>
             ))}
           </ul>
-          <Badge className="mt-3">Internal costs and margin: see Internal economics</Badge>
+          <Badge className="mt-3">{t("Internal costs and margin: see Internal economics")}</Badge>
         </div>
       </div>
     </Card>

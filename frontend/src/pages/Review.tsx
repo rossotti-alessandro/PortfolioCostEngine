@@ -2,6 +2,7 @@ import { PdfEvidence, SheetEvidence } from "@/components/EvidenceViewer";
 import { Badge, Button, Card, Dialog, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, cn, num } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { Fact } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FileSpreadsheet, FileText, History, Pencil, ScanLine, X } from "lucide-react";
@@ -27,7 +28,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 function displayValue(f: Fact) {
-  if (f.value === null) return f.measurement === "unknown" ? "not disclosed" : String(f.extra?.entity ?? "") || "–";
+  if (f.value === null) return f.measurement === "unknown" ? t("not disclosed") : String(f.extra?.entity ?? "") || "–";
   if (f.field === "rate_pct") return `${f.value}%`;
   return `${f.currency ? `${f.currency} ` : ""}${num(f.value, 2)}`;
 }
@@ -93,7 +94,7 @@ export default function ReviewPage() {
   }, [ordered]);
 
   if (docs.isLoading) return <Spinner />;
-  if (!docs.data?.length) return <Card className="p-8 text-center text-muted">Upload documents first.</Card>;
+  if (!docs.data?.length) return <Card className="p-8 text-center text-muted">{t("Upload documents first.")}</Card>;
   const isSheet = doc?.filename.toLowerCase().endsWith(".xlsx");
   const reviewed = ordered.filter((f) => f.status !== "extracted").length;
 
@@ -101,7 +102,7 @@ export default function ReviewPage() {
     <div className="grid h-[calc(100vh-205px)] min-h-[560px] gap-3 lg:grid-cols-[230px_minmax(0,1fr)_400px]">
       <Card className="hidden min-h-0 flex-col overflow-hidden lg:flex">
         <div className="border-b border-line px-3 py-2 text-[12px] font-medium uppercase tracking-wide text-subtle">
-          Documents
+          {t("Documents")}
         </div>
         <ul className="min-h-0 flex-1 overflow-auto py-1">
           {docs.data.map((d) => (
@@ -123,7 +124,7 @@ export default function ReviewPage() {
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-700" />
                 )}
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">{DOC_TYPES[d.doc_type]}</span>
+                  <span className="block truncate font-medium">{t(DOC_TYPES[d.doc_type])}</span>
                   <span className="block truncate text-[11.5px] text-subtle">{d.filename}</span>
                 </span>
               </button>
@@ -137,12 +138,13 @@ export default function ReviewPage() {
           <div className="min-w-0">
             <div className="truncate text-[13.5px] font-semibold text-navy-900">{doc?.filename}</div>
             <div className="text-[11.5px] text-subtle">
-              {doc?.profile.institution} · {DOC_TYPES[doc?.doc_type ?? "unknown"]} · sha256 {doc?.sha256.slice(0, 10)}…
+              {doc?.profile.institution} · {t(DOC_TYPES[doc?.doc_type ?? "unknown"])} · sha256{" "}
+              {doc?.sha256.slice(0, 10)}…
             </div>
           </div>
           {doc?.profile.engines.includes("tesseract-ocr") && (
             <Badge tone="violet">
-              <ScanLine className="h-3 w-3" /> Scanned · OCR
+              <ScanLine className="h-3 w-3" /> {t("Scanned · OCR")}
             </Badge>
           )}
         </div>
@@ -166,9 +168,9 @@ export default function ReviewPage() {
       <Card className="flex min-h-0 flex-col overflow-hidden">
         <div className="border-b border-line px-4 py-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[13.5px] font-semibold text-navy-900">Extracted values</span>
+            <span className="text-[13.5px] font-semibold text-navy-900">{t("Extracted values")}</span>
             <span className="num text-[12px] text-muted">
-              {reviewed}/{ordered.length} reviewed
+              {t("{done}/{total} reviewed", { done: reviewed, total: ordered.length })}
             </span>
           </div>
           <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-paper">
@@ -179,36 +181,41 @@ export default function ReviewPage() {
           </div>
           <div className="mt-1.5 text-[11px] text-subtle">
             <kbd className="rounded border border-line px-1">j</kbd>/
-            <kbd className="rounded border border-line px-1">k</kbd> move ·{" "}
-            <kbd className="rounded border border-line px-1">a</kbd> accept ·{" "}
-            <kbd className="rounded border border-line px-1">e</kbd> correct
+            <kbd className="rounded border border-line px-1">k</kbd> {t("move")} ·{" "}
+            <kbd className="rounded border border-line px-1">a</kbd> {t("accept")} ·{" "}
+            <kbd className="rounded border border-line px-1">e</kbd> {t("correct")}
           </div>
         </div>
         {active && (
           <div className="border-b border-line bg-paper/60 px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <div className="text-[12px] text-subtle">{active.fee_label ?? KIND_LABEL[active.kind]}</div>
+                <div className="text-[12px] text-subtle">
+                  {active.fee_label ?? (KIND_LABEL[active.kind] && t(KIND_LABEL[active.kind]))}
+                </div>
                 <div className="truncate text-[13.5px] font-medium text-ink">{active.label}</div>
               </div>
-              <Badge tone={STATUS_TONE[active.status]}>{active.status}</Badge>
+              <Badge tone={STATUS_TONE[active.status]}>{t(active.status)}</Badge>
             </div>
             <div className="num mt-2 text-[22px] font-semibold text-navy-900">{displayValue(active)}</div>
             {active.status === "corrected" && (
               <div className="text-[12px] text-violet-700">
-                Extracted: {active.value_extracted} → corrected by reviewer (original kept)
+                {t("Extracted: {value} → corrected by reviewer (original kept)", {
+                  value: active.value_extracted ?? "–",
+                })}
               </div>
             )}
             <dl className="mt-2 grid grid-cols-[90px_1fr] gap-x-2 gap-y-0.5 text-[12px]">
-              <dt className="text-subtle">Source</dt>
+              <dt className="text-subtle">{t("Source")}</dt>
               <dd className="text-muted">
                 {active.evidence.page
-                  ? `page ${active.evidence.page}, rectangle shown`
-                  : `cell ${active.evidence.sheet}!${active.evidence.cell}`}
+                  ? t("page {page}, rectangle shown", { page: active.evidence.page })
+                  : t("cell {ref}", { ref: `${active.evidence.sheet}!${active.evidence.cell}` })}
               </dd>
-              <dt className="text-subtle">Read by</dt>
+              <dt className="text-subtle">{t("Read by")}</dt>
               <dd className="text-muted">
-                {active.evidence.engine} · confidence {Math.round(active.evidence.confidence * 100)}%
+                {active.evidence.engine} ·{" "}
+                {t("confidence {pct}%", { pct: Math.round(active.evidence.confidence * 100) })}
               </dd>
               {active.isin && (
                 <>
@@ -218,11 +225,11 @@ export default function ReviewPage() {
               )}
               {active.measurement && (
                 <>
-                  <dt className="text-subtle">Status</dt>
+                  <dt className="text-subtle">{t("Status")}</dt>
                   <dd className="text-muted">{active.measurement}</dd>
                 </>
               )}
-              <dt className="text-subtle">Text</dt>
+              <dt className="text-subtle">{t("Text")}</dt>
               <dd className="line-clamp-2 font-mono text-[11px] text-muted">{active.evidence.snippet}</dd>
             </dl>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -232,7 +239,7 @@ export default function ReviewPage() {
                 onClick={() => review.mutate({ id: active.id, action: "accept" })}
                 disabled={active.status === "accepted"}
               >
-                <Check className="h-3.5 w-3.5" /> Accept
+                <Check className="h-3.5 w-3.5" /> {t("Accept")}
               </Button>
               <Button
                 size="sm"
@@ -240,10 +247,10 @@ export default function ReviewPage() {
                 onClick={() => setEditing("correct")}
                 disabled={active.value === null}
               >
-                <Pencil className="h-3.5 w-3.5" /> Correct
+                <Pencil className="h-3.5 w-3.5" /> {t("Correct")}
               </Button>
               <Button size="sm" variant="danger" onClick={() => setEditing("reject")}>
-                <X className="h-3.5 w-3.5" /> Reject
+                <X className="h-3.5 w-3.5" /> {t("Reject")}
               </Button>
               {active.status !== "extracted" && (
                 <Button
@@ -251,7 +258,7 @@ export default function ReviewPage() {
                   variant="ghost"
                   onClick={() => review.mutate({ id: active.id, action: "reset", reason: "reset" })}
                 >
-                  Undo
+                  {t("Undo")}
                 </Button>
               )}
             </div>
@@ -264,7 +271,7 @@ export default function ReviewPage() {
           {groups.map(([kind, fs]) => (
             <div key={kind}>
               <div className="sticky top-0 z-10 bg-surface/95 px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-subtle backdrop-blur">
-                {KIND_LABEL[kind] ?? kind}
+                {KIND_LABEL[kind] ? t(KIND_LABEL[kind]) : kind}
               </div>
               {fs.map((f) => (
                 <button
@@ -295,7 +302,7 @@ export default function ReviewPage() {
                               ? "bg-red-700"
                               : "bg-line-strong",
                       )}
-                      title={f.status}
+                      title={t(f.status)}
                     />
                   </span>
                 </button>
@@ -323,7 +330,8 @@ function FactHistory({ id }: { id: number }) {
   return (
     <details className="mt-2 text-[12px]">
       <summary className="flex cursor-pointer items-center gap-1 text-muted">
-        <History className="h-3 w-3" /> {data.length} review event{data.length > 1 ? "s" : ""}
+        <History className="h-3 w-3" />{" "}
+        {data.length > 1 ? t("{n} review events", { n: data.length }) : t("{n} review event", { n: data.length })}
       </summary>
       <ul className="mt-1 space-y-1">
         {data.map((h, i) => (
@@ -362,8 +370,8 @@ function EditDialog({
     <Dialog
       open={!!mode}
       onOpenChange={(o) => !o && onClose()}
-      title={mode === "reject" ? "Reject this value" : "Correct this value"}
-      description="The original extraction is kept. Your change is recorded with your name, time and reason."
+      title={mode === "reject" ? t("Reject this value") : t("Correct this value")}
+      description={t("The original extraction is kept. Your change is recorded with your name, time and reason.")}
     >
       <form
         className="space-y-3"
@@ -374,10 +382,10 @@ function EditDialog({
       >
         <div className="rounded-md bg-paper px-3 py-2 text-[12.5px]">
           <div className="text-subtle">{fact.label}</div>
-          <div className="num font-medium">Extracted: {fact.value_extracted ?? "–"}</div>
+          <div className="num font-medium">{t("Extracted: {value}", { value: fact.value_extracted ?? "–" })}</div>
         </div>
         {mode === "correct" && (
-          <Field label="Correct value" hint="Number only, e.g. 1340.00">
+          <Field label={t("Correct value")} hint={t("Number only, e.g. 1340.00")}>
             <input
               // biome-ignore lint/a11y/noAutofocus: the dialog exists to type this one value
               autoFocus
@@ -389,7 +397,7 @@ function EditDialog({
             />
           </Field>
         )}
-        <Field label="Reason" hint="Required. Cite the document you checked.">
+        <Field label={t("Reason")} hint={t("Required. Cite the document you checked.")}>
           <textarea
             className={cn(inputCls, "h-20 py-2")}
             value={reason}
@@ -399,10 +407,10 @@ function EditDialog({
         </Field>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button type="submit" variant={mode === "reject" ? "danger" : "primary"} loading={busy}>
-            {mode === "reject" ? "Reject value" : "Save correction"}
+            {mode === "reject" ? t("Reject value") : t("Save correction")}
           </Button>
         </div>
       </form>

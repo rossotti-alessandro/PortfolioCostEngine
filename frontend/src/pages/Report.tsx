@@ -2,6 +2,7 @@ import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, ErrorBox, Spinner, inputCls } from "@/components/ui";
 import { api, getRole } from "@/lib/api";
 import { BOUND_TEXT, LAYER, chf } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Download, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -29,8 +30,10 @@ export default function ReportPage() {
   return (
     <div className="space-y-4">
       <PageTitle
-        title="Client report"
-        subtitle="What the client receives: computed figures only, each with its evidence status. Internal margin and analyst notes are never included."
+        title={t("Client report")}
+        subtitle={t(
+          "What the client receives: computed figures only, each with its evidence status. Internal margin and analyst notes are never included.",
+        )}
         actions={
           <Button
             variant="accent"
@@ -44,7 +47,7 @@ export default function ReportPage() {
               }
             }}
           >
-            <Download className="h-4 w-4" /> Download PDF
+            <Download className="h-4 w-4" /> {t("Download PDF")}
           </Button>
         }
       />
@@ -52,39 +55,44 @@ export default function ReportPage() {
         <Card className="overflow-hidden">
           <div className="border-b border-line bg-navy-900 px-6 py-4 text-white">
             <div className="text-[11.5px] uppercase tracking-wider text-white/60">{firm}</div>
-            <div className="mt-0.5 text-lg font-semibold">Portfolio cost review · {a.prospect.label}</div>
+            <div className="mt-0.5 text-lg font-semibold">
+              {t("Portfolio cost review · {label}", { label: a.prospect.label })}
+            </div>
             <div className="mt-1 text-[12.5px] text-white/70">
               {approved
-                ? `Approved by ${a.approval?.user} on ${a.approval?.at.slice(0, 10)}`
-                : "Draft, not approved for client use"}
+                ? t("Approved by {user} on {date}", {
+                    user: a.approval?.user ?? "",
+                    date: a.approval?.at.slice(0, 10) ?? "",
+                  })
+                : t("Draft, not approved for client use")}
             </div>
           </div>
           <div className="space-y-5 p-6">
             <div className="grid gap-3 sm:grid-cols-3">
               <Fig
-                label="Today, known annual cost"
+                label={t("Today, known annual cost")}
                 value={chf(cur.total_known)}
-                sub={cur.is_complete ? undefined : "at least; some costs unknown"}
+                sub={cur.is_complete ? undefined : t("at least; some costs unknown")}
               />
-              <Fig label={`With ${firm}`} value={chf(s.ledger.total_known)} />
+              <Fig label={t("With {firm}", { firm })} value={chf(s.ledger.total_known)} />
               <Fig
-                label="Annual saving"
-                value={`${BOUND_TEXT[s.comparison.bound]} ${chf(s.comparison.annual_saving)}`}
+                label={t("Annual saving")}
+                value={`${t(BOUND_TEXT[s.comparison.bound])} ${chf(s.comparison.annual_saving)}`}
                 accent
               />
             </div>
             <table className="w-full text-[13px]">
               <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
                 <tr className="border-b border-line">
-                  <th className="py-1.5 font-medium">Cost layer</th>
-                  <th className="py-1.5 text-right font-medium">Today</th>
+                  <th className="py-1.5 font-medium">{t("Cost layer")}</th>
+                  <th className="py-1.5 text-right font-medium">{t("Today")}</th>
                   <th className="py-1.5 text-right font-medium">{firm}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {layers.map((k) => (
                   <tr key={k}>
-                    <td className="py-1.5">{LAYER[k].name}</td>
+                    <td className="py-1.5">{t(LAYER[k].name)}</td>
                     <td className="num py-1.5 text-right">{chf(cur.by_layer[k] ?? "0")}</td>
                     <td className="num py-1.5 text-right">{chf(s.ledger.by_layer[k] ?? "0")}</td>
                   </tr>
@@ -92,14 +100,14 @@ export default function ReportPage() {
               </tbody>
             </table>
             <div>
-              <div className="text-[13px] font-semibold text-navy-900">Not yet verified</div>
+              <div className="text-[13px] font-semibold text-navy-900">{t("Not yet verified")}</div>
               <ul className="mt-1 space-y-0.5 text-[13px] text-muted">
                 {cur.atoms
                   .filter((x) => x.role === "unknown")
                   .map((x) => (
                     <li key={x.id}>
                       {x.label}: {x.fee_label}{" "}
-                      <span className="text-red-700">(not determined, not counted as zero)</span>
+                      <span className="text-red-700">({t("not determined, not counted as zero")})</span>
                     </li>
                   ))}
               </ul>
@@ -109,39 +117,47 @@ export default function ReportPage() {
                 <li key={c}>{c}</li>
               ))}
               <li>
-                Switching costs {chf(s.comparison.migration_one_off)}
-                {s.comparison.payback_months && `, paid back in ${s.comparison.payback_months} months`}.
+                {s.comparison.payback_months
+                  ? t("Switching costs {amount}, paid back in {months} months.", {
+                      amount: chf(s.comparison.migration_one_off),
+                      months: s.comparison.payback_months,
+                    })
+                  : t("Switching costs {amount}.", { amount: chf(s.comparison.migration_one_off) })}
               </li>
             </ul>
           </div>
         </Card>
         <div className="space-y-4">
           <Card>
-            <CardHeader title="Approval" />
+            <CardHeader title={t("Approval")} />
             <div className="space-y-3 p-4 text-[13px]">
               {approved ? (
                 <div className="flex items-start gap-2 text-green-700">
                   <CheckCircle2 className="mt-0.5 h-4 w-4" />
                   <div>
-                    Approved by {a.approval?.user}. Any later change to documents, reviews or inputs invalidates the
-                    approval.
+                    {t(
+                      "Approved by {user}. Any later change to documents, reviews or inputs invalidates the approval.",
+                      { user: a.approval?.user ?? "" },
+                    )}
                     <div className="mt-1 font-mono text-[11px] text-subtle">
-                      snapshot {a.snapshot_hash.slice(0, 12)}
+                      {t("snapshot {hash}", { hash: a.snapshot_hash.slice(0, 12) })}
                     </div>
                   </div>
                 </div>
               ) : a.approval ? (
-                <Badge tone="amber">Earlier approval no longer valid: figures changed</Badge>
+                <Badge tone="amber">{t("Earlier approval no longer valid: figures changed")}</Badge>
               ) : (
                 <p className="text-muted">
-                  A senior reviewer approves the exact figures shown (snapshot {a.snapshot_hash.slice(0, 12)}).
+                  {t("A senior reviewer approves the exact figures shown (snapshot {hash}).", {
+                    hash: a.snapshot_hash.slice(0, 12),
+                  })}
                 </p>
               )}
               {getRole() === "senior" ? (
                 <>
                   <input
                     className={inputCls}
-                    placeholder="Approval note (optional)"
+                    placeholder={t("Approval note (optional)")}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
@@ -151,19 +167,19 @@ export default function ReportPage() {
                     loading={approve.isPending}
                     disabled={approved}
                   >
-                    <ShieldCheck className="h-4 w-4" /> Approve for client use
+                    <ShieldCheck className="h-4 w-4" /> {t("Approve for client use")}
                   </Button>
                   {approve.error && <ErrorBox error={approve.error} />}
                 </>
               ) : (
                 <p className="text-[12.5px] text-subtle">
-                  Only a senior reviewer can approve. Switch the demo role in the sidebar.
+                  {t("Only a senior reviewer can approve. Switch the demo role in the sidebar.")}
                 </p>
               )}
             </div>
           </Card>
           <Card>
-            <CardHeader title="Audit trail" />
+            <CardHeader title={t("Audit trail")} />
             <ol className="max-h-[360px] space-y-2 overflow-auto p-4 text-[12.5px]">
               {(audit.data ?? []).map((e, i) => (
                 <li key={`${e.at}-${i}`} className="border-l-2 border-line pl-3">

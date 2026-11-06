@@ -2,6 +2,7 @@ import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, Empty, ErrorBox, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, chf, cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { Analysis, DocumentRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -37,11 +38,13 @@ export default function DocumentsPage() {
   return (
     <div>
       <PageTitle
-        title="Documents"
-        subtitle="Upload everything the prospect has: statements from each bank, annual cost reports, cash statements, fee agreements and product KIDs. Files are processed on this machine only."
+        title={t("Documents")}
+        subtitle={t(
+          "Upload everything the prospect has: statements from each bank, annual cost reports, cash statements, fee agreements and product KIDs. Files are processed on this machine only.",
+        )}
         actions={
           <Link to={`/p/${pid}/review`}>
-            <Button variant="accent">Review extracted values</Button>
+            <Button variant="accent">{t("Review extracted values")}</Button>
           </Link>
         }
       />
@@ -51,7 +54,7 @@ export default function DocumentsPage() {
           {upload.error && <ErrorBox error={upload.error} />}
           {results.length > 0 && (
             <Card>
-              <CardHeader title="Last upload" />
+              <CardHeader title={t("Last upload")} />
               <ul className="divide-y divide-line text-[13px]">
                 {results.map((r) => (
                   <li key={r.filename} className="flex items-center justify-between gap-3 px-5 py-2">
@@ -59,11 +62,15 @@ export default function DocumentsPage() {
                     {r.status === "rejected" ? (
                       <Badge tone="red">{r.error}</Badge>
                     ) : r.status === "duplicate" ? (
-                      <Badge>Already uploaded (same SHA-256)</Badge>
+                      <Badge>{t("Already uploaded (same SHA-256)")}</Badge>
                     ) : r.status === "needs_review" ? (
-                      <Badge tone="amber">Needs review · {DOC_TYPES[r.doc_type ?? "unknown"]}</Badge>
+                      <Badge tone="amber">
+                        {t("Needs review")} · {t(DOC_TYPES[r.doc_type ?? "unknown"])}
+                      </Badge>
                     ) : (
-                      <Badge tone="teal">Extracted · {DOC_TYPES[r.doc_type ?? "unknown"]}</Badge>
+                      <Badge tone="teal">
+                        {t("Extracted")} · {t(DOC_TYPES[r.doc_type ?? "unknown"])}
+                      </Badge>
                     )}
                   </li>
                 ))}
@@ -72,14 +79,16 @@ export default function DocumentsPage() {
           )}
           <Card>
             <CardHeader
-              title="Uploaded documents"
-              subtitle="Type, bank, jurisdiction and dates are detected automatically. Correct the type if it is wrong; the document is re-read."
+              title={t("Uploaded documents")}
+              subtitle={t(
+                "Type, bank, jurisdiction and dates are detected automatically. Correct the type if it is wrong; the document is re-read.",
+              )}
             />
             {docs.isLoading ? (
               <Spinner />
             ) : !docs.data?.length ? (
-              <Empty icon={<FileText className="h-8 w-8" />} title="No documents yet">
-                Drop PDF or Excel files above.
+              <Empty icon={<FileText className="h-8 w-8" />} title={t("No documents yet")}>
+                {t("Drop PDF or Excel files above.")}
               </Empty>
             ) : (
               <DocTable docs={docs.data} pid={pid} onType={(id, t) => setType.mutate({ id, t })} />
@@ -114,9 +123,9 @@ function Dropzone({ onFiles, busy }: { onFiles: (f: File[]) => void; busy: boole
       )}
     >
       <UploadCloud className="h-8 w-8 text-teal-700" />
-      <div className="text-[15px] font-semibold text-navy-900">Drop documents here</div>
+      <div className="text-[15px] font-semibold text-navy-900">{t("Drop documents here")}</div>
       <div className="text-[13px] text-muted">
-        PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected
+        {t("PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected")}
       </div>
       <input
         ref={ref}
@@ -124,7 +133,7 @@ function Dropzone({ onFiles, busy }: { onFiles: (f: File[]) => void; busy: boole
         multiple
         accept=".pdf,.xlsx"
         className="sr-only"
-        aria-label="Choose files to upload"
+        aria-label={t("Choose files to upload")}
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
           if (files.length) onFiles(files);
@@ -132,7 +141,7 @@ function Dropzone({ onFiles, busy }: { onFiles: (f: File[]) => void; busy: boole
         }}
       />
       <Button className="mt-2" onClick={() => ref.current?.click()} loading={busy}>
-        Choose files
+        {t("Choose files")}
       </Button>
     </div>
   );
@@ -148,12 +157,12 @@ function DocTable({
       <table className="w-full text-[13px]">
         <thead>
           <tr className="border-b border-line text-left text-[11.5px] uppercase tracking-wide text-subtle">
-            <th className="px-5 py-2 font-medium">File</th>
-            <th className="px-3 py-2 font-medium">Type</th>
-            <th className="px-3 py-2 font-medium">Issuer</th>
-            <th className="px-3 py-2 font-medium">Date / period</th>
-            <th className="px-3 py-2 font-medium">Read with</th>
-            <th className="px-3 py-2 text-right font-medium">Values</th>
+            <th className="px-5 py-2 font-medium">{t("File")}</th>
+            <th className="px-3 py-2 font-medium">{t("Type")}</th>
+            <th className="px-3 py-2 font-medium">{t("Issuer")}</th>
+            <th className="px-3 py-2 font-medium">{t("Date / period")}</th>
+            <th className="px-3 py-2 font-medium">{t("Read with")}</th>
+            <th className="px-3 py-2 text-right font-medium">{t("Values")}</th>
           </tr>
         </thead>
         <tbody>
@@ -182,18 +191,20 @@ function DocTable({
               </td>
               <td className="px-3 py-2.5">
                 <select
-                  aria-label={`Document type for ${d.filename}`}
+                  aria-label={t("Document type for {file}", { file: d.filename })}
                   className="h-8 rounded-md border border-line-strong bg-surface px-2 text-[12.5px]"
                   value={d.doc_type}
                   onChange={(e) => onType(d.id, e.target.value)}
                 >
                   {Object.entries(DOC_TYPES).map(([k, v]) => (
                     <option key={k} value={k}>
-                      {v}
+                      {t(v)}
                     </option>
                   ))}
                 </select>
-                {d.doc_type !== d.detected_type && <div className="mt-1 text-[11px] text-subtle">set manually</div>}
+                {d.doc_type !== d.detected_type && (
+                  <div className="mt-1 text-[11px] text-subtle">{t("set manually")}</div>
+                )}
               </td>
               <td className="px-3 py-2.5">
                 <div className="text-ink">{d.profile.institution ?? "–"}</div>
@@ -210,9 +221,9 @@ function DocTable({
                     <ScanLine className="h-3 w-3" /> OCR
                   </Badge>
                 ) : d.profile.engines.includes("openpyxl") ? (
-                  <Badge>Spreadsheet cells</Badge>
+                  <Badge>{t("Spreadsheet cells")}</Badge>
                 ) : (
-                  <Badge>Digital text</Badge>
+                  <Badge>{t("Digital text")}</Badge>
                 )}
               </td>
               <td className="num px-3 py-2.5 text-right">{d.fact_count}</td>
@@ -239,11 +250,11 @@ function Checklist({ analysis, docs }: { analysis?: Analysis; docs: DocumentRow[
   return (
     <Card className="h-fit">
       <CardHeader
-        title="What we need"
-        subtitle="Per bank and per product. Missing items stay visible in the cost view."
+        title={t("What we need")}
+        subtitle={t("Per bank and per product. Missing items stay visible in the cost view.")}
       />
       <div className="space-y-4 px-5 py-4 text-[13px]">
-        {!analysis?.institutions.length && <p className="text-muted">Upload a statement of assets to start.</p>}
+        {!analysis?.institutions.length && <p className="text-muted">{t("Upload a statement of assets to start.")}</p>}
         {analysis?.institutions.map((i) => {
           const key = i.name.split(" (")[0];
           return (
@@ -252,15 +263,15 @@ function Checklist({ analysis, docs }: { analysis?: Analysis; docs: DocumentRow[
                 <span className="font-semibold text-navy-900">{i.name}</span>
                 <span className="num text-[12px] text-subtle">{chf(i.assets)}</span>
               </div>
-              <Item ok={has("portfolio_statement", key)} label="Statement of assets" required />
-              <Item ok={has("cost_report", key)} label="Annual costs & charges report" required />
-              <Item ok={has("cash_statement", key)} label="Cash statement (fee debits)" />
+              <Item ok={has("portfolio_statement", key)} label={t("Statement of assets")} required />
+              <Item ok={has("cost_report", key)} label={t("Annual costs & charges report")} required />
+              <Item ok={has("cash_statement", key)} label={t("Cash statement (fee debits)")} />
               <Item
                 ok={analysis.checks.some(
                   (c) => c.title.startsWith(i.name) && c.title.includes("price schedule applies"),
                 )}
                 warn={analysis.checks.some((c) => c.title.startsWith(i.name) && c.status === "fail")}
-                label="Fee agreement / price schedule (booking entity)"
+                label={t("Fee agreement / price schedule (booking entity)")}
               />
             </div>
           );
@@ -268,7 +279,7 @@ function Checklist({ analysis, docs }: { analysis?: Analysis; docs: DocumentRow[
         {funds.length > 0 && (
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="font-semibold text-navy-900">Product documents</span>
+              <span className="font-semibold text-navy-900">{t("Product documents")}</span>
               <span className="text-[12px] text-subtle">
                 {kidIsins.size ? funds.filter((f) => f.isin && kidIsins.has(f.isin)).length : covered.length}/
                 {funds.length}
@@ -309,8 +320,8 @@ function Item({
       <div className="min-w-0">
         <div className={cn(ok ? "text-ink" : required ? "text-amber-700" : "text-muted")}>
           {label}
-          {!ok && !required && <span className="text-subtle"> · optional</span>}
-          {warn && <span className="text-red-700"> · wrong entity</span>}
+          {!ok && !required && <span className="text-subtle"> · {t("optional")}</span>}
+          {warn && <span className="text-red-700"> · {t("wrong entity")}</span>}
         </div>
         {sub && <div className="font-mono text-[11px] text-subtle">{sub}</div>}
       </div>

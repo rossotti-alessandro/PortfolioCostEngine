@@ -1,4 +1,5 @@
 import { MEASUREMENT, cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { type VariantProps, cva } from "class-variance-authority";
@@ -116,9 +117,9 @@ export function StatusBadge({ m }: { m: string }) {
   const s = MEASUREMENT[m] ?? { label: m, tone: "grey", help: "", icon: "na" };
   const Icon = STATUS_ICON[s.icon as keyof typeof STATUS_ICON] ?? MinusCircle;
   return (
-    <Badge tone={s.tone} title={s.help}>
+    <Badge tone={s.tone} title={s.help && t(s.help)}>
       <Icon className="h-3 w-3" aria-hidden />
-      {s.label}
+      {t(s.label)}
     </Badge>
   );
 }
@@ -180,7 +181,7 @@ export function Dialog({
                 </DialogPrimitive.Description>
               )}
             </div>
-            <DialogPrimitive.Close className="rounded p-1 text-muted hover:bg-paper" aria-label="Close">
+            <DialogPrimitive.Close className="rounded p-1 text-muted hover:bg-paper" aria-label={t("Close")}>
               <X className="h-4 w-4" />
             </DialogPrimitive.Close>
           </div>
@@ -233,10 +234,10 @@ export function Empty({ icon, title, children }: { icon?: ReactNode; title: stri
   );
 }
 
-export function Spinner({ label = "Loading" }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
   return (
     <output className="flex items-center gap-2 p-8 text-sm text-muted">
-      <Loader2 className="h-4 w-4 animate-spin" /> {label}…
+      <Loader2 className="h-4 w-4 animate-spin" /> {label ?? t("Loading")}…
     </output>
   );
 }

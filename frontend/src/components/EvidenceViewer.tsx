@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import { cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { Fact } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
@@ -96,19 +97,17 @@ export function PdfEvidence({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Previous page"
+            aria-label={t("Previous page")}
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="num text-[12.5px] text-muted">
-            Page {page} / {n}
-          </span>
+          <span className="num text-[12.5px] text-muted">{t("Page {page} / {n}", { page, n })}</span>
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Next page"
+            aria-label={t("Next page")}
             disabled={page >= n}
             onClick={() => setPage(page + 1)}
           >
@@ -120,20 +119,25 @@ export function PdfEvidence({
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Zoom out"
+              aria-label={t("Zoom out")}
               onClick={() => setZoom(Math.max(0.6, zoom - 0.2))}
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
             <span className="num w-10 text-center text-[12px] text-muted">{Math.round(zoom * 100)}%</span>
-            <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => setZoom(Math.min(2.4, zoom + 0.2))}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t("Zoom in")}
+              onClick={() => setZoom(Math.min(2.4, zoom + 0.2))}
+            >
               <ZoomIn className="h-4 w-4" />
             </Button>
           </div>
         )}
       </div>
       <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-auto bg-[#e9e7e1] p-3">
-        {!pdf && <Spinner label="Opening document" />}
+        {!pdf && <Spinner label={t("Opening document")} />}
         <div className="relative mx-auto w-fit shadow-[0_2px_10px_rgb(0_0_0/0.12)]">
           <canvas ref={canvasRef} className="block bg-white" />
           {size &&
@@ -146,8 +150,8 @@ export function PdfEvidence({
                   type="button"
                   key={f.id}
                   ref={active ? activeRef : undefined}
-                  aria-label={`${f.label}: ${f.value ?? "no value"}`}
-                  title={`${f.label} → ${f.value ?? "unknown"}`}
+                  aria-label={`${f.label}: ${f.value ?? t("no value")}`}
+                  title={`${f.label} → ${f.value ?? t("unknown")}`}
                   className="evidence-box"
                   data-active={active}
                   data-status={f.status}
@@ -180,7 +184,7 @@ export function SheetEvidence({
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
   }, [activeId]);
-  if (!data) return <Spinner label="Opening spreadsheet" />;
+  if (!data) return <Spinner label={t("Opening spreadsheet")} />;
   const sheet = data.sheets.find((s) => s.name === active?.evidence.sheet) ?? data.sheets[0];
   const cellOf = (r: number, c: number) => `${String.fromCharCode(65 + c)}${r + 1}`;
   const byCell = new Map(facts.filter((f) => f.evidence.sheet === sheet.name).map((f) => [f.evidence.cell, f]));
@@ -188,7 +192,7 @@ export function SheetEvidence({
   const width = Math.max(...sheet.rows.map((r) => r.length), 1);
   return (
     <div className="h-full overflow-auto bg-[#e9e7e1] p-3">
-      <div className="mb-2 text-[12px] text-muted">Sheet “{sheet.name}”</div>
+      <div className="mb-2 text-[12px] text-muted">{t("Sheet “{name}”", { name: sheet.name })}</div>
       <table className="num border-collapse bg-white text-[12px] shadow-[0_2px_10px_rgb(0_0_0/0.12)]">
         <thead>
           <tr>
