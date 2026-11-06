@@ -1,5 +1,7 @@
 /** Italian UI strings, keyed by the English source string used in t(). Keep financial terms as used by Swiss banks. */
 export const IT: Record<string, string> = {
+  "Clients & pipeline": "Clienti e pipeline",
+  "Cost reviews": "Analisi dei costi",
   "Demo role": "Ruolo demo",
   Language: "Lingua",
   "Evidence-based portfolio cost review": "Analisi dei costi di portafoglio basata su evidenze",

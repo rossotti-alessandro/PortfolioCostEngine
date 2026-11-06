@@ -19,6 +19,7 @@ import InternalPage from "./pages/Internal";
 import ProspectsPage from "./pages/Prospects";
 import ReportPage from "./pages/Report";
 import ReviewPage from "./pages/Review";
+import { crmRoutes } from "./pages/crm/routes";
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1, refetchOnWindowFocus: false } },
@@ -28,10 +29,11 @@ const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/prospects" replace /> },
+      { index: true, element: <Navigate to="/crm" replace /> },
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },
+      ...crmRoutes,
       {
         path: "/p/:id",
         element: <ProspectLayout />,
@@ -45,7 +47,7 @@ const router = createBrowserRouter([
           { path: "report", element: <ReportPage /> },
         ],
       },
-      { path: "*", element: <Navigate to="/prospects" replace /> },
+      { path: "*", element: <Navigate to="/crm" replace /> },
     ],
   },
 ]);

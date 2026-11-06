@@ -20,8 +20,8 @@ const shot = (page: Page, name: string) => page.screenshot({ path: join(SHOTS, `
 let pid = 0;
 
 test("01 prospects: load the synthetic demo", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Prospects" })).toBeVisible();
+  await page.goto("/prospects");
+  await expect(page.getByRole("heading", { name: "Cost reviews" })).toBeVisible();
   await page.getByRole("button", { name: "Load synthetic demo" }).first().click();
   await expect(page).toHaveURL(/\/p\/\d+/); // seeding opens the first demo prospect
   await page.goto("/prospects");

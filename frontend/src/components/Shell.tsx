@@ -2,15 +2,16 @@ import { ROLE_LABEL, type Role, api, getRole, setRole } from "@/lib/api";
 import { PRODUCT } from "@/lib/brand";
 import { chf, cn } from "@/lib/format";
 import { setLang, t, useLang } from "@/lib/i18n";
+import { crm } from "@/pages/crm/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Workflow } from "lucide-react";
+import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Users, Workflow } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, useMatch, useParams } from "react-router-dom";
 import { Badge } from "./ui";
 
 export function Brand() {
   return (
-    <Link to="/prospects" className="flex items-center gap-2.5 px-2">
+    <Link to="/crm" className="flex items-center gap-2.5 px-2">
       <img src="/favicon.svg" alt="" className="h-7 w-7" />
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-navy-900">{PRODUCT.name}</div>
@@ -141,8 +142,11 @@ export function AppShell() {
       <aside className="no-print flex shrink-0 flex-col border-b border-line bg-surface px-3 py-4 md:sticky md:top-0 md:h-screen md:w-[240px] md:border-b-0 md:border-r">
         <Brand />
         <nav aria-label={t("Main")} className="mt-6 space-y-0.5">
+          <NavLink to="/crm" className={navCls}>
+            <Users className="h-4 w-4" /> {t("Clients & pipeline")}
+          </NavLink>
           <NavLink to="/prospects" end className={navCls}>
-            <FolderOpen className="h-4 w-4" /> {t("Prospects")}
+            <FolderOpen className="h-4 w-4" /> {t("Cost reviews")}
           </NavLink>
           <NavLink to="/catalogue" className={navCls}>
             <BookOpen className="h-4 w-4" /> {t("Data catalogue")}
@@ -171,6 +175,7 @@ export function AppShell() {
 export function ProspectLayout() {
   const pid = Number(useParams().id);
   const { data } = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
+  const contact = useQuery({ queryKey: ["crm-by-prospect", pid], queryFn: () => crm.byProspect(pid), retry: false });
   return (
     <div>
       {data?.synthetic && (
@@ -182,9 +187,21 @@ export function ProspectLayout() {
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[12px] text-subtle">
-              <Link to="/prospects" className="hover:text-ink">
-                {t("Prospects")}
-              </Link>
+              {contact.data ? (
+                <>
+                  <Link to="/crm" className="hover:text-ink">
+                    {t("Clients & pipeline")}
+                  </Link>
+                  <ChevronRight className="h-3 w-3" />
+                  <Link to={`/crm/c/${contact.data.contact_id}`} className="hover:text-ink">
+                    {contact.data.name}
+                  </Link>
+                </>
+              ) : (
+                <Link to="/prospects" className="hover:text-ink">
+                  {t("Cost reviews")}
+                </Link>
+              )}
               <ChevronRight className="h-3 w-3" />
               <span>{data?.prospect.code ?? "…"}</span>
             </div>

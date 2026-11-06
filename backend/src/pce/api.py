@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from . import __version__
 from .analysis import analyse
+from .crm.router import router as crm_router
 from .db import (
     Approval,
     AuditEvent,
@@ -55,6 +56,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(crm_router)
 SessionFactory = make_session_factory()
 
 

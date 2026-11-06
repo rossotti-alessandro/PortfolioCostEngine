@@ -23,7 +23,7 @@ export default function ProspectsPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-navy-900">{t("Prospects")}</h1>
+          <h1 className="text-xl font-semibold text-navy-900">{t("Cost reviews")}</h1>
           <p className="mt-1 max-w-2xl text-[13.5px] text-muted">
             {t(
               "Upload a prospect's bank and product documents to see what their portfolio really costs today, with every number traced to its source, and how a proposal compares.",
