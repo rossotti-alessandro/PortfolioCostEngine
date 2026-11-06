@@ -173,6 +173,10 @@ def test_seed_is_idempotent_synthetic_and_funnel_is_consistent():
     assert f["won"] > 0 and f["lost"] > 0
     assert sum(r["count"] for r in f["lost_reasons"]) == f["lost"]
     assert sum(s["contacts"] for s in f["by_source"]) == 41
+    p1042 = next(k for k in contacts if k["prospect"] and k["prospect"]["code"] == "P-1042")
+    link = client.get(f"/api/crm/by-prospect/{p1042['prospect']['id']}", headers=h).json()
+    assert link["contact_id"] == p1042["id"] and link["stage"] == "cost_review"
+    assert client.get(f"/api/crm/by-prospect/{p1042['prospect']['id']}", headers=B).status_code == 404
     cohort = client.get("/api/crm/funnel?since=2026-06-01&until=2026-06-30", headers=h).json()
     assert 0 < cohort["total"] < 41
 

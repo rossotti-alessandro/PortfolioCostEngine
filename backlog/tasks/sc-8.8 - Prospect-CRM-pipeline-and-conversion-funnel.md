@@ -85,7 +85,10 @@ Funnel metrics are computed in one pass over stage events; fine for thousands of
   median days per stage and to win, lost reasons by stage, conversion by source, open AUM per stage (unknown counted, not 0).
 - UI: board (drag or menu to move), contacts list (prospects / clients / lost), contact page (stage tracker, history,
   activities, next action, cost review link), funnel page (chart + table twin, filters by cohort, owner, source).
-- Tests: 12 backend (`tests/test_crm.py`), 2 vitest, 4 Playwright E2E (`tests/e2e/crm.spec.ts`), all passing. Gate passed.
+- CRM is the home page (`/` → `/crm`, first nav entry). The contact page drills into the linked cost review:
+  key figures, the five workflow steps with progress, and one "Continue: <next step>" CTA. `GET /api/crm/by-prospect/{pid}`
+  for the review breadcrumbs. The CRM seed also seeds the P-1042 cost review with its documents.
+- Tests: 11 backend (`tests/test_crm.py`), 2 vitest, 5 Playwright E2E (`tests/e2e/crm.spec.ts`), all passing. Gate passed.
 
 ## Issues Encountered
 
@@ -93,5 +96,5 @@ Funnel metrics are computed in one pass over stage events; fine for thousands of
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
-| claude/project-thread-ms8qbh | a75e526 | 2026-11-06 | feat(api): CRM contacts, stage history and conversion funnel |
-| claude/project-thread-ms8qbh | f409651 | 2026-11-06 | feat(ui): CRM pipeline board, contact page and conversion funnel |
+| claude/project-thread-ms8qbh | 70f7540 | 2026-11-06 | feat(api): CRM contacts, stage history and conversion funnel |
+| claude/project-thread-ms8qbh | 6511adc | 2026-11-06 | feat(ui): CRM pipeline board, contact page and conversion funnel |

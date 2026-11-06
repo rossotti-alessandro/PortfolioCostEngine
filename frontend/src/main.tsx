@@ -28,7 +28,7 @@ const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/prospects" replace /> },
+      { index: true, element: <Navigate to="/crm" replace /> },
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },
@@ -46,7 +46,7 @@ const router = createBrowserRouter([
           { path: "report", element: <ReportPage /> },
         ],
       },
-      { path: "*", element: <Navigate to="/prospects" replace /> },
+      { path: "*", element: <Navigate to="/crm" replace /> },
     ],
   },
 ]);

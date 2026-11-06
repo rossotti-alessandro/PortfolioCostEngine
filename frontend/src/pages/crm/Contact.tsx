@@ -1,9 +1,10 @@
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
-import { chf, cn } from "@/lib/format";
+import { api } from "@/lib/api";
+import { BOUND_TEXT, chf, cn } from "@/lib/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, ChevronRight, FileSearch, MessageSquarePlus, Trophy, XCircle } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { type ContactDetail, type StageId, crm, today } from "./api";
 import { MoveDialog, StageBadge, SyntheticBanner, useMeta } from "./common";
 
@@ -88,34 +89,120 @@ function StageTrack({ c, onMove }: { c: ContactDetail; onMove: (s: StageId) => v
   );
 }
 
-function CostReviewCard({ c }: { c: ContactDetail }) {
-  const qc = useQueryClient();
-  const m = useMutation({
-    mutationFn: () => crm.costReview(c.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["crm"] }),
-  });
+const STEPS = [
+  { to: "documents", label: "Documents", hint: "Upload statements, price lists, KIDs" },
+  { to: "review", label: "Review evidence", hint: "Check each figure against its source" },
+  { to: "costs", label: "Current costs", hint: "All-in annual cost and gaps" },
+  { to: "compare", label: "Compare", hint: "Same holdings vs proposal" },
+  { to: "report", label: "Client report", hint: "Approve and export" },
+] as const;
+
+/** Drill-down from the contact into its cost review: progress per step, key figures, one next-step CTA. */
+function CostReviewPanel({ pid, code }: { pid: number; code: string | null }) {
+  const nav = useNavigate();
+  const { data: a } = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
+  const { data: docs } = useQuery({ queryKey: ["documents", pid], queryFn: () => api.documents(pid) });
+  const done: Record<string, boolean> = {
+    documents: (docs?.length ?? 0) > 0,
+    review: !!a && a.review.facts > 0 && a.review.reviewed + a.review.rejected >= a.review.facts,
+    costs: !!a && a.current.is_complete,
+    compare: !!a && a.scenarios.same_holdings.comparison.bound !== "indeterminate",
+    report: !!a?.approval?.valid,
+  };
+  const next = STEPS.find((s) => !done[s.to]) ?? STEPS[STEPS.length - 1];
+  const cmp = a?.scenarios.same_holdings.comparison;
+  const openReq = a?.requests.filter((r) => r.status === "open").length ?? 0;
   return (
     <Card>
-      <CardHeader title="Cost review" subtitle="The evidence-based analysis of what the portfolio costs today." />
-      <div className="px-5 py-4 text-[13.5px]">
-        {c.prospect ? (
-          <Link
-            to={`/p/${c.prospect.id}/costs`}
-            className="inline-flex items-center gap-1.5 font-medium text-teal-700 hover:underline"
-          >
-            <FileSearch className="h-4 w-4" /> Open cost review {c.prospect.code}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        ) : (
-          <>
-            <p className="mb-3 text-muted">No cost review yet. Start one to upload this contact's bank documents.</p>
-            <Button variant="outline" size="sm" onClick={() => m.mutate()} loading={m.isPending}>
-              <FileSearch className="h-4 w-4" /> Start cost review
-            </Button>
-            {m.error && <ErrorBox error={m.error} />}
-          </>
-        )}
+      <CardHeader
+        title={`Cost review ${code ?? ""}`}
+        subtitle="Evidence-based analysis of what this portfolio costs today, and what the proposal would cost."
+        actions={
+          <Button size="sm" onClick={() => nav(`/p/${pid}/${next.to}`)}>
+            {done.report ? "Open client report" : `Continue: ${next.label}`} <ArrowRight className="h-4 w-4" />
+          </Button>
+        }
+      />
+      {a && (
+        <div className="grid grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-4">
+          {[
+            ["Assets", chf(a.aum.total)],
+            [
+              "Known annual cost",
+              a.current.total_bps
+                ? `${chf(a.current.total_known)} · ${Number(a.current.total_bps).toFixed(0)} bps`
+                : chf(a.current.total_known),
+            ],
+            ["Saving, same holdings", cmp ? `${BOUND_TEXT[cmp.bound] ?? ""} ${chf(cmp.annual_saving)}`.trim() : "–"],
+            ["Evidence", a.current.is_complete ? "Complete" : `${a.current.unknown.length} costs not determined`],
+          ].map(([k, v]) => (
+            <div key={k} className="bg-surface px-4 py-3">
+              <div className="text-[11.5px] font-medium uppercase tracking-wide text-subtle">{k}</div>
+              <div className="num mt-0.5 text-[14px] font-semibold text-navy-900">{v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <ol className="grid gap-2 p-4 sm:grid-cols-5" aria-label="Cost review steps">
+        {STEPS.map((s, i) => (
+          <li key={s.to}>
+            <Link
+              to={`/p/${pid}/${s.to}`}
+              className={cn(
+                "block h-full rounded-md border px-3 py-2.5 hover:border-line-strong",
+                s.to === next.to && !done[s.to] ? "border-navy-900 ring-1 ring-navy-900" : "border-line",
+              )}
+            >
+              <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px]",
+                    done[s.to] ? "bg-teal-700 text-white" : "ring-1 ring-line-strong text-muted",
+                  )}
+                >
+                  {done[s.to] ? <Check className="h-3 w-3" /> : i + 1}
+                </span>
+                {s.label}
+              </div>
+              <div className="mt-1 text-[12px] leading-snug text-muted">
+                {s.to === "documents" && docs
+                  ? `${docs.length} documents`
+                  : s.to === "review" && a
+                    ? `${a.review.reviewed + a.review.rejected} of ${a.review.facts} figures checked`
+                    : s.to === "costs" && openReq
+                      ? `${openReq} documents to request`
+                      : s.hint}
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
+
+function StartCostReview({ c }: { c: ContactDetail }) {
+  const qc = useQueryClient();
+  const nav = useNavigate();
+  const m = useMutation({
+    mutationFn: () => crm.costReview(c.id),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["crm"] });
+      if (r.prospect) nav(`/p/${r.prospect.id}/documents`);
+    },
+  });
+  return (
+    <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+      <div>
+        <h2 className="text-[15px] font-semibold text-navy-900">No cost review yet</h2>
+        <p className="mt-0.5 text-[13px] text-muted">
+          Start one to upload this contact's bank documents, validate each figure and compare with your proposal.
+        </p>
+        {m.error && <ErrorBox error={m.error} />}
       </div>
+      <Button onClick={() => m.mutate()} loading={m.isPending}>
+        <FileSearch className="h-4 w-4" /> Start cost review
+      </Button>
     </Card>
   );
 }
@@ -283,11 +370,11 @@ export default function ContactPage() {
       </div>
       <div className="mx-auto max-w-[1200px] space-y-4 px-4 py-6 sm:px-8">
         <StageTrack c={c} onMove={setTo} />
+        {c.prospect ? <CostReviewPanel pid={c.prospect.id} code={c.prospect.code} /> : <StartCostReview c={c} />}
         <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
           <Timeline c={c} />
           <div className="space-y-4">
             <NextAction key={`${c.id}-${c.updated_at}`} c={c} />
-            <CostReviewCard c={c} />
             <Card>
               <CardHeader title="Details" />
               <dl className="grid grid-cols-[110px_1fr] gap-y-2 px-5 py-4 text-[13px]">

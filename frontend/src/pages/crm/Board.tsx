@@ -185,9 +185,9 @@ export default function BoardPage() {
                           </div>
                         )}
                         {c.prospect && (
-                          <Badge tone="teal" className="mt-2">
-                            Cost review {c.prospect.code}
-                          </Badge>
+                          <Link to={`/p/${c.prospect.id}/costs`} className="mt-2 inline-block">
+                            <Badge tone="teal">Cost review {c.prospect.code}</Badge>
+                          </Link>
                         )}
                         <Due c={c} />
                         <label className="mt-2 block">

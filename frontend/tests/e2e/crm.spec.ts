@@ -75,7 +75,7 @@ test("losing a contact requires a reason and shows up in lost reasons", async ({
   await expect(page.getByRole("table", { name: "Lost reasons" }).getByText("Chose another manager")).toBeVisible();
 });
 
-test("start a cost review from a contact and open it", async ({ page }) => {
+test("start a cost review from a contact lands on the document upload step", async ({ page }) => {
   const r = await page.request.post("/api/crm/contacts", {
     headers: HEADERS,
     data: { name: `E2E review ${Date.now()}`, stage: "documents_received" },
@@ -83,10 +83,26 @@ test("start a cost review from a contact and open it", async ({ page }) => {
   const { id } = await r.json();
   await page.goto(`/crm/c/${id}`);
   await page.getByRole("button", { name: "Start cost review" }).click();
-  const link = page.getByRole("link", { name: new RegExp(`Open cost review CRM-${id}`) });
-  await expect(link).toBeVisible();
-  await link.click();
-  await expect(page).toHaveURL(/\/p\/\d+\/costs/);
+  await expect(page).toHaveURL(/\/p\/\d+\/documents/);
+  await page.goto(`/crm/c/${id}`);
+  await expect(page.getByRole("list", { name: "Cost review steps" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue: Documents" })).toBeVisible();
+});
+
+test("home is the pipeline; a seeded client drills down into its cost review", async ({ page }) => {
+  await page.request.post("/api/crm/demo/seed", { headers: HEADERS });
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/crm$/);
+  await page
+    .getByRole("region", { name: "Cost review" })
+    .getByRole("link", { name: "Prospect P-1042 (synthetic)" })
+    .click();
+  const steps = page.getByRole("list", { name: "Cost review steps" });
+  await expect(steps).toBeVisible();
+  await expect(steps.getByText(/^\d+ documents$/)).toBeVisible();
+  await expect(page.getByText("Known annual cost")).toBeVisible();
+  await page.getByRole("button", { name: /^Continue: / }).click();
+  await expect(page).toHaveURL(/\/p\/\d+\/(documents|review|costs|compare|report)/);
 });
 
 test("synthetic CRM seed renders board and funnel with the synthetic banner", async ({ page }) => {

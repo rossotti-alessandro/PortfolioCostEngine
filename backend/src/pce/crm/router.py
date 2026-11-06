@@ -304,6 +304,17 @@ def patch_contact(cid: int, body: ContactPatch, db: DB, c: C) -> dict:
     return get_one(cid, db, c)
 
 
+@router.get("/by-prospect/{pid}")
+def by_prospect(pid: int, db: DB, c: C) -> dict:
+    """The CRM contact linked to a cost review, for breadcrumbs in the review screens."""
+    k = db.scalar(
+        select(Contact).where(Contact.tenant_id == c.tenant, Contact.prospect_id == pid).order_by(Contact.id)
+    )
+    if not k:
+        raise HTTPException(404, "no contact linked to this prospect")
+    return {"contact_id": k.id, "name": k.name, "stage": k.stage, "stage_label": STAGE_LABELS[k.stage]}
+
+
 @router.post("/contacts/{cid}/stage")
 def move_stage(cid: int, body: StageMove, db: DB, c: C) -> dict:
     k = get_contact(db, c, cid)
@@ -423,7 +434,11 @@ def funnel(
 
 @router.post("/demo/seed")
 def seed(db: DB, c: C) -> dict:
-    """Create the SYNTHETIC CRM book (idempotent per tenant)."""
+    """Create the SYNTHETIC CRM book (idempotent per tenant), including the P-1042 cost review with its
+    documents, so the demo can drill down from a contact into evidence and costs."""
+    from ..api import seed_demo
     from .seed import seed_contacts
+
+    seed_demo(db, c)
 
     return {"contacts_added": seed_contacts(db, c, move)}

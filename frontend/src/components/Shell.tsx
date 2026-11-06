@@ -9,7 +9,7 @@ import { Badge } from "./ui";
 
 export function Brand() {
   return (
-    <Link to="/prospects" className="flex items-center gap-2.5 px-2">
+    <Link to="/crm" className="flex items-center gap-2.5 px-2">
       <img src="/favicon.svg" alt="" className="h-7 w-7" />
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-navy-900">{PRODUCT.name}</div>
@@ -115,11 +115,11 @@ export function AppShell() {
       <aside className="no-print flex shrink-0 flex-col border-b border-line bg-surface px-3 py-4 md:sticky md:top-0 md:h-screen md:w-[240px] md:border-b-0 md:border-r">
         <Brand />
         <nav aria-label="Main" className="mt-6 space-y-0.5">
-          <NavLink to="/prospects" end className={navCls}>
-            <FolderOpen className="h-4 w-4" /> Prospects
-          </NavLink>
           <NavLink to="/crm" className={navCls}>
             <Users className="h-4 w-4" /> Clients & pipeline
+          </NavLink>
+          <NavLink to="/prospects" end className={navCls}>
+            <FolderOpen className="h-4 w-4" /> Prospects
           </NavLink>
           <NavLink to="/catalogue" className={navCls}>
             <BookOpen className="h-4 w-4" /> Data catalogue
