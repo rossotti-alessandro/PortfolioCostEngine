@@ -1,0 +1,12 @@
+# Backlog conventions. Enforced by scripts/backlog-lint.mjs; protocol in AGENTS.md.
+project_name: "PortfolioCostEngine"
+id_prefix: "SC"
+statuses: ["To Do", "In Progress", "In Review", "Blocked", "Done"]
+priorities: ["P0", "P1", "P2", "P3"]
+labels: ["epic", "research", "data", "intake", "extraction", "instruments", "finance", "ui", "report", "qa", "security", "platform", "deck", "infra", "docs"]
+definition_of_done:
+  - "./scripts/local-gate.sh prints GATE PASSED on the branch"
+  - "Acceptance criteria all checked, each with evidence (test name, screenshot path, command output)"
+  - "Story file: status, progress, Outcome, Branch & Commits with real hashes"
+  - "Specs / ADRs updated in the same PR when behaviour or a decision changed"
+  - "No client data, secrets or unlabelled synthetic figures"
