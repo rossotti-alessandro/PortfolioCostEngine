@@ -79,8 +79,12 @@ class Doc:
         c = self.c
         c.setFont("Helvetica", 7)
         c.setFillColor(GREY)
-        c.drawString(50, 30, "Synthetic document generated for software demonstration. Not issued by any bank. "
-                             "All names, identifiers and amounts are fictitious.")
+        c.drawString(
+            50,
+            30,
+            "Synthetic document generated for software demonstration. Not issued by any bank. "
+            "All names, identifiers and amounts are fictitious.",
+        )
 
     def kv(self, k: str, v: str, x2: float = 230):
         c = self.c
@@ -140,7 +144,12 @@ class Doc:
 
 def alpha_statement(out: Path):
     d = Doc(out / "alpha_statement_of_assets_2026-09-30.pdf", "Statement of assets")
-    d.header(S.ALPHA, S.ALPHA_CITY, "Statement of assets", f"Valuation date {S.VALUATION_DATE} · Reference currency CHF")
+    d.header(
+        S.ALPHA,
+        S.ALPHA_CITY,
+        "Statement of assets",
+        f"Valuation date {S.VALUATION_DATE} · Reference currency CHF",
+    )
     d.kv("Client", S.PROSPECT_LABEL)
     d.kv("Portfolio", "Advisory mandate · Portfolio 4512-01")
     d.kv("Booking centre", "Switzerland")
@@ -149,32 +158,61 @@ def alpha_statement(out: Path):
     groups: dict[str, Decimal] = {}
     for p in S.ALPHA_POSITIONS:
         groups[p.asset_class] = groups.get(p.asset_class, Decimal(0)) + p.value_chf
-    labels = {"FUND": "Investment funds", "ETF": "Exchange traded funds", "EQUITY": "Equities",
-              "STRUCTURED": "Structured products", "CASH": "Liquidity"}
+    labels = {
+        "FUND": "Investment funds",
+        "ETF": "Exchange traded funds",
+        "EQUITY": "Equities",
+        "STRUCTURED": "Structured products",
+        "CASH": "Liquidity",
+    }
     for k, v in groups.items():
         d.row([(50, labels[k], "l"), (W - 50, f"CHF {chf(v)}", "r")])
     d.row([(50, "Total assets", "l"), (W - 50, f"CHF {chf(S.ALPHA_TOTAL)}", "r")], bold=True)
     d.new_page()
     d.page = 2
     d.header(S.ALPHA, S.ALPHA_CITY, "Positions", "Valuation date 30.09.2026 · Values in CHF")
-    d.row([(50, "Description", "l"), (250, "ISIN", "l"), (370, "Quantity", "r"), (440, "Price", "r"),
-           (W - 50, "Market value CHF", "r")], bold=True, size=8.5)
+    d.row(
+        [
+            (50, "Description", "l"),
+            (250, "ISIN", "l"),
+            (370, "Quantity", "r"),
+            (440, "Price", "r"),
+            (W - 50, "Market value CHF", "r"),
+        ],
+        bold=True,
+        size=8.5,
+    )
     for p in S.ALPHA_POSITIONS:
         if p.isin:
-            d.row([(50, p.name, "l"), (250, p.isin, "l"), (370, chf(p.quantity).replace(".00", ""), "r"),
-                   (440, chf(p.price), "r"), (W - 50, chf(p.value_chf), "r")], size=8.5)
+            d.row(
+                [
+                    (50, p.name, "l"),
+                    (250, p.isin, "l"),
+                    (370, chf(p.quantity).replace(".00", ""), "r"),
+                    (440, chf(p.price), "r"),
+                    (W - 50, chf(p.value_chf), "r"),
+                ],
+                size=8.5,
+            )
         else:
             d.row([(50, p.name, "l"), (W - 50, chf(p.value_chf), "r")], size=8.5)
     d.row([(50, "Total assets", "l"), (W - 50, chf(S.ALPHA_TOTAL), "r")], bold=True, size=8.5)
     d.y -= 10
-    d.para("Market values are indicative and based on the last available prices. Accrued interest is not included.")
+    d.para(
+        "Market values are indicative and based on the last available prices. "
+        "Accrued interest is not included."
+    )
     d.save()
 
 
 def alpha_cost_report(out: Path):
     d = Doc(out / "alpha_costs_and_charges_2025-2026.pdf", "Costs and charges report")
-    d.header(S.ALPHA, S.ALPHA_CITY, "Annual report on costs and charges",
-             "Period 01.10.2025 - 30.09.2026 · Ex-post disclosure · Currency CHF")
+    d.header(
+        S.ALPHA,
+        S.ALPHA_CITY,
+        "Annual report on costs and charges",
+        "Period 01.10.2025 - 30.09.2026 · Ex-post disclosure · Currency CHF",
+    )
     d.kv("Client", S.PROSPECT_LABEL)
     d.kv("Portfolio", "4512-01 · Advisory mandate")
     d.kv("Average assets in period", "CHF 3'200'000.00")
@@ -185,21 +223,31 @@ def alpha_cost_report(out: Path):
     total = sum((a for *_x, a in S.ALPHA_COST_REPORT), Decimal(0))
     d.row([(50, "Total service costs", "l"), (W - 50, chf(total), "r")], bold=True)
     d.section("Third-party product costs (estimate)")
-    d.row([(50, "Ongoing and transaction costs of financial instruments", "l"),
-           (W - 50, chf(S.ALPHA_REPORTED_PRODUCT_COSTS), "r")])
-    d.para("Product costs are not debited from your account. They are included in the price of the instruments "
-           "and are estimated by the bank from manufacturer disclosures.")
+    d.row(
+        [
+            (50, "Ongoing and transaction costs of financial instruments", "l"),
+            (W - 50, chf(S.ALPHA_REPORTED_PRODUCT_COSTS), "r"),
+        ]
+    )
+    d.para(
+        "Product costs are not debited from your account. They are included in the price of the instruments "
+        "and are estimated by the bank from manufacturer disclosures."
+    )
     d.section("Inducements")
     d.row([(50, "Retrocessions received by the bank", "l"), (W - 50, chf(S.ALPHA_RETROCESSIONS), "r")])
-    d.para("Retrocessions are paid by product providers out of the product costs shown above. They are not an "
-           "additional charge to the client.")
+    d.para(
+        "Retrocessions are paid by product providers out of the product costs shown above. They are not an "
+        "additional charge to the client."
+    )
     d.save()
 
 
 def alpha_tariff(out: Path):
     t = S.ALPHA_TARIFF
     d = Doc(out / "alpha_price_schedule_2026.pdf", "Price schedule")
-    d.header(S.ALPHA, S.ALPHA_CITY, "Price schedule for private clients", "Valid from 01.01.2026 · Switzerland")
+    d.header(
+        S.ALPHA, S.ALPHA_CITY, "Price schedule for private clients", "Valid from 01.01.2026 · Switzerland"
+    )
     d.kv("Issuing entity", f"{S.ALPHA}, Lugano (Switzerland)")
     d.kv("Applies to", "Accounts booked in Switzerland")
     d.section("Advisory and custody")
@@ -209,31 +257,50 @@ def alpha_tariff(out: Path):
     d.section("Transactions")
     d.row([(50, "Brokerage on stock exchange trades", "l"), (W - 50, pct(t["brokerage_pct"]), "r")])
     d.row([(50, "Minimum per trade", "l"), (W - 50, f"CHF {chf(t['brokerage_min'])}", "r")])
-    d.row([(50, "Transfer of securities to another bank, per position", "l"),
-           (W - 50, f"CHF {chf(t['transfer_out_per_position'])}", "r")])
-    d.para("Swiss VAT at the applicable rate is added to custody fees. Third-party costs and taxes are charged "
-           "separately.")
+    d.row(
+        [
+            (50, "Transfer of securities to another bank, per position", "l"),
+            (W - 50, f"CHF {chf(t['transfer_out_per_position'])}", "r"),
+        ]
+    )
+    d.para(
+        "Swiss VAT at the applicable rate is added to advisory and custody fees. Third-party costs and taxes "
+        "are charged separately."
+    )
     d.save()
 
 
 def beta_lu_tariff(out: Path):
     t = S.BETA_LU_TARIFF
     d = Doc(out / "beta_europe_price_schedule_2026.pdf", "Schedule of prices")
-    d.header(S.BETA_LU, S.BETA_LU_CITY, "Schedule of prices - banking and custody", "Valid from 01.01.2026 · Luxembourg")
+    d.header(
+        S.BETA_LU,
+        S.BETA_LU_CITY,
+        "Schedule of prices - banking and custody",
+        "Valid from 01.01.2026 · Luxembourg",
+    )
     d.kv("Issuing entity", f"{S.BETA_LU}, Luxembourg")
     d.kv("Applies to", "Accounts booked in Luxembourg")
     d.section("Custody")
     d.row([(50, "Custody fee p.a. on securities", "l"), (W - 50, pct(t["custody_pct"]), "r")])
-    d.row([(50, "Minimum custody fee per quarter", "l"), (W - 50, f"EUR {chf(t['custody_min_quarter'])}", "r")])
+    d.row(
+        [(50, "Minimum custody fee per quarter", "l"), (W - 50, f"EUR {chf(t['custody_min_quarter'])}", "r")]
+    )
     d.save()
 
 
 def kid(out: Path, isin: str, k: dict):
     d = Doc(out / f"kid_{isin}.pdf", "Key Information Document")
-    d.header(k["manufacturer"], "Synthetic manufacturer", "Key Information Document",
-             f"{k['name']} · ISIN {isin} · Date of production {k['date']}")
-    d.para("Purpose: This document provides you with key information about this investment product. "
-           "It is not marketing material.")
+    d.header(
+        k["manufacturer"],
+        "Synthetic manufacturer",
+        "Key Information Document",
+        f"{k['name']} · ISIN {isin} · Date of production {k['date']}",
+    )
+    d.para(
+        "Purpose: This document provides you with key information about this investment product. "
+        "It is not marketing material."
+    )
     d.kv("Product", k["name"])
     d.kv("ISIN", isin)
     d.kv("Manufacturer", k["manufacturer"])
@@ -246,7 +313,12 @@ def kid(out: Path, isin: str, k: dict):
     d.row([(50, "Entry costs (maximum)", "l"), (W - 50, f"up to {pct(k['entry_max'])}", "r")])
     d.row([(50, "Exit costs", "l"), (W - 50, pct(k["exit"]), "r")])
     d.row([(50, "Ongoing costs taken each year", "l")], bold=True)
-    d.row([(50, "Management fees and other administrative or operating costs", "l"), (W - 50, pct(k["ongoing"]), "r")])
+    d.row(
+        [
+            (50, "Management fees and other administrative or operating costs", "l"),
+            (W - 50, pct(k["ongoing"]), "r"),
+        ]
+    )
     if k["mgmt_included"] is not None:
         d.row([(70, "of which investment management fee", "l"), (W - 50, pct(k["mgmt_included"]), "r")])
     d.row([(50, "Transaction costs", "l"), (W - 50, pct(k["transaction"]), "r")])
@@ -258,7 +330,9 @@ def kid(out: Path, isin: str, k: dict):
 def termsheet(out: Path):
     t = S.STRUCTURED_TERMSHEET
     d = Doc(out / f"termsheet_{t['isin']}.pdf", "Final terms")
-    d.header(t["issuer"], "Synthetic issuer", "Final termsheet", f"{t['name']} · ISIN {t['isin']} · {t['date']}")
+    d.header(
+        t["issuer"], "Synthetic issuer", "Final termsheet", f"{t['name']} · ISIN {t['isin']} · {t['date']}"
+    )
     d.kv("Product", t["name"])
     d.kv("ISIN", t["isin"])
     d.kv("Issuer", t["issuer"])
@@ -287,9 +361,16 @@ def alpha_cash_statement_scanned(out: Path, tmp: Path):
     pdf = pypdfium2.PdfDocument(str(src))
     images = [pdf[i].render(scale=200 / 72).to_pil().convert("L") for i in range(len(pdf))]
     pdf.close()
-    images[0].save(out / "alpha_estratto_conto_Q3_2026_scan.pdf", "PDF", resolution=200.0,
-                   save_all=True, append_images=images[1:], title="Estratto conto (scanned)",
-                   subject="SYNTHETIC DEMO DOCUMENT", creationDate=None)
+    images[0].save(
+        out / "alpha_estratto_conto_Q3_2026_scan.pdf",
+        "PDF",
+        resolution=200.0,
+        save_all=True,
+        append_images=images[1:],
+        title="Estratto conto (scanned)",
+        subject="SYNTHETIC DEMO DOCUMENT",
+        creationDate=None,
+    )
     src.unlink()
 
 
@@ -306,7 +387,16 @@ def beta_holdings_xlsx(out: Path):
     ws["B4"] = "CHF"
     ws["A5"] = "FX rate USD/CHF"
     ws["B5"] = float(S.USD_CHF)  # spreadsheets store binary floats; the parser re-reads cells as text
-    headers = ["Description", "ISIN", "Asset class", "Quantity", "Currency", "Price", "Market value (ccy)", "Market value CHF"]
+    headers = [
+        "Description",
+        "ISIN",
+        "Asset class",
+        "Quantity",
+        "Currency",
+        "Price",
+        "Market value (ccy)",
+        "Market value CHF",
+    ]
     for i, h in enumerate(headers, start=1):
         ws.cell(row=7, column=i, value=h).font = Font(bold=True)
     r = 8

@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 
-from decimal import Decimal
-
+from ..errors import TariffError
 from .money import BPS, ZERO, D
 
 
@@ -24,9 +24,9 @@ class TierMethod(StrEnum):
 def bps_fee(base: object, bps: object, minimum: object = 0, maximum: object | None = None):
     base_d, bps_d, min_d = D(base), D(bps), D(minimum)
     if base_d < 0:
-        raise ValueError("negative fee base")
+        raise TariffError("negative fee base")
     if maximum is not None and min_d > D(maximum):
-        raise ValueError("minimum exceeds maximum: check the contract data entry")
+        raise TariffError("minimum exceeds maximum: check the contract data entry")
     amount = base_d * bps_d / BPS
     amount = max(amount, min_d)
     if maximum is not None:
@@ -36,17 +36,17 @@ def bps_fee(base: object, bps: object, minimum: object = 0, maximum: object | No
 
 def _validate_tiers(tiers: list[tuple[object | None, object]]) -> list[tuple[Decimal | None, Decimal]]:
     if not tiers:
-        raise ValueError("empty tier schedule")
+        raise TariffError("empty tier schedule")
     out = []
     prev = ZERO
     for i, (upper, rate) in enumerate(tiers):
         if upper is None:
             if i != len(tiers) - 1:
-                raise ValueError("open-ended tier must be last")
+                raise TariffError("open-ended tier must be last")
         else:
             u = D(upper)
             if u <= prev:
-                raise ValueError("tier bounds must be strictly ascending")
+                raise TariffError("tier bounds must be strictly ascending")
             prev = u
         out.append((None if upper is None else D(upper), D(rate)))
     return out
@@ -55,7 +55,7 @@ def _validate_tiers(tiers: list[tuple[object | None, object]]) -> list[tuple[Dec
 def marginal_tier_fee(base: object, tiers: list[tuple[object | None, object]]):
     base_d = D(base)
     if base_d < 0:
-        raise ValueError("negative fee base")
+        raise TariffError("negative fee base")
     t = _validate_tiers(tiers)
     total, lower = ZERO, ZERO
     for upper, rate in t:
@@ -65,30 +65,30 @@ def marginal_tier_fee(base: object, tiers: list[tuple[object | None, object]]):
         if upper is None or base_d <= upper:
             return total
         lower = upper
-    raise ValueError("tier schedule does not cover the base")
+    raise TariffError("tier schedule does not cover the base")
 
 
 def whole_base_tier_fee(base: object, tiers: list[tuple[object | None, object]]):
     base_d = D(base)
     if base_d < 0:
-        raise ValueError("negative fee base")
+        raise TariffError("negative fee base")
     for upper, rate in _validate_tiers(tiers):
         if upper is None or base_d <= upper:
             return base_d * rate / BPS
-    raise ValueError("tier schedule does not cover the base")
+    raise TariffError("tier schedule does not cover the base")
 
 
 def prorate(annual: object, days: int, day_count: int = 365):
     if not 0 <= days <= 366:
-        raise ValueError("invalid period length")
+        raise TariffError("invalid period length")
     if day_count not in (360, 365, 366):
-        raise ValueError("unsupported day count")
+        raise TariffError("unsupported day count")
     return D(annual) * D(days) / D(day_count)
 
 
 def annualize(amount: object, days: int, day_count: int = 365):
     if days <= 0:
-        raise ValueError("period must be positive to annualize")
+        raise TariffError("period must be positive to annualize")
     return D(amount) * D(day_count) / D(days)
 
 
@@ -110,7 +110,7 @@ class FeeRule:
     def annual_amount(self, base_amount: object):
         if self.base == "fixed":
             if self.flat_amount is None:
-                raise ValueError(f"{self.fee_code}: fixed fee without amount")
+                raise TariffError(f"{self.fee_code}: fixed fee without amount")
             return D(self.flat_amount)
         if self.tiers:
             fn = marginal_tier_fee if self.tier_method == TierMethod.MARGINAL else whole_base_tier_fee
@@ -120,7 +120,7 @@ class FeeRule:
                 amount = min(amount, D(self.maximum))
             return amount
         if self.rate_bps is None:
-            raise ValueError(f"{self.fee_code}: rule has neither rate nor tiers")
+            raise TariffError(f"{self.fee_code}: rule has neither rate nor tiers")
         return bps_fee(base_amount, self.rate_bps, self.minimum, self.maximum)
 
     def formula(self, base_amount: object) -> str:
@@ -129,9 +129,12 @@ class FeeRule:
             return f"fixed {D(self.flat_amount):,.2f}"
         if self.tiers:
             bands = "; ".join(
-                f"{'≤' + format(D(u), ',.0f') if u is not None else 'above'} @ {D(r)} bps" for u, r in self.tiers
+                f"{'≤' + format(D(u), ',.0f') if u is not None else 'above'} @ {D(r)} bps"
+                for u, r in self.tiers
             )
-            return f"{self.tier_method.value} tiers on {b} [{bands}]" + (f", min {D(self.minimum):,.2f}" if D(self.minimum) else "")
+            return f"{self.tier_method.value} tiers on {b} [{bands}]" + (
+                f", min {D(self.minimum):,.2f}" if D(self.minimum) else ""
+            )
         s = f"{b} × {D(self.rate_bps)} bps / 10'000"
         if D(self.minimum):
             s += f", min {D(self.minimum):,.2f}"

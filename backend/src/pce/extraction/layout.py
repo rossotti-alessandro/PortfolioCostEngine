@@ -56,7 +56,7 @@ def _digital_lines(page: pdfplumber.page.Page, number: int) -> list[Line]:
     def horizontal(o: dict) -> bool:
         if o.get("object_type") != "char":
             return True
-        a, b, c, d, *_ = o.get("matrix", (1, 0, 0, 1, 0, 0))
+        a, b, c, _d, *_ = o.get("matrix", (1, 0, 0, 1, 0, 0))
         return abs(b) < 1e-3 and abs(c) < 1e-3 and a > 0  # drop rotated text such as watermarks
 
     upright = page.filter(horizontal)
@@ -70,8 +70,10 @@ def _digital_lines(page: pdfplumber.page.Page, number: int) -> list[Line]:
             prev = cells[-1]
             same_row = abs((prev.bbox[1] + prev.bbox[3]) / 2 - (bb[1] + bb[3]) / 2) <= 2
             if same_row and 0 <= bb[0] - prev.bbox[2] < 6:
-                cells[-1] = Cell(prev.text + " " + w["text"],
-                                 (prev.bbox[0], min(prev.bbox[1], bb[1]), bb[2], max(prev.bbox[3], bb[3])))
+                cells[-1] = Cell(
+                    prev.text + " " + w["text"],
+                    (prev.bbox[0], min(prev.bbox[1], bb[1]), bb[2], max(prev.bbox[3], bb[3])),
+                )
                 continue
         cells.append(Cell(w["text"], bb))
     cells = [Cell(c.text, tuple(round(v, 2) for v in c.bbox)) for c in cells]
@@ -107,7 +109,9 @@ def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -
             continue
         key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
         x, y, wd, ht = data["left"][i], data["top"][i], data["width"][i], data["height"][i]
-        groups.setdefault(key, []).append((w, (x * scale, y * scale, (x + wd) * scale, (y + ht) * scale), conf))
+        groups.setdefault(key, []).append(
+            (w, (x * scale, y * scale, (x + wd) * scale, (y + ht) * scale), conf)
+        )
     lines = []
     for words in groups.values():
         words.sort(key=lambda t: t[1][0])
@@ -118,7 +122,10 @@ def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -
             confs.append(cf)
             if cells and bb[0] - cells[-1].bbox[2] < 9:
                 prev = cells[-1]
-                cells[-1] = Cell(prev.text + " " + w, (prev.bbox[0], min(prev.bbox[1], bb[1]), bb[2], max(prev.bbox[3], bb[3])))
+                cells[-1] = Cell(
+                    prev.text + " " + w,
+                    (prev.bbox[0], min(prev.bbox[1], bb[1]), bb[2], max(prev.bbox[3], bb[3])),
+                )
             else:
                 cells.append(Cell(w, bb))
         cells = [Cell(c.text, tuple(round(v, 2) for v in c.bbox)) for c in cells]
@@ -147,7 +154,9 @@ def read_pdf(path_or_bytes, ocr_lang: str = "eng+ita+deu+fra", max_pages: int = 
             else:
                 pdfium = pdfium or pypdfium2.PdfDocument(data)
                 lines, engine = _ocr_lines(pdfium, i, i + 1, ocr_lang), "tesseract-ocr"
-            pages.append(PageInfo(i + 1, round(float(page.width), 2), round(float(page.height), 2), engine, lines))
+            pages.append(
+                PageInfo(i + 1, round(float(page.width), 2), round(float(page.height), 2), engine, lines)
+            )
         if pdfium is not None:
             pdfium.close()
     return pages

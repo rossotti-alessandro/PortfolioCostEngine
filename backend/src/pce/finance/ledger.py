@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
 
+from ..errors import EvidenceError, InclusionGraphError
 from .money import ZERO, D, bps_of
 
 
@@ -83,11 +84,13 @@ class FeeAtom:
         if self.amount is not None:
             self.amount = D(self.amount)
         if self.measurement == Measurement.UNKNOWN and self.amount is not None:
-            raise ValueError(f"{self.atom_id}: UNKNOWN atom must not carry an amount")
+            raise EvidenceError(f"{self.atom_id}: UNKNOWN atom must not carry an amount")
         if self.measurement in COUNTABLE and self.amount is None:
-            raise ValueError(f"{self.atom_id}: {self.measurement} atom needs an amount (use UNKNOWN instead)")
+            raise EvidenceError(
+                f"{self.atom_id}: {self.measurement} atom needs an amount (use UNKNOWN instead)"
+            )
         if self.measurement == Measurement.OBSERVED and not self.evidence_ids:
-            raise ValueError(f"{self.atom_id}: an observed cost must cite evidence")
+            raise EvidenceError(f"{self.atom_id}: an observed cost must cite evidence")
 
 
 class AtomRole(StrEnum):
@@ -135,25 +138,27 @@ def _check_graph(atoms: dict[str, FeeAtom]) -> None:
     for a in atoms.values():
         for ref, kind in ((a.included_in, "included_in"), (a.corroborates, "corroborates")):
             if ref is not None and ref not in atoms:
-                raise ValueError(f"{a.atom_id}: {kind} references missing atom {ref}")
+                raise InclusionGraphError(f"{a.atom_id}: {kind} references missing atom {ref}")
         if a.included_in and a.corroborates:
-            raise ValueError(f"{a.atom_id}: an atom cannot be both a sub-component and a duplicate")
+            raise InclusionGraphError(f"{a.atom_id}: an atom cannot be both a sub-component and a duplicate")
     # cycle detection on included_in / corroborates edges
     for start in atoms:
         seen, cur = set(), start
         while cur is not None:
             if cur in seen:
-                raise ValueError(f"cycle in fee inclusion graph at {cur}")
+                raise InclusionGraphError(f"cycle in fee inclusion graph at {cur}")
             seen.add(cur)
             nxt = atoms[cur]
             cur = nxt.included_in or nxt.corroborates
 
 
-def aggregate(atoms: list[FeeAtom], scope_aum: object | None = None, tolerance: object = "0.05") -> LedgerSummary:
+def aggregate(
+    atoms: list[FeeAtom], scope_aum: object | None = None, tolerance: object = "0.05"
+) -> LedgerSummary:
     by_id: dict[str, FeeAtom] = {}
     for a in atoms:
         if a.atom_id in by_id:
-            raise ValueError(f"duplicate atom id {a.atom_id}")
+            raise InclusionGraphError(f"duplicate atom id {a.atom_id}")
         by_id[a.atom_id] = a
     _check_graph(by_id)
 
@@ -187,11 +192,15 @@ def aggregate(atoms: list[FeeAtom], scope_aum: object | None = None, tolerance: 
     # children whose parent is unknown cannot inherit a count either: parent drives the total
     for a in atoms:
         if roles[a.atom_id] == AtomRole.INCLUDED_IN_PARENT and roles[a.included_in] == AtomRole.UNKNOWN:
-            warnings.append(f"{a.label} is a sub-component of an unknown parent; parent total still required.")
+            warnings.append(
+                f"{a.label} is a sub-component of an unknown parent; parent total still required."
+            )
         if roles[a.atom_id] == AtomRole.INCLUDED_IN_PARENT:
             parent = by_id[a.included_in]
             if parent.amount is not None and a.amount is not None and a.amount > parent.amount:
-                warnings.append(f"{a.label} exceeds its inclusive parent {parent.label}; check the disclosure.")
+                warnings.append(
+                    f"{a.label} exceeds its inclusive parent {parent.label}; check the disclosure."
+                )
 
     total = billed = embedded = one_off = ZERO
     by_meas: dict[str, Decimal] = defaultdict(lambda: ZERO)

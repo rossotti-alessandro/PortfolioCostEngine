@@ -36,18 +36,25 @@ from .db import (
     make_session_factory,
 )
 from .demo import spec
-from .engine.money import D
 from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify, extract
-from .extraction.vocab import FEE_LABEL_NAMES
+from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
+from .finance.money import D
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_XLSX_UNCOMPRESSED = 100 * 1024 * 1024
-ALLOWED = {".pdf": "application/pdf", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+ALLOWED = {
+    ".pdf": "application/pdf",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 
 app = FastAPI(title="PortfolioCostEngine API", version=__version__)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-                   allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 SessionFactory = make_session_factory()
 
 
@@ -65,8 +72,11 @@ class Ctx(BaseModel):
     role: str
 
 
-def ctx(x_tenant_id: Annotated[str, Header()] = "demo-firm", x_user: Annotated[str, Header()] = "analyst",
-        x_role: Annotated[str, Header()] = "analyst") -> Ctx:
+def ctx(
+    x_tenant_id: Annotated[str, Header()] = "demo-firm",
+    x_user: Annotated[str, Header()] = "analyst",
+    x_role: Annotated[str, Header()] = "analyst",
+) -> Ctx:
     if x_role not in ("analyst", "senior", "relationship_manager"):
         raise HTTPException(400, "unknown role")
     return Ctx(tenant=x_tenant_id, user=x_user, role=x_role)
@@ -88,28 +98,74 @@ def get_prospect(db: Session, c: Ctx, pid: int) -> Prospect:
 
 
 def fact_out(f: FactRow) -> dict:
-    return {"id": f.id, "document_id": f.document_id, "key": f.key, "kind": f.kind, "field": f.field, "label": f.label,
-            "value": f.value_current, "value_extracted": f.value_extracted, "currency": f.currency, "isin": f.isin,
-            "fee_code": f.fee_code, "fee_label": FEE_LABEL_NAMES.get(f.fee_code or "", None),
-            "measurement": f.measurement, "extra": f.extra, "evidence": f.evidence, "status": f.status}
+    return {
+        "id": f.id,
+        "document_id": f.document_id,
+        "key": f.key,
+        "kind": f.kind,
+        "field": f.field,
+        "label": f.label,
+        "value": f.value_current,
+        "value_extracted": f.value_extracted,
+        "currency": f.currency,
+        "isin": f.isin,
+        "fee_code": f.fee_code,
+        "fee_label": FEE_LABEL_NAMES.get(f.fee_code or "", None),
+        "measurement": f.measurement,
+        "extra": f.extra,
+        "evidence": f.evidence,
+        "status": f.status,
+    }
 
 
 def doc_out(d: Document, n_facts: int = 0) -> dict:
     dt = d.doc_type_override or d.doc_type
-    return {"id": d.id, "filename": d.filename, "sha256": d.sha256, "size": d.size, "media_type": d.media_type,
-            "doc_type": dt, "doc_type_label": DOC_TYPE_LABELS.get(DocType(dt), dt), "detected_type": d.doc_type,
-            "profile": d.profile, "pages": d.pages, "status": d.status, "uploaded_at": d.uploaded_at,
-            "uploaded_by": d.uploaded_by, "extractor_version": d.extractor_version, "fact_count": n_facts}
+    return {
+        "id": d.id,
+        "filename": d.filename,
+        "sha256": d.sha256,
+        "size": d.size,
+        "media_type": d.media_type,
+        "doc_type": dt,
+        "doc_type_label": DOC_TYPE_LABELS.get(DocType(dt), dt),
+        "detected_type": d.doc_type,
+        "profile": d.profile,
+        "pages": d.pages,
+        "status": d.status,
+        "uploaded_at": d.uploaded_at,
+        "uploaded_by": d.uploaded_by,
+        "extractor_version": d.extractor_version,
+        "fact_count": n_facts,
+    }
 
 
 def compute(db: Session, c: Ctx, p: Prospect) -> dict:
-    docs = db.scalars(select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)).all()
-    facts = db.scalars(select(FactRow).where(FactRow.tenant_id == c.tenant,
-                                             FactRow.document_id.in_([d.id for d in docs]))).all() if docs else []
-    result = analyse({"domicile": p.domicile, "base_ccy": p.base_ccy},
-                     [{"id": d.id, "filename": d.filename, "doc_type": d.doc_type_override or d.doc_type, "profile": d.profile} for d in docs],
-                     [{**fact_out(f), "value": f.value_current} for f in facts],
-                     p.proposal or spec.PROPOSAL_DEFAULTS)
+    docs = db.scalars(
+        select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)
+    ).all()
+    facts = (
+        db.scalars(
+            select(FactRow).where(
+                FactRow.tenant_id == c.tenant, FactRow.document_id.in_([d.id for d in docs])
+            )
+        ).all()
+        if docs
+        else []
+    )
+    result = analyse(
+        {"domicile": p.domicile, "base_ccy": p.base_ccy},
+        [
+            {
+                "id": d.id,
+                "filename": d.filename,
+                "doc_type": d.doc_type_override or d.doc_type,
+                "profile": d.profile,
+            }
+            for d in docs
+        ],
+        [{**fact_out(f), "value": f.value_current} for f in facts],
+        p.proposal or spec.PROPOSAL_DEFAULTS,
+    )
     fmap = {f.id: f for f in facts}
     dmap = {d.id: d for d in docs}
 
@@ -134,22 +190,48 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     enrich(result["scenarios"]["optimized"]["ledger"])
     for chk in result["checks"]:
         chk["sources"] = sources(chk["fact_ids"])
-    result["documents"] = [{"id": d.id, "filename": d.filename, "doc_type": d.doc_type_override or d.doc_type} for d in docs]
-    states = {r.key: r.status for r in db.scalars(select(RequestState).where(
-        RequestState.prospect_id == p.id, RequestState.tenant_id == c.tenant))}
+    result["documents"] = [
+        {"id": d.id, "filename": d.filename, "doc_type": d.doc_type_override or d.doc_type} for d in docs
+    ]
+    states = {
+        r.key: r.status
+        for r in db.scalars(
+            select(RequestState).where(RequestState.prospect_id == p.id, RequestState.tenant_id == c.tenant)
+        )
+    }
     for r in result["requests"]:
         r["status"] = states.get(r["key"], "open")
     reviewed = sum(1 for f in facts if f.status in ("accepted", "corrected", "manual"))
-    result["review"] = {"facts": len(facts), "reviewed": reviewed,
-                        "rejected": sum(1 for f in facts if f.status == "rejected")}
+    result["review"] = {
+        "facts": len(facts),
+        "reviewed": reviewed,
+        "rejected": sum(1 for f in facts if f.status == "rejected"),
+    }
     snapshot = json.dumps({k: result[k] for k in ("current", "scenarios")}, sort_keys=True)
     result["snapshot_hash"] = hashlib.sha256(snapshot.encode()).hexdigest()
-    appr = db.scalars(select(Approval).where(Approval.prospect_id == p.id, Approval.tenant_id == c.tenant)
-                      .order_by(Approval.id.desc())).first()
-    result["approval"] = None if not appr else {
-        "user": appr.user, "role": appr.role, "at": appr.at, "note": appr.note,
-        "valid": appr.snapshot_hash == result["snapshot_hash"]}
-    result["prospect"] = {"id": p.id, "code": p.code, "label": p.label, "domicile": p.domicile, "synthetic": p.synthetic}
+    appr = db.scalars(
+        select(Approval)
+        .where(Approval.prospect_id == p.id, Approval.tenant_id == c.tenant)
+        .order_by(Approval.id.desc())
+    ).first()
+    result["approval"] = (
+        None
+        if not appr
+        else {
+            "user": appr.user,
+            "role": appr.role,
+            "at": appr.at,
+            "note": appr.note,
+            "valid": appr.snapshot_hash == result["snapshot_hash"],
+        }
+    )
+    result["prospect"] = {
+        "id": p.id,
+        "code": p.code,
+        "label": p.label,
+        "domicile": p.domicile,
+        "synthetic": p.synthetic,
+    }
     return result
 
 
@@ -171,8 +253,11 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
         except zipfile.BadZipFile as exc:
             raise HTTPException(415, f"{filename}: not a valid XLSX file") from exc
     sha = hashlib.sha256(data).hexdigest()
-    existing = db.scalar(select(Document).where(Document.tenant_id == c.tenant, Document.prospect_id == p.id,
-                                                Document.sha256 == sha))
+    existing = db.scalar(
+        select(Document).where(
+            Document.tenant_id == c.tenant, Document.prospect_id == p.id, Document.sha256 == sha
+        )
+    )
     if existing:
         return existing, False
     store = data_dir() / "storage" / c.tenant
@@ -184,19 +269,56 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
         res, pages = extract(filename, data)
     except ValueError as exc:
         raise HTTPException(422, f"{filename}: {exc}") from exc
-    doc = Document(tenant_id=c.tenant, prospect_id=p.id, filename=filename, sha256=sha, size=len(data),
-                   media_type=ALLOWED[suffix], storage_path=str(path), doc_type=res.profile.doc_type.value,
-                   profile=res.profile.model_dump(), extractor_version=res.extractor_version,
-                   pages=[{"number": pg.number, "width": pg.width, "height": pg.height, "engine": pg.engine} for pg in pages],
-                   status="needs_review" if res.profile.doc_type == DocType.UNKNOWN or res.profile.warnings else "extracted",
-                   uploaded_by=c.user)
+    doc = Document(
+        tenant_id=c.tenant,
+        prospect_id=p.id,
+        filename=filename,
+        sha256=sha,
+        size=len(data),
+        media_type=ALLOWED[suffix],
+        storage_path=str(path),
+        doc_type=res.profile.doc_type.value,
+        profile=res.profile.model_dump(),
+        extractor_version=res.extractor_version,
+        pages=[
+            {"number": pg.number, "width": pg.width, "height": pg.height, "engine": pg.engine} for pg in pages
+        ],
+        status="needs_review"
+        if res.profile.doc_type == DocType.UNKNOWN or res.profile.warnings
+        else "extracted",
+        uploaded_by=c.user,
+    )
     db.add(doc)
     db.flush()
     for f in res.facts:
-        db.add(FactRow(tenant_id=c.tenant, document_id=doc.id, key=f.key, kind=f.kind, field=f.field, label=f.label,
-                       value_extracted=f.value, value_current=f.value, currency=f.currency, isin=f.isin,
-                       fee_code=f.fee_code, measurement=f.measurement, extra=f.extra, evidence=f.evidence.model_dump()))
-    audit(db, c, p.id, "document.uploaded", filename=filename, sha256=sha, doc_type=doc.doc_type, facts=len(res.facts))
+        db.add(
+            FactRow(
+                tenant_id=c.tenant,
+                document_id=doc.id,
+                key=f.key,
+                kind=f.kind,
+                field=f.field,
+                label=f.label,
+                value_extracted=f.value,
+                value_current=f.value,
+                currency=f.currency,
+                isin=f.isin,
+                fee_code=f.fee_code,
+                measurement=f.measurement,
+                extra=f.extra,
+                evidence=f.evidence.model_dump(),
+            )
+        )
+    audit(
+        db,
+        c,
+        p.id,
+        "document.uploaded",
+        filename=filename,
+        sha256=sha,
+        doc_type=doc.doc_type,
+        facts=len(res.facts),
+    )
     return doc, True
 
 
@@ -205,12 +327,36 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
 def health() -> dict:
     import shutil
 
-    return {"status": "ok", "version": __version__, "ocr": bool(shutil.which("tesseract")), "network_calls": "none"}
+    return {
+        "status": "ok",
+        "version": __version__,
+        "ocr": bool(shutil.which("tesseract")),
+        "network_calls": "none",
+    }
 
 
 @app.get("/api/taxonomy")
 def taxonomy() -> dict:
-    return {"fee_labels": FEE_LABEL_NAMES, "doc_types": {k.value: v for k, v in DOC_TYPE_LABELS.items()}}
+    """Data catalogue: every document type and fee code we know, and which ones the demo parses today."""
+    parsed = {
+        "portfolio_statement",
+        "cash_statement",
+        "annual_cost_report",
+        "custody_tariff",
+        "general_price_list",
+        "kid_priips",
+        "kid_finsa",
+        "sp_termsheet",
+    }  # taxonomy codes covered by PARSERS
+    return {
+        "fee_labels": FEE_LABEL_NAMES,
+        "doc_types": {k.value: v for k, v in DOC_TYPE_LABELS.items()},
+        "document_types": [
+            {**r, "parser": r["document_type"] in parsed} for r in load_taxonomy("document_types")
+        ],
+        "fees": load_taxonomy("fee_taxonomy"),
+        "public_sources": load_taxonomy("public_sources", "reference"),
+    }
 
 
 class ProspectIn(BaseModel):
@@ -223,18 +369,34 @@ class ProspectIn(BaseModel):
 def list_prospects(db: DB, c: C) -> list[dict]:
     out = []
     for p in db.scalars(select(Prospect).where(Prospect.tenant_id == c.tenant).order_by(Prospect.id.desc())):
-        docs = db.scalars(select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)).all()
+        docs = db.scalars(
+            select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)
+        ).all()
         summary = None
         if docs:
             r = compute(db, c, p)
-            summary = {"aum": r["aum"]["total"], "current_known": r["current"]["total_known"],
-                       "current_bps": r["current"]["total_bps"], "complete": r["current"]["is_complete"],
-                       "open_requests": sum(1 for q in r["requests"] if q["status"] == "open"),
-                       "saving": r["scenarios"]["same_holdings"]["comparison"]["annual_saving"],
-                       "bound": r["scenarios"]["same_holdings"]["comparison"]["bound"],
-                       "approved": bool(r["approval"] and r["approval"]["valid"])}
-        out.append({"id": p.id, "code": p.code, "label": p.label, "domicile": p.domicile, "synthetic": p.synthetic,
-                    "created_at": p.created_at, "documents": len(docs), "summary": summary})
+            summary = {
+                "aum": r["aum"]["total"],
+                "current_known": r["current"]["total_known"],
+                "current_bps": r["current"]["total_bps"],
+                "complete": r["current"]["is_complete"],
+                "open_requests": sum(1 for q in r["requests"] if q["status"] == "open"),
+                "saving": r["scenarios"]["same_holdings"]["comparison"]["annual_saving"],
+                "bound": r["scenarios"]["same_holdings"]["comparison"]["bound"],
+                "approved": bool(r["approval"] and r["approval"]["valid"]),
+            }
+        out.append(
+            {
+                "id": p.id,
+                "code": p.code,
+                "label": p.label,
+                "domicile": p.domicile,
+                "synthetic": p.synthetic,
+                "created_at": p.created_at,
+                "documents": len(docs),
+                "summary": summary,
+            }
+        )
     return out
 
 
@@ -242,8 +404,13 @@ def list_prospects(db: DB, c: C) -> list[dict]:
 def create_prospect(body: ProspectIn, db: DB, c: C) -> dict:
     if db.scalar(select(Prospect).where(Prospect.tenant_id == c.tenant, Prospect.code == body.code)):
         raise HTTPException(409, "a prospect with this code already exists")
-    p = Prospect(tenant_id=c.tenant, code=body.code, label=body.label, domicile=body.domicile.upper(),
-                 proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)))
+    p = Prospect(
+        tenant_id=c.tenant,
+        code=body.code,
+        label=body.label,
+        domicile=body.domicile.upper(),
+        proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)),
+    )
     db.add(p)
     db.flush()
     audit(db, c, p.id, "prospect.created", code=p.code)
@@ -279,8 +446,14 @@ def seed_demo(db: DB, c: C) -> dict:
         generate(folder)
     p = db.scalar(select(Prospect).where(Prospect.tenant_id == c.tenant, Prospect.code == spec.PROSPECT_CODE))
     if not p:
-        p = Prospect(tenant_id=c.tenant, code=spec.PROSPECT_CODE, label=spec.PROSPECT_LABEL, domicile=spec.CLIENT_DOMICILE,
-                     synthetic=True, proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)))
+        p = Prospect(
+            tenant_id=c.tenant,
+            code=spec.PROSPECT_CODE,
+            label=spec.PROSPECT_LABEL,
+            domicile=spec.CLIENT_DOMICILE,
+            synthetic=True,
+            proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)),
+        )
         db.add(p)
         db.flush()
         audit(db, c, p.id, "prospect.created", code=p.code, synthetic=True)
@@ -300,15 +473,21 @@ def get_one(pid: int, db: DB, c: C) -> dict:
 
 
 @app.post("/api/prospects/{pid}/documents")
-async def upload(pid: int, db: DB, c: C, files: list[UploadFile] = File(...)) -> dict:
+async def upload(pid: int, db: DB, c: C, files: Annotated[list[UploadFile], File()]) -> dict:
     p = get_prospect(db, c, pid)
     out = []
     for uf in files:
         data = await uf.read(MAX_UPLOAD_BYTES + 1)
         try:
             d, new = ingest(db, c, p, uf.filename or "upload", data)
-            out.append({"filename": uf.filename, "status": "duplicate" if not new else d.status, "document_id": d.id,
-                        "doc_type": d.doc_type})
+            out.append(
+                {
+                    "filename": uf.filename,
+                    "status": "duplicate" if not new else d.status,
+                    "document_id": d.id,
+                    "doc_type": d.doc_type,
+                }
+            )
         except HTTPException as exc:
             out.append({"filename": uf.filename, "status": "rejected", "error": exc.detail})
     db.commit()
@@ -318,8 +497,12 @@ async def upload(pid: int, db: DB, c: C, files: list[UploadFile] = File(...)) ->
 @app.get("/api/prospects/{pid}/documents")
 def list_documents(pid: int, db: DB, c: C) -> list[dict]:
     p = get_prospect(db, c, pid)
-    docs = db.scalars(select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)).all()
-    counts = {d.id: len(db.scalars(select(FactRow.id).where(FactRow.document_id == d.id)).all()) for d in docs}
+    docs = db.scalars(
+        select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)
+    ).all()
+    counts = {
+        d.id: len(db.scalars(select(FactRow.id).where(FactRow.document_id == d.id)).all()) for d in docs
+    }
     return [doc_out(d, counts[d.id]) for d in docs]
 
 
@@ -333,8 +516,12 @@ def get_doc(db: Session, c: Ctx, did: int) -> Document:
 @app.get("/api/documents/{did}/file")
 def document_file(did: int, db: DB, c: C):
     d = get_doc(db, c, did)
-    return FileResponse(d.storage_path, media_type=d.media_type, filename=d.filename,
-                        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    return FileResponse(
+        d.storage_path,
+        media_type=d.media_type,
+        filename=d.filename,
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @app.get("/api/documents/{did}/sheet")
@@ -358,7 +545,10 @@ def document_sheet(did: int, db: DB, c: C) -> dict:
 @app.get("/api/documents/{did}/facts")
 def document_facts(did: int, db: DB, c: C) -> list[dict]:
     d = get_doc(db, c, did)
-    return [fact_out(f) for f in db.scalars(select(FactRow).where(FactRow.document_id == d.id).order_by(FactRow.id))]
+    return [
+        fact_out(f)
+        for f in db.scalars(select(FactRow).where(FactRow.document_id == d.id).order_by(FactRow.id))
+    ]
 
 
 class DocPatch(BaseModel):
@@ -378,15 +568,40 @@ def set_doc_type(did: int, body: DocPatch, db: DB, c: C) -> dict:
         prof = classify(pages)
         prof.doc_type = body.doc_type
         facts = PARSERS[body.doc_type](pages, prof)
-        for old in db.scalars(select(FactRow).where(FactRow.document_id == d.id, FactRow.status == "extracted")):
+        for old in db.scalars(
+            select(FactRow).where(FactRow.document_id == d.id, FactRow.status == "extracted")
+        ):
             db.delete(old)
         for f in facts:
-            db.add(FactRow(tenant_id=c.tenant, document_id=d.id, key=f.key, kind=f.kind, field=f.field, label=f.label,
-                           value_extracted=f.value, value_current=f.value, currency=f.currency, isin=f.isin,
-                           fee_code=f.fee_code, measurement=f.measurement, extra=f.extra, evidence=f.evidence.model_dump()))
+            db.add(
+                FactRow(
+                    tenant_id=c.tenant,
+                    document_id=d.id,
+                    key=f.key,
+                    kind=f.kind,
+                    field=f.field,
+                    label=f.label,
+                    value_extracted=f.value,
+                    value_current=f.value,
+                    currency=f.currency,
+                    isin=f.isin,
+                    fee_code=f.fee_code,
+                    measurement=f.measurement,
+                    extra=f.extra,
+                    evidence=f.evidence.model_dump(),
+                )
+            )
         d.profile = {**prof.model_dump(), "doc_type": body.doc_type.value}
     d.status = "extracted"
-    audit(db, c, d.prospect_id, "document.reclassified", document_id=d.id, before=before, after=body.doc_type.value)
+    audit(
+        db,
+        c,
+        d.prospect_id,
+        "document.reclassified",
+        document_id=d.id,
+        before=before,
+        after=body.doc_type.value,
+    )
     db.commit()
     return {"ok": True}
 
@@ -422,20 +637,49 @@ def review_fact(fid: int, body: ReviewIn, db: DB, c: C) -> dict:
         f.status = "rejected"
     else:
         f.status, f.value_current = "extracted", f.value_extracted
-    db.add(Review(tenant_id=c.tenant, fact_id=f.id, action=body.action, old_value=old, new_value=f.value_current,
-                  reason=body.reason, user=c.user))
+    db.add(
+        Review(
+            tenant_id=c.tenant,
+            fact_id=f.id,
+            action=body.action,
+            old_value=old,
+            new_value=f.value_current,
+            reason=body.reason,
+            user=c.user,
+        )
+    )
     doc = db.get(Document, f.document_id)
-    audit(db, c, doc.prospect_id if doc else None, f"fact.{body.action}", fact_id=f.id, label=f.label, old=old,
-          new=f.value_current, reason=body.reason)
+    audit(
+        db,
+        c,
+        doc.prospect_id if doc else None,
+        f"fact.{body.action}",
+        fact_id=f.id,
+        label=f.label,
+        old=old,
+        new=f.value_current,
+        reason=body.reason,
+    )
     db.commit()
     return fact_out(f)
 
 
 @app.get("/api/facts/{fid}/history")
 def fact_history(fid: int, db: DB, c: C) -> list[dict]:
-    rows = db.scalars(select(Review).where(Review.fact_id == fid, Review.tenant_id == c.tenant).order_by(Review.id))
-    return [{"action": r.action, "old": r.old_value, "new": r.new_value, "reason": r.reason, "user": r.user, "at": r.at}
-            for r in rows]
+    rows = db.scalars(
+        select(Review).where(Review.fact_id == fid, Review.tenant_id == c.tenant).order_by(Review.id)
+    )
+    return [
+        {
+            "action": r.action,
+            "old": r.old_value,
+            "new": r.new_value,
+            "reason": r.reason,
+            "user": r.user,
+            "at": r.at,
+        }
+        for r in rows
+    ]
 
 
 @app.get("/api/prospects/{pid}/analysis")
@@ -454,18 +698,30 @@ def internal(pid: int, db: DB, c: C) -> dict:
     r = compute(db, c, p)
     audit(db, c, p.id, "internal.viewed")
     db.commit()
-    return {"internal": r["internal"], "same_holdings": r["scenarios"]["same_holdings"]["comparison"],
-            "current_complete": r["current"]["is_complete"], "requests": r["requests"],
-            "proposal_inputs": r["proposal_inputs"], "synthetic": r["synthetic"]}
+    return {
+        "internal": r["internal"],
+        "same_holdings": r["scenarios"]["same_holdings"]["comparison"],
+        "current_complete": r["current"]["is_complete"],
+        "requests": r["requests"],
+        "proposal_inputs": r["proposal_inputs"],
+        "synthetic": r["synthetic"],
+    }
 
 
 @app.get("/api/prospects/{pid}/proposal")
 def get_proposal(pid: int, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
-    versions = db.scalars(select(ProposalVersion).where(ProposalVersion.prospect_id == p.id,
-                                                        ProposalVersion.tenant_id == c.tenant).order_by(ProposalVersion.id.desc()))
-    return {"config": p.proposal or spec.PROPOSAL_DEFAULTS,
-            "history": [{"version": v.version, "user": v.user, "at": v.at, "summary": v.summary} for v in versions]}
+    versions = db.scalars(
+        select(ProposalVersion)
+        .where(ProposalVersion.prospect_id == p.id, ProposalVersion.tenant_id == c.tenant)
+        .order_by(ProposalVersion.id.desc())
+    )
+    return {
+        "config": p.proposal or spec.PROPOSAL_DEFAULTS,
+        "history": [
+            {"version": v.version, "user": v.user, "at": v.at, "summary": v.summary} for v in versions
+        ],
+    }
 
 
 @app.put("/api/prospects/{pid}/proposal")
@@ -477,7 +733,15 @@ def put_proposal(pid: int, body: dict, db: DB, c: C) -> dict:
             D(r)
             if u not in (None, ""):
                 D(u)
-        for k in ("custody_bps", "custody_min", "brokerage_bps", "fx_bps", "annual_turnover_chf", "fx_notional_chf", "vat_pct"):
+        for k in (
+            "custody_bps",
+            "custody_min",
+            "brokerage_bps",
+            "fx_bps",
+            "annual_turnover_chf",
+            "fx_notional_chf",
+            "vat_pct",
+        ):
             if D(cfg[k]) < 0:
                 raise ValueError(k)
     except (ValueError, TypeError, KeyError) as exc:
@@ -487,9 +751,20 @@ def put_proposal(pid: int, body: dict, db: DB, c: C) -> dict:
     r = compute(db, c, p)
     n = len(db.scalars(select(ProposalVersion.id).where(ProposalVersion.prospect_id == p.id)).all()) + 1
     same = r["scenarios"]["same_holdings"]["comparison"]
-    db.add(ProposalVersion(tenant_id=c.tenant, prospect_id=p.id, version=n, config=cfg, user=c.user,
-                           summary={"proposal_known": same["proposal_known"], "annual_saving": same["annual_saving"],
-                                    "bound": same["bound"]}))
+    db.add(
+        ProposalVersion(
+            tenant_id=c.tenant,
+            prospect_id=p.id,
+            version=n,
+            config=cfg,
+            user=c.user,
+            summary={
+                "proposal_known": same["proposal_known"],
+                "annual_saving": same["annual_saving"],
+                "bound": same["bound"],
+            },
+        )
+    )
     audit(db, c, p.id, "proposal.saved", version=n)
     db.commit()
     return {"version": n}
@@ -502,8 +777,11 @@ class RequestPatch(BaseModel):
 @app.patch("/api/prospects/{pid}/requests/{key:path}")
 def patch_request(pid: int, key: str, body: RequestPatch, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
-    row = db.scalar(select(RequestState).where(RequestState.prospect_id == p.id, RequestState.tenant_id == c.tenant,
-                                               RequestState.key == key))
+    row = db.scalar(
+        select(RequestState).where(
+            RequestState.prospect_id == p.id, RequestState.tenant_id == c.tenant, RequestState.key == key
+        )
+    )
     if row:
         row.status = body.status
     else:
@@ -523,8 +801,16 @@ def approve(pid: int, body: ApprovalIn, db: DB, c: C) -> dict:
         raise HTTPException(403, "only a senior reviewer can approve a client report")
     p = get_prospect(db, c, pid)
     r = compute(db, c, p)
-    db.add(Approval(tenant_id=c.tenant, prospect_id=p.id, user=c.user, role=c.role, snapshot_hash=r["snapshot_hash"],
-                    note=body.note))
+    db.add(
+        Approval(
+            tenant_id=c.tenant,
+            prospect_id=p.id,
+            user=c.user,
+            role=c.role,
+            snapshot_hash=r["snapshot_hash"],
+            note=body.note,
+        )
+    )
     audit(db, c, p.id, "report.approved", snapshot=r["snapshot_hash"][:12], note=body.note)
     db.commit()
     return {"ok": True}
@@ -533,8 +819,12 @@ def approve(pid: int, body: ApprovalIn, db: DB, c: C) -> dict:
 @app.get("/api/prospects/{pid}/audit")
 def audit_log(pid: int, db: DB, c: C) -> list[dict]:
     p = get_prospect(db, c, pid)
-    rows = db.scalars(select(AuditEvent).where(AuditEvent.prospect_id == p.id, AuditEvent.tenant_id == c.tenant)
-                      .order_by(AuditEvent.id.desc()).limit(300))
+    rows = db.scalars(
+        select(AuditEvent)
+        .where(AuditEvent.prospect_id == p.id, AuditEvent.tenant_id == c.tenant)
+        .order_by(AuditEvent.id.desc())
+        .limit(300)
+    )
     return [{"at": a.at, "user": a.user, "action": a.action, "detail": a.detail} for a in rows]
 
 
@@ -546,8 +836,17 @@ def report_pdf(pid: int, db: DB, c: C) -> Response:
     r = compute(db, c, p)
     r.pop("internal", None)  # defence in depth: the client report never receives internal economics
     pdf = render_client_report(r)
-    audit(db, c, p.id, "report.downloaded", snapshot=r["snapshot_hash"][:12],
-          approved=bool(r["approval"] and r["approval"]["valid"]))
+    audit(
+        db,
+        c,
+        p.id,
+        "report.downloaded",
+        snapshot=r["snapshot_hash"][:12],
+        approved=bool(r["approval"] and r["approval"]["valid"]),
+    )
     db.commit()
-    return Response(pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="cost-review-{p.code}.pdf"'})
+    return Response(
+        pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="cost-review-{p.code}.pdf"'},
+    )

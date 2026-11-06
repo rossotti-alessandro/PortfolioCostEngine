@@ -8,6 +8,7 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import ClassVar
 
 from sqlalchemy import JSON, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
@@ -18,7 +19,7 @@ def now() -> str:
 
 
 class Base(DeclarativeBase):
-    type_annotation_map = {dict: JSON, list: JSON}
+    type_annotation_map: ClassVar = {dict: JSON, list: JSON}
 
 
 class Prospect(Base):
@@ -73,7 +74,9 @@ class FactRow(Base):
     measurement: Mapped[str | None] = mapped_column(String(20), nullable=True)
     extra: Mapped[dict] = mapped_column(JSON, default=dict)
     evidence: Mapped[dict] = mapped_column(JSON, default=dict)
-    status: Mapped[str] = mapped_column(String(20), default="extracted")  # extracted|accepted|corrected|rejected|manual
+    status: Mapped[str] = mapped_column(
+        String(20), default="extracted"
+    )  # extracted|accepted|corrected|rejected|manual
 
 
 class Review(Base):
@@ -143,7 +146,10 @@ def data_dir() -> Path:
 
 def make_session_factory(url: str | None = None):
     url = url or os.environ.get("PCE_DATABASE_URL") or f"sqlite:///{data_dir() / 'pce.sqlite'}"
-    engine = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {},
-                           json_serializer=lambda o: json.dumps(o, default=str))
+    engine = create_engine(
+        url,
+        connect_args={"check_same_thread": False} if url.startswith("sqlite") else {},
+        json_serializer=lambda o: json.dumps(o, default=str),
+    )
     Base.metadata.create_all(engine)
     return sessionmaker(engine, expire_on_commit=False)

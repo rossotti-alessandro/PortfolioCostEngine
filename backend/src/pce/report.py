@@ -10,17 +10,35 @@ from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
-NAVY = HexColor("#0B2545")
-TEAL = HexColor("#13706B")
-GREY = HexColor("#5B6573")
-LINE = HexColor("#D5D9E0")
-AMBER = HexColor("#9A6400")
+# docs/design/DESIGN_SYSTEM.md tokens: primary, accent, text-muted, border, warning
+NAVY = HexColor("#0F2A4A")
+TEAL = HexColor("#0F766E")
+GREY = HexColor("#5B6676")
+LINE = HexColor("#DEDAD1")
+AMBER = HexColor("#B45309")
+PRODUCT_NAME = "FeeLens"
 W, H = A4
-LAYER_NAMES = {"L1": "Management / advisory", "L2": "Custody & account", "L3": "Trading & FX", "L4": "Funds & ETFs (embedded)",
-               "L5": "Structured products (embedded)", "L9": "Taxes on fees"}
-BOUND_WORDS = {"point": "", "at_least": "at least ", "at_most": "at most ", "indeterminate": "known-cost difference "}
-STATUS = {"observed": "Observed", "contractual": "Contract", "public_tariff": "Public list price", "estimated": "Estimated",
-          "unknown": "Unknown"}
+LAYER_NAMES = {
+    "L1": "Management / advisory",
+    "L2": "Custody & account",
+    "L3": "Trading & FX",
+    "L4": "Funds & ETFs (embedded)",
+    "L5": "Structured products (embedded)",
+    "L9": "Taxes on fees",
+}
+BOUND_WORDS = {
+    "point": "",
+    "at_least": "at least ",
+    "at_most": "at most ",
+    "indeterminate": "known-cost difference ",
+}
+STATUS = {
+    "observed": "Observed",
+    "contractual": "Contract",
+    "public_tariff": "Public list price",
+    "estimated": "Estimated",
+    "unknown": "Unknown",
+}
 
 
 def chf(v, dec: int = 0) -> str:
@@ -34,7 +52,7 @@ def render_client_report(r: dict) -> bytes:
     assert "internal" not in r, "internal economics must never reach the client report"
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4, invariant=1)
-    c.setTitle(f"Portfolio cost review – {r['prospect']['label']}")
+    c.setTitle(f"{PRODUCT_NAME} portfolio cost review – {r['prospect']['label']}")
     synthetic = r.get("synthetic") or r["prospect"].get("synthetic")
     approved = bool(r.get("approval") and r["approval"]["valid"])
     firm = r["proposal_inputs"].get("firm_name", "Proposal")
@@ -63,25 +81,42 @@ def render_client_report(r: dict) -> bytes:
         c.drawString(40, H - 62, title)
         c.setFont("Helvetica", 9)
         c.setFillColor(AMBER if not approved else TEAL)
-        state = (f"APPROVED by {r['approval']['user']} on {r['approval']['at'][:10]}" if approved
-                 else "DRAFT – not approved for client use")
+        state = (
+            f"APPROVED by {r['approval']['user']} on {r['approval']['at'][:10]}"
+            if approved
+            else "DRAFT – not approved for client use"
+        )
         c.drawString(40, H - 78, f"{r['prospect']['label']} · {state}")
         c.setFont("Helvetica", 6.5)
         c.setFillColor(GREY)
-        c.drawString(40, 28, "This review compares costs on the basis of the documents provided. It is not investment, tax or "
-                             "legal advice. Unknown costs are shown as unknown, never as zero.")
-        c.drawString(40, 19, f"Calculation {r['engine_version']} · snapshot {r['snapshot_hash'][:12]}"
-                             + (" · All names and figures are synthetic." if synthetic else ""))
+        c.drawString(
+            40,
+            28,
+            "This review compares costs on the basis of the documents provided. It is not investment, tax or "
+            "legal advice. Unknown costs are shown as unknown, never as zero.",
+        )
+        c.drawString(
+            40,
+            19,
+            f"{PRODUCT_NAME} · calculation {r['engine_version']} · snapshot {r['snapshot_hash'][:12]}"
+            + (" · All names and figures are synthetic." if synthetic else ""),
+        )
 
     page_frame("Portfolio cost review", 1)
     y = H - 115
     kpis = [
         ("Assets reviewed", chf(r["aum"]["total"]), f"{len(r['institutions'])} banks"),
-        ("Current known annual cost", chf(cur["total_known"]),
-         f"{cur['total_bps']} bps" + (" · incomplete" if not cur["is_complete"] else "")),
+        (
+            "Current known annual cost",
+            chf(cur["total_known"]),
+            f"{cur['total_bps']} bps" + (" · incomplete" if not cur["is_complete"] else ""),
+        ),
         (f"With {firm}, same holdings", chf(prop["total_known"]), f"{prop['total_bps']} bps"),
-        ("Annual saving", BOUND_WORDS[same["bound"]] + chf(same["annual_saving"]),
-         f"first year {chf(same['first_year_net'])} after switching costs"),
+        (
+            "Annual saving",
+            BOUND_WORDS[same["bound"]] + chf(same["annual_saving"]),
+            f"first year {chf(same['first_year_net'])} after switching costs",
+        ),
     ]
     bw = (W - 80 - 30) / 4
     for i, (k, v, sub) in enumerate(kpis):
@@ -135,11 +170,15 @@ def render_client_report(r: dict) -> bytes:
     c.setFont("Helvetica", 7)
     c.setFillColor(AMBER)
     if unknown_layers:
-        c.drawString(40, y, "* includes costs that could not be quantified from the documents provided (see below).")
+        c.drawString(
+            40, y, "* includes costs that could not be quantified from the documents provided (see below)."
+        )
         y -= 10
     for ex in r.get("comparison_exclusions", []):
         c.setFillColor(GREY)
-        c.drawString(40, y, f"Excluded from comparison: {ex['label']} {chf(ex['amount'])} – {ex['reason']}"[:150])
+        c.drawString(
+            40, y, f"Excluded from comparison: {ex['label']} {chf(ex['amount'])} – {ex['reason']}"[:150]
+        )
         y -= 10
     y -= 14
 
@@ -182,11 +221,15 @@ def render_client_report(r: dict) -> bytes:
     c.setFillColor(GREY)
     pi = r["proposal_inputs"]
     notes = [
-        f"Fund costs = current position value × ongoing and transaction cost rates from each fund's KID (dated).",
-        f"Trading volume assumed equal for both scenarios: turnover {chf(pi['annual_turnover_chf'])}, FX volume {chf(pi['fx_notional_chf'])}.",
+        "Fund costs = current position value × ongoing and transaction cost rates "
+        "from each fund's KID (dated).",
+        f"Trading volume assumed equal for both scenarios: turnover {chf(pi['annual_turnover_chf'])}, "
+        f"FX volume {chf(pi['fx_notional_chf'])}.",
         f"Switching costs {chf(same['migration_one_off'])} (transfer fees); payback "
         + (f"{same['payback_months']} months." if same.get("payback_months") else "not reached."),
-        f"Client domicile {r['client_domicile']}: Swiss VAT " + ("applied" if r["client_domicile"] == "CH" else "not applied") + " to proposed fees.",
+        f"Client domicile {r['client_domicile']}: Swiss VAT "
+        + ("applied" if r["client_domicile"] == "CH" else "not applied")
+        + " to proposed fees.",
     ] + same["caveats"]
     for n in notes:
         c.drawString(48, y, ("• " + n)[:150])
@@ -219,7 +262,9 @@ def render_client_report(r: dict) -> bytes:
         ev = a.get("evidence_sources") or []
         c.drawString(400, y, (ev[0] if ev else "–")[:30])
         c.setFillColor(NAVY)
-        c.drawRightString(W - 40, y, "unknown" if a["amount"] is None else chf(a["amount"], 2).replace("CHF ", ""))
+        c.drawRightString(
+            W - 40, y, "unknown" if a["amount"] is None else chf(a["amount"], 2).replace("CHF ", "")
+        )
         y -= 11
     _ = src
     c.save()

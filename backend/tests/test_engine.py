@@ -3,10 +3,10 @@ from decimal import Decimal as Dec
 
 import pytest
 
-from pce.engine.isin import find_isins, is_synthetic, is_valid_isin, make_synthetic_isin
-from pce.engine.ledger import FeeAtom, Incidence, Layer, Measurement, aggregate
-from pce.engine.money import D, parse_amount
-from pce.engine.scenarios import (
+from pce.finance.isin import find_isins, is_synthetic, is_valid_isin, make_synthetic_isin
+from pce.finance.ledger import FeeAtom, Incidence, Layer, Measurement, aggregate
+from pce.finance.money import D, parse_amount
+from pce.finance.scenarios import (
     Bound,
     HoldingInput,
     ProductRate,
@@ -14,10 +14,9 @@ from pce.engine.scenarios import (
     internal_economics,
     product_atoms,
 )
-from pce.engine.tariff import (
+from pce.finance.tariff import (
     FeeRule,
     Tariff,
-    TierMethod,
     annualize,
     bps_fee,
     marginal_tier_fee,
@@ -25,14 +24,24 @@ from pce.engine.tariff import (
     whole_base_tier_fee,
 )
 
-O, E, C, U = Measurement.OBSERVED, Measurement.ESTIMATED, Measurement.CONTRACTUAL, Measurement.UNKNOWN
+OBS, E, C, U = Measurement.OBSERVED, Measurement.ESTIMATED, Measurement.CONTRACTUAL, Measurement.UNKNOWN
 B, EM = Incidence.BILLED, Incidence.EMBEDDED
 
 
-def atom(aid, amount, meas=O, inc=B, layer=Layer.CUSTODY, **kw):
-    ev = kw.pop("evidence_ids", ("ev1",) if meas == O else ())
-    return FeeAtom(aid, kw.pop("code", aid), layer, kw.pop("label", aid), kw.pop("inst", "Bank A"),
-                   None if amount is None else D(amount), meas, inc, evidence_ids=ev, **kw)
+def atom(aid, amount, meas=OBS, inc=B, layer=Layer.CUSTODY, **kw):
+    ev = kw.pop("evidence_ids", ("ev1",) if meas == OBS else ())
+    return FeeAtom(
+        aid,
+        kw.pop("code", aid),
+        layer,
+        kw.pop("label", aid),
+        kw.pop("inst", "Bank A"),
+        None if amount is None else D(amount),
+        meas,
+        inc,
+        evidence_ids=ev,
+        **kw,
+    )
 
 
 # ---------- money / parsing ----------
@@ -41,11 +50,20 @@ def test_floats_rejected():
         D(0.1)
 
 
-@pytest.mark.parametrize("raw,expected", [
-    ("1'234'567.89", "1234567.89"), ("1’234.50", "1234.50"), ("1.234.567,89", "1234567.89"),
-    ("1,234,567.89", "1234567.89"), ("-1 234,50", "-1234.50"), ("1'200.00-", "-1200.00"),
-    ("(350.00)", "-350.00"), ("CHF 18'000.00", "18000.00"), ("0.125", "0.125"),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("1'234'567.89", "1234567.89"),
+        ("1’234.50", "1234.50"),
+        ("1.234.567,89", "1234567.89"),
+        ("1,234,567.89", "1234567.89"),
+        ("-1 234,50", "-1234.50"),
+        ("1'200.00-", "-1200.00"),
+        ("(350.00)", "-350.00"),
+        ("CHF 18'000.00", "18000.00"),
+        ("0.125", "0.125"),
+    ],
+)
 def test_parse_amount_locales(raw, expected):
     assert parse_amount(raw) == Dec(expected)
 
@@ -118,8 +136,10 @@ def test_stale_tariff_rejected():
 def test_amf_inside_ocf_counts_ocf_only():
     # Kit acceptance: OCF 1.08% with AMF 0.75% included -> 1.08%, never 1.83%
     h = HoldingInput("LU0329592298", "Fund", "FUND", Dec("1000000"), "Bank A", "A1")
-    rates = [ProductRate("LU0329592298", "FUND_ONGOING", Dec("1.08")),
-             ProductRate("LU0329592298", "FUND_MGMT_FEE", Dec("0.75"), included_in_code="FUND_ONGOING")]
+    rates = [
+        ProductRate("LU0329592298", "FUND_ONGOING", Dec("1.08")),
+        ProductRate("LU0329592298", "FUND_MGMT_FEE", Dec("0.75"), included_in_code="FUND_ONGOING"),
+    ]
     s = aggregate(product_atoms([h], rates, "cur"), scope_aum=Dec("1000000"))
     assert s.total_known == Dec("10800")
     assert s.total_bps == Dec("108.0")
@@ -133,7 +153,9 @@ def test_all_in_fee_custody_not_added():
 
 
 def test_custody_exclusive_is_added():
-    assert aggregate([atom("MGMT", "20000", layer=Layer.SERVICE), atom("CUST", "5000")]).total_known == Dec("25000")
+    assert aggregate([atom("MGMT", "20000", layer=Layer.SERVICE), atom("CUST", "5000")]).total_known == Dec(
+        "25000"
+    )
 
 
 def test_fee_report_and_cash_debit_counted_once_and_mismatch_flagged():
@@ -160,23 +182,27 @@ def test_unknown_with_amount_is_rejected():
 
 def test_observed_requires_evidence():
     with pytest.raises(ValueError):
-        atom("X", "10", meas=O, evidence_ids=())
+        atom("X", "10", meas=OBS, evidence_ids=())
 
 
 def test_kid_illustrative_and_maximum_never_counted():
-    s = aggregate([
-        atom("OCF", "5400", meas=E, inc=EM, layer=Layer.PRODUCT),
-        atom("KID_EXAMPLE", "300", meas=Measurement.ILLUSTRATIVE, inc=EM, layer=Layer.PRODUCT),
-        atom("ENTRY_MAX", "3000", meas=Measurement.MAXIMUM, inc=B, layer=Layer.PRODUCT, recurring=False),
-    ])
+    s = aggregate(
+        [
+            atom("OCF", "5400", meas=E, inc=EM, layer=Layer.PRODUCT),
+            atom("KID_EXAMPLE", "300", meas=Measurement.ILLUSTRATIVE, inc=EM, layer=Layer.PRODUCT),
+            atom("ENTRY_MAX", "3000", meas=Measurement.MAXIMUM, inc=B, layer=Layer.PRODUCT, recurring=False),
+        ]
+    )
     assert s.total_known == Dec("5400") and s.one_off_known == 0
 
 
 def test_insurance_wrapper_layering_is_additive():
-    s = aggregate([
-        atom("WRAP", "4000", meas=E, inc=EM, layer=Layer.PRODUCT),
-        atom("UNDERLYING_OCF", "6000", meas=E, inc=EM, layer=Layer.PRODUCT),
-    ])
+    s = aggregate(
+        [
+            atom("WRAP", "4000", meas=E, inc=EM, layer=Layer.PRODUCT),
+            atom("UNDERLYING_OCF", "6000", meas=E, inc=EM, layer=Layer.PRODUCT),
+        ]
+    )
     assert s.total_known == Dec("10000")
 
 
@@ -243,5 +269,7 @@ def test_internal_economics_blocks_on_missing_evidence():
     ie = internal_economics(rev, 9000, 6000, cmp_, evidence_complete=False)
     assert ie.verdict == "insufficient_evidence"
     assert ie.annual_contribution == Dec("15000") and ie.first_year_contribution == Dec("9000")
-    ie2 = internal_economics(rev, 9000, 6000, compare(_summary("38000"), _summary("30000")), evidence_complete=True)
+    ie2 = internal_economics(
+        rev, 9000, 6000, compare(_summary("38000"), _summary("30000")), evidence_complete=True
+    )
     assert ie2.verdict == "proceed_to_senior_review"

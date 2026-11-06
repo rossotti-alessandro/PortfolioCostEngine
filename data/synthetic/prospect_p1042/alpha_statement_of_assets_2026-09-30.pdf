@@ -1,5 +1,5 @@
 %PDF-1.4
-%“Œ‹ž ReportLab Generated PDF document (opensource)
+%“Œ‹ž ReportLab Generated PDF document http://www.reportlab.com
 1 0 obj
 <<
 /F1 2 0 R /F2 3 0 R
@@ -50,7 +50,7 @@ endobj
 endobj
 7 0 obj
 <<
-/Author (PortfolioCostEngine synthetic generator) /CreationDate (D:20000101000000+00'00') /Creator (anonymous) /Keywords () /ModDate (D:20000101000000+00'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+/Author (PortfolioCostEngine synthetic generator) /CreationDate (D:20000101000000+00'00') /Creator (ReportLab PDF Library - www.reportlab.com) /Keywords () /ModDate (D:20000101000000+00'00') /Producer (ReportLab PDF Library - www.reportlab.com) 
   /Subject (SYNTHETIC DEMO DOCUMENT - not a real bank document) /Title (Statement of assets) /Trapped /False
 >>
 endobj
@@ -76,26 +76,26 @@ endobj
 xref
 0 11
 0000000000 65535 f 
-0000000061 00000 n 
-0000000102 00000 n 
-0000000209 00000 n 
-0000000321 00000 n 
-0000000562 00000 n 
-0000000804 00000 n 
-0000000872 00000 n 
-0000001213 00000 n 
-0000001278 00000 n 
-0000002429 00000 n 
+0000000073 00000 n 
+0000000114 00000 n 
+0000000221 00000 n 
+0000000333 00000 n 
+0000000574 00000 n 
+0000000816 00000 n 
+0000000884 00000 n 
+0000001260 00000 n 
+0000001325 00000 n 
+0000002476 00000 n 
 trailer
 <<
 /ID 
 [<be0ca134cf6bec3080c2d3d05dd2e5d1><be0ca134cf6bec3080c2d3d05dd2e5d1>]
-% ReportLab generated PDF document -- digest (opensource)
+% ReportLab generated PDF document -- digest (http://www.reportlab.com)
 
 /Info 7 0 R
 /Root 6 0 R
 /Size 11
 >>
 startxref
-3776
+3823
 %%EOF

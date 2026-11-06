@@ -16,8 +16,14 @@ def load_folder(folder: Path) -> tuple[list[dict], list[dict]]:
     fid = 1
     for i, f in enumerate(sorted(p for p in folder.iterdir() if p.is_file()), start=1):
         res, _pages = extract(f.name, f.read_bytes())
-        documents.append({"id": i, "filename": f.name, "doc_type": res.profile.doc_type.value,
-                          "profile": res.profile.model_dump()})
+        documents.append(
+            {
+                "id": i,
+                "filename": f.name,
+                "doc_type": res.profile.doc_type.value,
+                "profile": res.profile.model_dump(),
+            }
+        )
         for fact in res.facts:
             d = fact.model_dump()
             d.update(id=fid, document_id=i, status="extracted")

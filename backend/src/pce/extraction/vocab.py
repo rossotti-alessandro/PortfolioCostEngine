@@ -9,49 +9,98 @@ from __future__ import annotations
 import re
 
 DOC_TYPE_KEYWORDS: dict[str, list[str]] = {
-    "kid": ["key information document", "basisinformationsblatt", "documento contenente le informazioni chiave",
-            "document d'informations clés", "composition of costs"],
-    "termsheet": ["termsheet", "term sheet", "final terms", "endgültige bedingungen", "condizioni definitive"],
-    "cost_report": ["costs and charges", "kosten und gebühren", "costi e oneri", "coûts et frais", "ex-post",
-                    "ausweis über kosten", "report on costs"],
-    "tariff": ["price schedule", "schedule of prices", "tariff", "preisliste", "tariffario", "conditions tarifaires",
-               "fee agreement", "valid from"],
-    "cash_statement": ["estratto conto", "account statement", "kontoauszug", "relevé de compte", "movimenti",
-                       "transactions"],
-    "portfolio_statement": ["statement of assets", "vermögensausweis", "relevé de fortune", "estratto patrimoniale",
-                            "holdings report", "positions", "market value"],
+    "kid": [
+        "key information document",
+        "basisinformationsblatt",
+        "documento contenente le informazioni chiave",
+        "document d'informations clés",
+        "composition of costs",
+    ],
+    "termsheet": [
+        "termsheet",
+        "term sheet",
+        "final terms",
+        "endgültige bedingungen",
+        "condizioni definitive",
+    ],
+    "cost_report": [
+        "costs and charges",
+        "kosten und gebühren",
+        "costi e oneri",
+        "coûts et frais",
+        "ex-post",
+        "ausweis über kosten",
+        "report on costs",
+    ],
+    "tariff": [
+        "price schedule",
+        "schedule of prices",
+        "tariff",
+        "preisliste",
+        "tariffario",
+        "conditions tarifaires",
+        "fee agreement",
+        "valid from",
+    ],
+    "cash_statement": [
+        "estratto conto",
+        "account statement",
+        "kontoauszug",
+        "relevé de compte",
+        "movimenti",
+        "transactions",
+    ],
+    "portfolio_statement": [
+        "statement of assets",
+        "vermögensausweis",
+        "relevé de fortune",
+        "estratto patrimoniale",
+        "holdings report",
+        "positions",
+        "market value",
+    ],
 }
 
 FEE_LABELS: list[tuple[str, re.Pattern[str]]] = [
     ("VAT_ON_FEES", re.compile(r"\b(vat|mwst|iva|tva)\b", re.I)),
-    ("STAMP_DUTY_CH", re.compile(r"stamp duty|umsatzabgabe|tassa di bollo|droit de timbre|eidg\. abgabe", re.I)),
+    (
+        "STAMP_DUTY_CH",
+        re.compile(r"stamp duty|umsatzabgabe|tassa di bollo|droit de timbre|eidg\. abgabe", re.I),
+    ),
     ("FX_COMMISSION", re.compile(r"foreign exchange|\bfx\b|devisen|cambi|opérations de change", re.I)),
     ("BROKERAGE", re.compile(r"brokerage|courtage|intermediazione|transaction fee|transaktionsgebühr", re.I)),
-    ("CUSTODY_FEE", re.compile(r"custody|safekeeping|depotgebühr|custodia|droits? de garde|frais de garde", re.I)),
+    (
+        "CUSTODY_FEE",
+        re.compile(r"custody|safekeeping|depotgebühr|custodia|droits? de garde|frais de garde", re.I),
+    ),
     ("ALL_IN_FEE", re.compile(r"all[- ]in|forfettari|pauschal|forfait", re.I)),
     ("ADVISORY_FEE", re.compile(r"advisory|consulenza|beratung|frais de conseil", re.I)),
-    ("MGMT_DISCRETIONARY", re.compile(
-        r"management fee|mandate fee|gestione patrimoniale|commissione di gestione|verwaltungs|mandatsgebühr|"
-        r"frais de gestion|commission de gestion", re.I)),
+    (
+        "MGMT_DISCRETIONARY",
+        re.compile(
+            r"management fee|mandate fee|gestione patrimoniale|commissione di gestione|"
+            r"verwaltungs|mandatsgebühr|"
+            r"frais de gestion|commission de gestion",
+            re.I,
+        ),
+    ),
 ]
 
 
-def _load_fee_names() -> dict[str, str]:
+def load_taxonomy(name: str, folder: str = "taxonomy") -> list[dict[str, str]]:
+    """Rows of data/<folder>/<name>.csv (taxonomy: the research source of truth), or [] if absent."""
     import csv
     from pathlib import Path
 
-    names: dict[str, str] = {}
     for parent in Path(__file__).resolve().parents:
-        f = parent / "data" / "taxonomy" / "fee_taxonomy.csv"
+        f = parent / "data" / folder / f"{name}.csv"
         if f.exists():
             with f.open(encoding="utf-8-sig") as fh:
-                for row in csv.DictReader(fh):
-                    names[row["fee_code"]] = row["label_en"]
-            break
-    return names
+                return list(csv.DictReader(fh))
+    return []
 
 
-FEE_LABEL_NAMES = _load_fee_names()
+FEE_LABEL_NAMES = {r["fee_code"]: r["label_en"] for r in load_taxonomy("fee_taxonomy")}
 
 QUARTER_WORDS = re.compile(r"trimestre|quarter|quartal|vierteljahr", re.I)
 JURISDICTION_HINTS: list[tuple[str, re.Pattern[str]]] = [

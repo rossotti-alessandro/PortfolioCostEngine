@@ -13,8 +13,8 @@ from decimal import Decimal
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
-from ..engine.isin import ISIN_RE, is_valid_isin
-from ..engine.money import parse_amount, parse_percent
+from ..finance.isin import ISIN_RE, is_valid_isin
+from ..finance.money import parse_amount, parse_percent
 from .layout import Line, PageInfo, read_pdf
 from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact
 from .vocab import (
@@ -34,8 +34,15 @@ CURRENCIES = ("CHF", "EUR", "USD", "GBP")
 
 def _ev(line: Line, page: PageInfo, cells=None) -> Evidence:
     bbox = line.bbox_of(cells) if cells else line.bbox
-    return Evidence(page=line.page, bbox=[round(v, 2) for v in bbox], page_width=page.width, page_height=page.height,
-                    snippet=line.text[:300], engine=line.engine, confidence=line.confidence)
+    return Evidence(
+        page=line.page,
+        bbox=[round(v, 2) for v in bbox],
+        page_width=page.width,
+        page_height=page.height,
+        snippet=line.text[:300],
+        engine=line.engine,
+        confidence=line.confidence,
+    )
 
 
 def _amount_cells(line: Line) -> list[tuple[int, Decimal]]:
@@ -91,16 +98,31 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
             continue
         if re.search(r"period|periodo|zeitraum|période", t, re.I) and len(ds) >= 2 and not period_start:
             period_start, period_end = ds[0], ds[1]
-        elif re.search(r"valuation|valuta|bewertung|évaluation|as of|stichtag|valid from|production", t, re.I) and not as_of:
+        elif (
+            re.search(r"valuation|valuta|bewertung|évaluation|as of|stichtag|valid from|production", t, re.I)
+            and not as_of
+        ):
             as_of = ds[0]
     currency = None
-    m = re.search(r"(?:reference currency|currency|values in|valori in|währung)\s*:?\s*(CHF|EUR|USD|GBP)", alltext, re.I)
+    m = re.search(
+        r"(?:reference currency|currency|values in|valori in|währung)\s*:?\s*(CHF|EUR|USD|GBP)", alltext, re.I
+    )
     if m:
         currency = m.group(1).upper()
-    return DocumentProfile(doc_type=doc_type, type_score=score, institution=institution, jurisdiction=jurisdiction,
-                           language=lang, as_of=as_of or period_end, period_start=period_start, period_end=period_end,
-                           currency=currency, page_count=len(pages),
-                           engines=sorted({p.engine for p in pages}), warnings=warnings)
+    return DocumentProfile(
+        doc_type=doc_type,
+        type_score=score,
+        institution=institution,
+        jurisdiction=jurisdiction,
+        language=lang,
+        as_of=as_of or period_end,
+        period_start=period_start,
+        period_end=period_end,
+        currency=currency,
+        page_count=len(pages),
+        engines=sorted({p.engine for p in pages}),
+        warnings=warnings,
+    )
 
 
 # ---------------------------------------------------------------- PDF parsers
@@ -125,23 +147,52 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                 nums = [a for a in amounts if a[0] > isin_idx]
                 qty = nums[0][1] if len(nums) >= 3 else None
                 price = nums[1][1] if len(nums) >= 3 else None
-                mv_idx, mv = nums[-1] if nums else amounts[-1]
-                facts.append(Fact(key=f"position:{isin}", kind="position", field="market_value", label=name, value=str(mv),
-                                  currency=ccy, isin=isin,
-                                  extra={"quantity": str(qty) if qty is not None else None,
-                                         "price": str(price) if price is not None else None},
-                                  evidence=_ev(ln, page)))
+                _mv_idx, mv = nums[-1] if nums else amounts[-1]
+                facts.append(
+                    Fact(
+                        key=f"position:{isin}",
+                        kind="position",
+                        field="market_value",
+                        label=name,
+                        value=str(mv),
+                        currency=ccy,
+                        isin=isin,
+                        extra={
+                            "quantity": str(qty) if qty is not None else None,
+                            "price": str(price) if price is not None else None,
+                        },
+                        evidence=_ev(ln, page),
+                    )
+                )
                 continue
             if in_table and amounts and len(ln.cells) <= 3:
                 label = ln.cells[0].text
                 if re.search(r"^total", label, re.I):
-                    facts.append(Fact(key="total:assets", kind="doc_total", field="total_assets", label=label,
-                                      value=str(amounts[-1][1]), currency=ccy, evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key="total:assets",
+                            kind="doc_total",
+                            field="total_assets",
+                            label=label,
+                            value=str(amounts[-1][1]),
+                            currency=ccy,
+                            evidence=_ev(ln, page),
+                        )
+                    )
                     in_table = False
                 elif re.search(r"account|cash|liquid|conto|konto|compte", label, re.I):
-                    facts.append(Fact(key=f"position:cash:{label}", kind="position", field="market_value", label=label,
-                                      value=str(amounts[-1][1]), currency=ccy, extra={"asset_class": "CASH"},
-                                      evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key=f"position:cash:{label}",
+                            kind="position",
+                            field="market_value",
+                            label=label,
+                            value=str(amounts[-1][1]),
+                            currency=ccy,
+                            extra={"asset_class": "CASH"},
+                            evidence=_ev(ln, page),
+                        )
+                    )
     return facts
 
 
@@ -151,9 +202,14 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
     for page in pages:
         for ln in page.lines:
             low = ln.text.lower()
-            if "third-party" in low or "product cost" in low or "costi di prodotto" in low or "produktkosten" in low:
+            if (
+                "third-party" in low
+                or "product cost" in low
+                or "costi di prodotto" in low
+                or "produktkosten" in low
+            ):
                 section = "product"
-            elif "inducement" in low or "retrocession" in low and len(ln.cells) == 1:
+            elif "inducement" in low or ("retrocession" in low and len(ln.cells) == 1):
                 section = "inducements"
             amounts = _amount_cells(ln)
             if not amounts or len(ln.cells) < 2:
@@ -164,30 +220,76 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
             label = ln.cells[0].text
             value = amounts[-1][1]
             if re.search(r"average assets|patrimonio medio|durchschnittliches vermögen", label, re.I):
-                facts.append(Fact(key="meta:average_assets", kind="meta", field="average_assets", label=label,
-                                  value=str(value), currency=prof.currency or "CHF", evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key="meta:average_assets",
+                        kind="meta",
+                        field="average_assets",
+                        label=label,
+                        value=str(value),
+                        currency=prof.currency or "CHF",
+                        evidence=_ev(ln, page),
+                    )
+                )
                 continue
             if re.search(r"^total", label, re.I):
-                facts.append(Fact(key=f"total:{section}", kind="doc_total", field=f"total_{section}", label=label,
-                                  value=str(value), currency=prof.currency or "CHF", evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key=f"total:{section}",
+                        kind="doc_total",
+                        field=f"total_{section}",
+                        label=label,
+                        value=str(value),
+                        currency=prof.currency or "CHF",
+                        evidence=_ev(ln, page),
+                    )
+                )
                 continue
             if section == "product":
-                facts.append(Fact(key="reported:product_costs", kind="reported", field="reported_product_costs",
-                                  label=label, value=str(value), currency=prof.currency or "CHF",
-                                  measurement="estimated", evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key="reported:product_costs",
+                        kind="reported",
+                        field="reported_product_costs",
+                        label=label,
+                        value=str(value),
+                        currency=prof.currency or "CHF",
+                        measurement="estimated",
+                        evidence=_ev(ln, page),
+                    )
+                )
                 continue
             if re.search(r"retrocession|retrozession|rétrocession|retrocessioni|inducement", label, re.I):
-                facts.append(Fact(key="reported:retrocessions", kind="reported", field="retrocessions_received",
-                                  label=label, value=str(value), currency=prof.currency or "CHF",
-                                  fee_code="RETRO_RECEIVED", measurement="observed", evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key="reported:retrocessions",
+                        kind="reported",
+                        field="retrocessions_received",
+                        label=label,
+                        value=str(value),
+                        currency=prof.currency or "CHF",
+                        fee_code="RETRO_RECEIVED",
+                        measurement="observed",
+                        evidence=_ev(ln, page),
+                    )
+                )
                 continue
             code = map_fee_label(label)
             if code:
-                facts.append(Fact(key=f"fee:{code}", kind="fee_observed", field="annual_amount", label=label,
-                                  value=str(value), currency=prof.currency or "CHF", fee_code=code,
-                                  measurement="observed",
-                                  extra={"period_start": prof.period_start, "period_end": prof.period_end},
-                                  evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key=f"fee:{code}",
+                        kind="fee_observed",
+                        field="annual_amount",
+                        label=label,
+                        value=str(value),
+                        currency=prof.currency or "CHF",
+                        fee_code=code,
+                        measurement="observed",
+                        extra={"period_start": prof.period_start, "period_end": prof.period_end},
+                        evidence=_ev(ln, page),
+                    )
+                )
     return facts
 
 
@@ -204,15 +306,25 @@ def parse_cash_statement(pages: list[PageInfo], prof: DocumentProfile) -> list[F
             amounts = _amount_cells(ln)
             if not dates or not amounts or len(ln.cells) < 3:
                 continue
-            desc = " ".join(c.text for c in ln.cells[1:amounts[-1][0]])
+            desc = " ".join(c.text for c in ln.cells[1 : amounts[-1][0]])
             code = map_fee_label(desc)
             if not code:
                 continue
             per_year = 4 if QUARTER_WORDS.search(desc) else None
-            facts.append(Fact(key=f"debit:{dates[0]}:{code}", kind="cash_debit", field="debit_amount", label=desc,
-                              value=str(amounts[-1][1]), currency=ccy or "CHF", fee_code=code, measurement="observed",
-                              extra={"booking_date": dates[0], "periods_per_year": per_year},
-                              evidence=_ev(ln, page)))
+            facts.append(
+                Fact(
+                    key=f"debit:{dates[0]}:{code}",
+                    kind="cash_debit",
+                    field="debit_amount",
+                    label=desc,
+                    value=str(amounts[-1][1]),
+                    currency=ccy or "CHF",
+                    fee_code=code,
+                    measurement="observed",
+                    extra={"booking_date": dates[0], "periods_per_year": per_year},
+                    evidence=_ev(ln, page),
+                )
+            )
     return facts
 
 
@@ -221,7 +333,11 @@ _RULE_PATTERNS = [
     (re.compile(r"management fee|mandate fee|gestione", re.I), "MGMT_DISCRETIONARY", "aum"),
     (re.compile(r"custody|custodia|depot|garde", re.I), "CUSTODY_FEE", "custody_eligible"),
     (re.compile(r"brokerage|courtage|intermediazione", re.I), "BROKERAGE", "trade_notional"),
-    (re.compile(r"transfer of securities|trasferimento|übertrag|transfert", re.I), "TRANSFER_OUT", "per_position"),
+    (
+        re.compile(r"transfer of securities|trasferimento|übertrag|transfert", re.I),
+        "TRANSFER_OUT",
+        "per_position",
+    ),
 ]
 
 
@@ -235,8 +351,17 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             if re.search(r"issuing entity|entità|herausgeber|émetteur", label, re.I) and len(ln.cells) > 1:
                 entity = ln.cells[1].text
                 juris = next((c for c, p in JURISDICTION_HINTS if p.search(entity)), None)
-                facts.append(Fact(key="meta:issuing_entity", kind="meta", field="issuing_entity", label=label,
-                                  value=None, extra={"entity": entity, "jurisdiction": juris}, evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key="meta:issuing_entity",
+                        kind="meta",
+                        field="issuing_entity",
+                        label=label,
+                        value=None,
+                        extra={"entity": entity, "jurisdiction": juris},
+                        evidence=_ev(ln, page),
+                    )
+                )
                 continue
             pm = PERCENT.search(ln.text)
             is_min = re.search(r"minimum|minimo|mindest", label, re.I)
@@ -248,28 +373,70 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             if is_min and last_code and len(ln.cells) > 1:
                 amt = _amount_cells(ln)
                 if amt:
-                    per = ("quarter" if re.search(r"quarter|trimestr|quartal", label, re.I)
-                           else "trade" if re.search(r"per trade|per ordine|pro auftrag|par ordre", label, re.I) else "year")
+                    per = (
+                        "quarter"
+                        if re.search(r"quarter|trimestr|quartal", label, re.I)
+                        else "trade"
+                        if re.search(r"per trade|per ordine|pro auftrag|par ordre", label, re.I)
+                        else "year"
+                    )
                     ccy = next((c for c in CURRENCIES if c in ln.text), prof.currency)
-                    facts.append(Fact(key=f"rule:{last_code}:minimum", kind="fee_rule", field="minimum", label=label,
-                                      value=str(amt[-1][1]), currency=ccy, fee_code=last_code,
-                                      measurement="contractual", extra={"per": per}, evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key=f"rule:{last_code}:minimum",
+                            kind="fee_rule",
+                            field="minimum",
+                            label=label,
+                            value=str(amt[-1][1]),
+                            currency=ccy,
+                            fee_code=last_code,
+                            measurement="contractual",
+                            extra={"per": per},
+                            evidence=_ev(ln, page),
+                        )
+                    )
                 continue
             if code and pm:
-                facts.append(Fact(key=f"rule:{code}:rate", kind="fee_rule", field="rate_pct", label=label,
-                                  value=str(parse_percent(pm.group(0))), fee_code=code, measurement="contractual",
-                                  extra={"base": base, "cash_excluded": bool(re.search(r"cash excluded|esclusa liquidità|ohne liquidität", label, re.I))},
-                                  evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key=f"rule:{code}:rate",
+                        kind="fee_rule",
+                        field="rate_pct",
+                        label=label,
+                        value=str(parse_percent(pm.group(0))),
+                        fee_code=code,
+                        measurement="contractual",
+                        extra={
+                            "base": base,
+                            "cash_excluded": bool(
+                                re.search(r"cash excluded|esclusa liquidità|ohne liquidität", label, re.I)
+                            ),
+                        },
+                        evidence=_ev(ln, page),
+                    )
+                )
                 last_code = code
             elif code == "TRANSFER_OUT":
                 amt = _amount_cells(ln)
                 if amt:
                     ccy = next((c for c in CURRENCIES if c in ln.text), prof.currency)
-                    facts.append(Fact(key="rule:TRANSFER_OUT:per_position", kind="fee_rule", field="per_position",
-                                      label=label, value=str(amt[-1][1]), currency=ccy, fee_code="TRANSFER_OUT",
-                                      measurement="contractual", evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key="rule:TRANSFER_OUT:per_position",
+                            kind="fee_rule",
+                            field="per_position",
+                            label=label,
+                            value=str(amt[-1][1]),
+                            currency=ccy,
+                            fee_code="TRANSFER_OUT",
+                            measurement="contractual",
+                            evidence=_ev(ln, page),
+                        )
+                    )
     if entity is None:
-        prof.warnings.append("Issuing legal entity not found: the tariff's jurisdiction must be confirmed manually.")
+        prof.warnings.append(
+            "Issuing legal entity not found: the tariff's jurisdiction must be confirmed manually."
+        )
     return facts
 
 
@@ -285,10 +452,29 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
         prof.warnings.append("No valid ISIN found in the KID: product costs cannot be linked to a holding.")
         return facts
     mapping = [
-        (re.compile(r"of which.*management fee|davon verwaltungs|di cui.*gestione", re.I), "FUND_MGMT_FEE", "estimated"),
-        (re.compile(r"management fees and other administrative|ongoing charges|spese correnti|laufende kosten", re.I), "FUND_ONGOING", "estimated"),
-        (re.compile(r"^transaction costs|costi di transazione|transaktionskosten", re.I), "FUND_TRANSACTION", "estimated"),
-        (re.compile(r"performance fee|commissioni di performance|erfolgsgebühr", re.I), "FUND_PERFORMANCE", "estimated"),
+        (
+            re.compile(r"of which.*management fee|davon verwaltungs|di cui.*gestione", re.I),
+            "FUND_MGMT_FEE",
+            "estimated",
+        ),
+        (
+            re.compile(
+                r"management fees and other administrative|ongoing charges|spese correnti|laufende kosten",
+                re.I,
+            ),
+            "FUND_ONGOING",
+            "estimated",
+        ),
+        (
+            re.compile(r"^transaction costs|costi di transazione|transaktionskosten", re.I),
+            "FUND_TRANSACTION",
+            "estimated",
+        ),
+        (
+            re.compile(r"performance fee|commissioni di performance|erfolgsgebühr", re.I),
+            "FUND_PERFORMANCE",
+            "estimated",
+        ),
         (re.compile(r"entry costs|costi di ingresso|einstiegskosten", re.I), "FUND_ENTRY_CHARGE", "maximum"),
         (re.compile(r"exit costs|costi di uscita|ausstiegskosten", re.I), "FUND_EXIT_CHARGE", "maximum"),
     ]
@@ -298,22 +484,43 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             if re.search(r"total costs if you exit after 1 year", label, re.I):
                 amt = _amount_cells(ln)
                 if amt:
-                    facts.append(Fact(key="kid:illustration_1y", kind="product_cost", field="illustration_amount",
-                                      label=label, value=str(amt[-1][1]), isin=isin, fee_code="KID_ILLUSTRATION",
-                                      measurement="illustrative", extra={"example_investment": "10000"},
-                                      evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key="kid:illustration_1y",
+                            kind="product_cost",
+                            field="illustration_amount",
+                            label=label,
+                            value=str(amt[-1][1]),
+                            isin=isin,
+                            fee_code="KID_ILLUSTRATION",
+                            measurement="illustrative",
+                            extra={"example_investment": "10000"},
+                            evidence=_ev(ln, page),
+                        )
+                    )
                 continue
             pm = PERCENT.search(" ".join(c.text for c in ln.cells[1:])) if len(ln.cells) > 1 else None
             if not pm:
                 continue
             for pat, code, meas in mapping:
                 if pat.search(label):
-                    facts.append(Fact(key=f"kid:{code}", kind="product_cost", field="rate_pct", label=label,
-                                      value=str(parse_percent(pm.group(0))), isin=isin, fee_code=code,
-                                      measurement=meas,
-                                      extra={"included_in": "FUND_ONGOING" if code == "FUND_MGMT_FEE" else None,
-                                             "document_date": prof.as_of},
-                                      evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key=f"kid:{code}",
+                            kind="product_cost",
+                            field="rate_pct",
+                            label=label,
+                            value=str(parse_percent(pm.group(0))),
+                            isin=isin,
+                            fee_code=code,
+                            measurement=meas,
+                            extra={
+                                "included_in": "FUND_ONGOING" if code == "FUND_MGMT_FEE" else None,
+                                "document_date": prof.as_of,
+                            },
+                            evidence=_ev(ln, page),
+                        )
+                    )
                     break
     return facts
 
@@ -333,19 +540,38 @@ def parse_termsheet(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             if re.search(r"distribution fee|commissione di distribuzione|vertriebs", label, re.I):
                 pm = PERCENT.search(rest)
                 if pm:
-                    facts.append(Fact(key="sp:distribution", kind="product_cost", field="rate_pct", label=label,
-                                      value=str(parse_percent(pm.group(0))), isin=isin, fee_code="SP_ONGOING",
-                                      measurement="maximum" if re.search(r"up to|fino a|bis zu", rest, re.I) else "estimated",
-                                      extra={"note": "distribution fee embedded in product price"},
-                                      evidence=_ev(ln, page)))
+                    facts.append(
+                        Fact(
+                            key="sp:distribution",
+                            kind="product_cost",
+                            field="rate_pct",
+                            label=label,
+                            value=str(parse_percent(pm.group(0))),
+                            isin=isin,
+                            fee_code="SP_ONGOING",
+                            measurement="maximum"
+                            if re.search(r"up to|fino a|bis zu", rest, re.I)
+                            else "estimated",
+                            extra={"note": "distribution fee embedded in product price"},
+                            evidence=_ev(ln, page),
+                        )
+                    )
             if re.search(r"margin|estimated value|fair value", label, re.I) and len(ln.cells) > 1:
                 undisclosed = re.search(r"not disclosed|non comunicat|nicht ausgewiesen", rest, re.I)
                 pm = PERCENT.search(rest)
-                facts.append(Fact(key="sp:entry_cost", kind="product_cost", field="rate_pct", label=label,
-                                  value=None if undisclosed or not pm else str(parse_percent(pm.group(0))),
-                                  isin=isin, fee_code="SP_ENTRY_COST",
-                                  measurement="unknown" if undisclosed or not pm else "estimated",
-                                  evidence=_ev(ln, page)))
+                facts.append(
+                    Fact(
+                        key="sp:entry_cost",
+                        kind="product_cost",
+                        field="rate_pct",
+                        label=label,
+                        value=None if undisclosed or not pm else str(parse_percent(pm.group(0))),
+                        isin=isin,
+                        fee_code="SP_ENTRY_COST",
+                        measurement="unknown" if undisclosed or not pm else "estimated",
+                        evidence=_ev(ln, page),
+                    )
+                )
     return facts
 
 
@@ -355,8 +581,12 @@ def parse_positions_xlsx(data: bytes) -> ExtractionResult:
 
     wb = load_workbook(io.BytesIO(data), data_only=True, read_only=False)
     facts: list[Fact] = []
-    prof = DocumentProfile(doc_type=DocType.PORTFOLIO_STATEMENT, type_score=0.0, page_count=len(wb.worksheets),
-                           engines=["openpyxl"])
+    prof = DocumentProfile(
+        doc_type=DocType.PORTFOLIO_STATEMENT,
+        type_score=0.0,
+        page_count=len(wb.worksheets),
+        engines=["openpyxl"],
+    )
     for ws in wb.worksheets:
         header_row, cols = None, {}
         for r in ws.iter_rows(min_row=1, max_row=min(ws.max_row, 40)):
@@ -378,15 +608,33 @@ def parse_positions_xlsx(data: bytes) -> ExtractionResult:
             if vals and vals[0].startswith("reference currency") and len(vals) > 1:
                 prof.currency = str(r[1].value).upper()
             if vals and vals[0].startswith("fx rate") and len(vals) > 1:
-                facts.append(Fact(key=f"fx:{vals[0]}", kind="meta", field="fx_rate", label=str(r[0].value),
-                                  value=_cell_decimal(r[1].value),
-                                  evidence=Evidence(sheet=ws.title, cell=r[1].coordinate, snippet=f"{r[0].value} {r[1].value}",
-                                                    engine="openpyxl")))
+                facts.append(
+                    Fact(
+                        key=f"fx:{vals[0]}",
+                        kind="meta",
+                        field="fx_rate",
+                        label=str(r[0].value),
+                        value=_cell_decimal(r[1].value),
+                        evidence=Evidence(
+                            sheet=ws.title,
+                            cell=r[1].coordinate,
+                            snippet=f"{r[0].value} {r[1].value}",
+                            engine="openpyxl",
+                        ),
+                    )
+                )
         if not header_row:
             continue
         prof.doc_type = DocType.PORTFOLIO_STATEMENT
         prof.type_score = 3.0
-        mv_col = next((c for k, c in cols.items() if "market value" in k and ("chf" in k or (prof.currency or "").lower() in k)), None)
+        mv_col = next(
+            (
+                c
+                for k, c in cols.items()
+                if "market value" in k and ("chf" in k or (prof.currency or "").lower() in k)
+            ),
+            None,
+        )
         name_col = next((c for k, c in cols.items() if k in ("description", "name", "security", "titolo")), 1)
         isin_col = cols["isin"]
         cls_col = next((c for k, c in cols.items() if "asset class" in k), None)
@@ -398,21 +646,45 @@ def parse_positions_xlsx(data: bytes) -> ExtractionResult:
             if mv_cell is None or mv_cell.value is None:
                 continue
             isin = (r[isin_col - 1].value or "").strip()
-            ev = Evidence(sheet=ws.title, cell=mv_cell.coordinate,
-                          snippet=f"{name} | {isin} | {mv_cell.value}", engine="openpyxl",
-                          bbox=None, page=None)
+            ev = Evidence(
+                sheet=ws.title,
+                cell=mv_cell.coordinate,
+                snippet=f"{name} | {isin} | {mv_cell.value}",
+                engine="openpyxl",
+                bbox=None,
+                page=None,
+            )
             ev_row = f"A{mv_cell.row}:{get_column_letter(ws.max_column)}{mv_cell.row}"
             if str(name).strip().lower().startswith("total"):
-                facts.append(Fact(key="total:assets", kind="doc_total", field="total_assets", label=str(name),
-                                  value=_cell_decimal(mv_cell.value), currency=prof.currency or "CHF",
-                                  extra={"row_range": ev_row}, evidence=ev))
+                facts.append(
+                    Fact(
+                        key="total:assets",
+                        kind="doc_total",
+                        field="total_assets",
+                        label=str(name),
+                        value=_cell_decimal(mv_cell.value),
+                        currency=prof.currency or "CHF",
+                        extra={"row_range": ev_row},
+                        evidence=ev,
+                    )
+                )
                 continue
             asset_class = str(r[cls_col - 1].value).upper() if cls_col else None
             if isin and not is_valid_isin(isin):
                 prof.warnings.append(f"Row {mv_cell.row}: '{isin}' fails the ISIN check digit; needs review.")
-            facts.append(Fact(key=f"position:{isin or 'cash:' + str(name)}", kind="position", field="market_value",
-                              label=str(name), value=_cell_decimal(mv_cell.value), currency=prof.currency or "CHF",
-                              isin=isin or None, extra={"asset_class": asset_class, "row_range": ev_row}, evidence=ev))
+            facts.append(
+                Fact(
+                    key=f"position:{isin or 'cash:' + str(name)}",
+                    kind="position",
+                    field="market_value",
+                    label=str(name),
+                    value=_cell_decimal(mv_cell.value),
+                    currency=prof.currency or "CHF",
+                    isin=isin or None,
+                    extra={"asset_class": asset_class, "row_range": ev_row},
+                    evidence=ev,
+                )
+            )
     return ExtractionResult(profile=prof, facts=facts, extractor_version=EXTRACTOR_VERSION)
 
 
