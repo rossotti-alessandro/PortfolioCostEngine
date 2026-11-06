@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Repo pre-push hook: runs the fast gate. The full gate (scripts/local-gate.sh) is required before a PR.
+# Bypass: HOOKS_ENFORCE=0 git push ...  (never on a PR branch you are about to mark ready)
+# shellcheck source=_lib.sh
+. "$(dirname "$0")/_lib.sh"
+cd "$REPO_ROOT" || exit 0
+# Claim and id-reservation branches carry no code.
+while read -r local_ref _ remote_ref _; do
+  case "$remote_ref" in refs/heads/claims/*|refs/heads/backlog-ids/*) continue ;; esac
+  [ "$local_ref" = "(delete)" ] && continue
+  NEED_GATE=1
+done
+[ "${NEED_GATE:-0}" = "1" ] || exit 0
+hook_info "running ./scripts/local-gate.sh --fast ..."
+./scripts/local-gate.sh --fast >/tmp/pce-pre-push.log 2>&1 || { tail -30 /tmp/pce-pre-push.log >&2; fail "fast gate failed"; }
+finish

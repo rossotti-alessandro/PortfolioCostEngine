@@ -1,0 +1,34 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: System OCR packages
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            tesseract-ocr tesseract-ocr-eng tesseract-ocr-ita tesseract-ocr-deu tesseract-ocr-fra \
+            ghostscript qpdf poppler-utils libmagic1
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: pnpm
+        run: corepack enable && corepack prepare pnpm@10 --activate
+      - name: Gate (same script as local)
+        run: ./scripts/local-gate.sh
