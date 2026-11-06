@@ -1,15 +1,15 @@
 ---
 id: SC-9.4
 title: Login, sessions and web hardening for the hosted demo
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Secure FeeLens with login and hardening"
+model: "claude"
+progress: 5
+branch: "claude/project-thread-9vg77k"
 pr: ""
 created_date: "2026-11-06 17:40"
-updated_date: "2026-11-06 17:40"
+updated_date: "2026-11-06 17:33"
 labels:
   - security
 dependencies: []
