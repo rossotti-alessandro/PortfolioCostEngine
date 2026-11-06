@@ -72,6 +72,7 @@ test("losing a contact requires a reason and shows up in lost reasons", async ({
   await expect(page.getByText("Lost: Chose another manager")).toBeVisible();
 
   await page.goto("/crm/funnel");
+  await page.getByRole("button", { name: "Show details" }).click();
   await expect(page.getByRole("table", { name: "Lost reasons" }).getByText("Chose another manager")).toBeVisible();
 });
 
@@ -111,5 +112,18 @@ test("synthetic CRM seed renders board and funnel with the synthetic banner", as
   await expect(page.getByText(/SYNTHETIC demo data/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Lead" })).toBeVisible();
   await page.getByRole("link", { name: "Funnel" }).click();
+  await page.getByRole("button", { name: "Show details" }).click();
   await expect(page.getByRole("table", { name: "Funnel by stage" })).toBeVisible();
+});
+
+test("the pipeline and funnel render in Italian", async ({ page }) => {
+  await page.request.post("/api/crm/demo/seed", { headers: HEADERS });
+  await page.goto("/crm");
+  await page.evaluate(() => localStorage.setItem("feelens.lang", "it"));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Clienti e pipeline" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Analisi dei costi" })).toBeVisible();
+  await page.getByRole("link", { name: "Funnel" }).click();
+  await expect(page.getByRole("heading", { name: "Funnel di conversione" })).toBeVisible();
+  await page.evaluate(() => localStorage.setItem("feelens.lang", "en"));
 });
