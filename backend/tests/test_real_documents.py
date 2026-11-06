@@ -110,3 +110,34 @@ def test_kid_value_on_the_line_below_its_label(tmp_path):
     d.save()
     res, _ = extract("kid_it.pdf", (tmp_path / "kid_it.pdf").read_bytes())
     assert {f.key: f.value for f in res.facts}.get("kid:FUND_ONGOING") == "1.20"
+
+
+def test_statement_without_isins_reconciles_holdings_to_account_totals(tmp_path):
+    # UK platform statements (corpus: Fidelity QPR) list "Quantity | Price | Value" in GBP, no ISIN column,
+    # wrap long fund names, put cash on the next line, and end with an allocation table of weights.
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / "uk.pdf", "Portfolio report")
+    d.header("Synthetic Platform Ltd", "London", "SYNTHETIC Portfolio report", "Valuation of each investment")
+    d.row([(50, "Investment", "l"), (300, "Quantity", "r"), (400, "Price", "r"), (500, "Value", "r")])
+    d.row(
+        [
+            (50, "Alpha Global Equity W Acc", "l"),
+            (300, "1,000.00", "r"),
+            (400, "£2.50", "r"),
+            (500, "£2,500.00", "r"),
+        ]
+    )
+    d.row([(50, "Beta Very Long Fund Name Accumulation", "l")])
+    d.row([(300, "200.00", "r"), (400, "£10.00", "r"), (500, "£2,000.00", "r")])
+    d.row([(50, "Money held as cash", "l"), (500, "£500.00", "r")])
+    d.row([(50, "Total account value", "l"), (500, "£5,000.00", "r")])
+    d.row([(50, "Name", "l"), (300, "Charge", "r"), (400, "Rating", "r"), (500, "Weight", "r")])
+    d.row([(50, "4 Gamma Income I Acc", "l"), (300, "0.80", "r"), (400, "5.93", "r"), (500, "4.75", "r")])
+    d.save()
+    res, _ = extract("uk.pdf", (tmp_path / "uk.pdf").read_bytes())
+    pos = {f.label: (f.value, f.currency) for f in res.facts if f.kind == "position"}
+    assert res.profile.doc_type == "portfolio_statement"
+    assert sum(Dec(v) for v, _ in pos.values()) == Dec("5000.00")  # the weight row is not a holding
+    assert pos["Beta Very Long Fund Name Accumulation"] == ("2000.00", "GBP")
+    assert all(f.evidence.bbox for f in res.facts if f.kind == "position")

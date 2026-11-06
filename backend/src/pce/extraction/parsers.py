@@ -47,10 +47,16 @@ def _ev(line: Line, page: PageInfo, cells=None) -> Evidence:
     )
 
 
+_CCY_SYMBOL = re.compile(r"^([-−(]?)\s*(?:[£$€]|GBP)\s*")
+_SYMBOL_CCY = {"£": "GBP", "€": "EUR", "$": "USD"}
+_QTY_PRICE_VALUE = re.compile(r"quantit|stück|menge|nombre|units", re.I)
+_PRICE_4DP = re.compile(r"^[£$€]?\s*(\d{1,3}(?:,\d{3})*\.\d{2,6})$")
+
+
 def _amount_cells(line: Line) -> list[tuple[int, Decimal]]:
     out = []
     for i, c in enumerate(line.cells):
-        t = c.text.strip()
+        t = _CCY_SYMBOL.sub(r"\1", c.text.strip())  # "£9,399.51", "-£21.59", "$ 44.37"
         if AMOUNT.match(t) and any(ch.isdigit() for ch in t):
             try:
                 out.append((i, parse_amount(t)))
@@ -207,12 +213,32 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
 
 
 # ---------------------------------------------------------------- PDF parsers
+def _no_isin_position(ln: Line, name: str | None = None) -> tuple[str, Decimal, Decimal, Decimal] | None:
+    """Name | quantity | price | value, accepted only when quantity x price matches the value (±1%),
+    so a row of unrelated numbers is never mistaken for a holding. UK and US statements often print
+    no ISIN; the holding is kept and its product costs stay unknown until it is identified."""
+    name = (name or ln.cells[0].text).strip()
+    if not re.search(r"[A-Za-z]{3}", name) or re.search(r"^total|^cash|^money held", name, re.I):
+        return None
+    try:
+        qty = parse_amount(_CCY_SYMBOL.sub(r"\1", ln.cells[-3].text.strip()))
+        pm = _PRICE_4DP.match(ln.cells[-2].text.strip())
+        price = Decimal(pm.group(1).replace(",", "")) if pm else None
+        mv = parse_amount(_CCY_SYMBOL.sub(r"\1", ln.cells[-1].text.strip()))
+    except (ValueError, ArithmeticError):
+        return None
+    if price is None or mv <= 0 or abs(qty * price - mv) > mv * Decimal("0.01"):
+        return None
+    return name, qty, price, mv
+
+
 def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     facts: list[Fact] = _fx_facts(pages)
     ccy = prof.currency or "CHF"
-    in_table = in_fees = False
+    in_table = in_fees = no_isin_table = False
+    in_weights: int | None = None
     for page in pages:
-        for ln in page.lines:
+        for li, ln in enumerate(page.lines):
             low = ln.text.lower()
             if FEE_SECTION.search(ln.text) and len(ln.cells) == 1:
                 in_fees, in_table = True, False  # activity statements also list the fees charged
@@ -224,14 +250,52 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                     if ff:
                         facts.append(ff)
                 continue
+            if "isin" in low and re.search(r"weight|gewicht|peso|poids", low):
+                in_weights = page.number  # look-through / X-ray tables list weights, not holdings
+                continue
+            if in_weights == page.number and _isin_at(ln) is not None:
+                continue
+            if no_isin_table and re.search(r"\bweight\b|\(%\)", low):
+                in_table = no_isin_table = False  # an allocation table follows: its numbers are not holdings
+                continue
             if "isin" in low and ("value" in low or "valore" in low or "wert" in low):
                 in_table = True
                 m = re.search(r"(?:value|valore|wert)\s+(CHF|EUR|USD)", ln.text, re.I)
                 if m:
                     ccy = m.group(1).upper()
                 continue
+            if _QTY_PRICE_VALUE.search(low) and re.search(r"price|prezzo|kurs|cours", low) and not in_fees:
+                in_table, no_isin_table = True, True  # "Quantity | Price | Value" without an ISIN column
+                continue
             hit = _isin_at(ln)
             amounts = _amount_cells(ln)
+            wrapped = (  # long names wrap: "MI Somerset … Accumulation" / "5,649.12 | £1.52 | £8,593.18"
+                page.lines[li - 1].text
+                if li and len(ln.cells) == 3 and len(page.lines[li - 1].cells) == 1
+                else None
+            )
+            if (
+                hit is None
+                and no_isin_table
+                and (len(ln.cells) >= 4 or wrapped)
+                and (pos := _no_isin_position(ln, wrapped))
+            ):
+                name, qty, price, mv = pos
+                sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+                facts.append(
+                    Fact(
+                        key=f"position:name:{name}",
+                        kind="position",
+                        field="market_value",
+                        label=name,
+                        value=str(mv),
+                        currency=_SYMBOL_CCY[sym] if sym else ccy,
+                        isin=None,
+                        extra={"quantity": str(qty), "price": str(price), "no_isin": True},
+                        evidence=_ev(ln, page),
+                    )
+                )
+                continue
             if hit is not None and amounts:
                 isin_idx, isin, prefix = hit
                 name = " ".join([*(c.text for c in ln.cells[:isin_idx]), prefix]).strip()
@@ -256,17 +320,42 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                     )
                 )
                 continue
+            if no_isin_table and in_table and re.match(r"money held as cash|cash (?:balance|held)", low):
+                # Cash rows wrap: "Money held as cash within your … (see" / "£24,409.75" on the next line.
+                src = ln if amounts else (page.lines[li + 1] if li + 1 < len(page.lines) else ln)
+                cash = amounts or _amount_cells(src)
+                if cash:
+                    sym = next((k for k in _SYMBOL_CCY if k in src.text), None)
+                    facts.append(
+                        Fact(
+                            key=f"position:cash:{page.number}:{li}",
+                            kind="position",
+                            field="market_value",
+                            label=ln.cells[0].text,
+                            value=str(cash[-1][1]),
+                            currency=_SYMBOL_CCY[sym] if sym else ccy,
+                            extra={"asset_class": "CASH"},
+                            evidence=_ev(src, page),
+                        )
+                    )
+                continue
             if in_table and amounts and len(ln.cells) <= 3:
                 label = ln.cells[0].text
+                sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
                 if re.search(r"^total", label, re.I):
+                    prev = next((f for f in facts if f.key == "total:assets"), None)
+                    value = amounts[-1][1] + (Decimal(prev.value) if prev and no_isin_table else 0)
+                    if prev and no_isin_table:  # one statement, several accounts: their totals add up
+                        facts.remove(prev)
                     facts.append(
                         Fact(
                             key="total:assets",
                             kind="doc_total",
                             field="total_assets",
                             label=label,
-                            value=str(amounts[-1][1]),
-                            currency=ccy,
+                            value=str(value),
+                            currency=_SYMBOL_CCY[sym] if sym else ccy,
+                            extra={"sum_of_account_totals": True} if prev and no_isin_table else {},
                             evidence=_ev(ln, page),
                         )
                     )

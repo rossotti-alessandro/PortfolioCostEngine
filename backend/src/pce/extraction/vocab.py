@@ -75,6 +75,8 @@ DOC_TYPE_KEYWORDS: dict[str, list[str]] = {
         "dossier titoli",
         "controvalore",
         "open positions",
+        "portfolio report",
+        "valuation of each investment",
         "positions",
         "market value",
     ],
