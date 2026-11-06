@@ -36,15 +36,19 @@ if [ "$YES" -ne 1 ]; then
   [ "$ok" = "y" ] || { echo "Aborted."; exit 1; }
 fi
 
-git -C "$WTPATH" push -q -u origin "$BRANCH" 2>/dev/null || echo "(nothing to push)"
+git -C "$WTPATH" push -q -u origin "$BRANCH" || { echo "✗ Push of ${BRANCH} failed. Fix it before teardown." >&2; exit 1; }
 
 # Hand back ownership when the story is unfinished, so the board shows it as unowned.
 TASK_FILE=$(ls "$WTPATH/backlog/tasks/" | grep -iE "^sc-${ID//./\\.} " | head -1 || true)
 if [ -n "$TASK_FILE" ] && grep -qE '^status: *"?In Progress"?' "$WTPATH/backlog/tasks/$TASK_FILE"; then
   node "$WTPATH/scripts/backlog-set.mjs" "SC-${ID}" owner="" model="" >/dev/null
   git -C "$WTPATH" commit -qam "chore(backlog): release sc-${ID} owner (session ended)"
-  git -C "$WTPATH" push -q origin "$BRANCH" 2>/dev/null || true
-  echo "✓ Cleared owner on SC-${ID} (still In Progress)"
+  if git -C "$WTPATH" push -q origin "$BRANCH"; then
+    echo "✓ Cleared owner on SC-${ID} (still In Progress)"
+  else
+    echo "✗ Could not push the owner hand-back on ${BRANCH}. Push it manually before removing the worktree." >&2
+    exit 1
+  fi
 fi
 
 # Release = a "release" commit on the claim branch (deleting refs is refused by cloud proxies).

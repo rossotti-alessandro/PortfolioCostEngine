@@ -92,7 +92,7 @@ node "$WTPATH/scripts/backlog-set.mjs" "SC-${ID}" status="In Progress" \
   owner="${OWNER:-$AGENT}" model="${AGENT_MODEL:-unknown}" branch="$BRANCH" progress=5
 git -C "$WTPATH" add "backlog/tasks/$TASK_FILE"
 git -C "$WTPATH" commit -q -m "chore(backlog): claim sc-${ID}" -m "owner: ${OWNER:-$AGENT} · model: ${AGENT_MODEL:-unknown} · branch: ${BRANCH}"
-git -C "$WTPATH" push -q -u origin "$BRANCH" 2>/dev/null || echo "⚠ Could not push ${BRANCH} yet; push it before writing code."
+git -C "$WTPATH" push -q -u origin "$BRANCH" || echo "⚠ Could not push ${BRANCH} yet; push it before writing code (the branch is part of the claim evidence)."
 
 cat <<EOF
 
