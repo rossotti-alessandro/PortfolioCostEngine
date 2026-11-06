@@ -10,7 +10,7 @@ import json
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -40,14 +40,10 @@ def _db():
     yield from get_db()
 
 
-def _ctx(
-    x_tenant_id: Annotated[str, Header()] = "demo-firm",
-    x_user: Annotated[str, Header()] = "analyst",
-    x_role: Annotated[str, Header()] = "analyst",
-):
+def _ctx(request: Request, x_role: Annotated[str | None, Header()] = None):
     from ..api import ctx
 
-    return ctx(x_tenant_id, x_user, x_role)
+    return ctx(request, x_role)
 
 
 DB = Annotated[Session, Depends(_db)]

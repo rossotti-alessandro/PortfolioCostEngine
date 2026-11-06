@@ -7,15 +7,16 @@ os.environ["PCE_DATA_DIR"] = tempfile.mkdtemp(prefix="pce-test-")
 os.environ["PCE_DATABASE_URL"] = f"sqlite:///{os.environ['PCE_DATA_DIR']}/t.sqlite"
 
 import pytest
+from conftest import session_headers
 from fastapi.testclient import TestClient
 
 from pce.api import app
 
 pytestmark = pytest.mark.ocr  # seeding reads the scanned synthetic statement
 client = TestClient(app)
-A = {"X-Tenant-Id": "firm-a", "X-User": "ana", "X-Role": "analyst"}
-SENIOR = {**A, "X-Role": "senior", "X-User": "sam"}
-B = {"X-Tenant-Id": "firm-b", "X-User": "bob", "X-Role": "senior"}
+A = session_headers("firm-a", "ana", "analyst")
+SENIOR = session_headers("firm-a", "sam", "senior")
+B = session_headers("firm-b", "bob", "senior")
 
 
 def seeded() -> int:
