@@ -14,8 +14,10 @@ frontmatter, atomic remote claims, generated board, local gate as CI equivalent.
 
 - **Backlog** = `backlog/tasks/sc-<id> - <Title>.md` (YAML frontmatter + template body). Epics `SC-<n>`,
   stories `SC-<n>.<m>`. One file per story avoids merge conflicts that a single JSON file guarantees.
-- **Claims** = remote branches `claims/sc-<id>`, created by `scripts/agent-start.sh`. Branch creation is
-  atomic and allowed through the proxy, so one mechanism serves laptops and cloud sessions.
+- **Claims** = remote branches `claims/sc-<id>` whose tip commit is either `claim …` or `release …`.
+  `scripts/agent-start.sh` pushes a claim commit on top of a release tip (or creates the branch); a
+  concurrent second push is rejected as non-fast-forward. Release is a new commit, not a deletion, because
+  the cloud proxy refuses ref deletion (observed 2026-11-06, HTTP 403). One mechanism for laptops and cloud.
 - **Id reservation** = remote branches `backlog-ids/sc-<id>` via `scripts/backlog-new-id.mjs`.
 - **Liveness** from remote evidence only (`scripts/claims-status.mjs`, 48 h TTL). Stale claims are released
   by the coordinator, never stolen.
@@ -27,7 +29,8 @@ frontmatter, atomic remote claims, generated board, local gate as CI equivalent.
 
 ## Consequences
 
-- Claim branches accumulate; teardown deletes them, and the coordinator prunes stale ones.
+- Claim branches stay on the remote (one per story ever claimed, each a short chain of empty commits). A
+  maintainer can prune released ones from a laptop with `git push origin --delete claims/sc-<id>`.
 - `backlog/BOARD.md` is regenerated only on main, so it can lag a few minutes behind open branches;
   `claims-status.mjs` is the live view.
 

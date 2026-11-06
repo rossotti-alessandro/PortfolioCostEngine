@@ -31,7 +31,7 @@ run backlog-lint node scripts/backlog-lint.mjs
 step "backend"
 if [ -f backend/pyproject.toml ]; then
   export UV_SYSTEM_CERTS=${UV_SYSTEM_CERTS:-1}
-  (cd backend && uv sync --frozen -q) || FAILED+=("uv sync")
+  (cd backend && uv sync --frozen --inexact -q) || FAILED+=("uv sync")
   run ruff-check bash -c "cd backend && uv run ruff check ."
   run ruff-format bash -c "cd backend && uv run ruff format --check ."
   if [ "$FAST" = "1" ]; then

@@ -6,7 +6,7 @@
  * in a fresh cloud container (which never has the other sessions' worktrees).
  *
  * A story is LIVE when any of these is younger than the TTL (default 48h):
- *   - its claim branch `claims/sc-<id>`,
+ *   - its claim branch `claims/sc-<id>` (tip commit "claim …"; a "release …" tip means free),
  *   - the newest commit on a remote branch whose name contains `sc-<id>` or equals the story's `branch:`,
  *   - the story's frontmatter `owner` with an `updated_date` inside the TTL.
  * Everything else that is claimed or In Progress is STALE. Stale is a report, never an action:
@@ -43,7 +43,10 @@ const refs = git("for-each-ref", "--format=%(refname:lstrip=3)\t%(committerdate:
     const [ref, ts, subject] = l.split("\t");
     return { ref, ts: Number(ts), subject };
   });
-const claims = new Map(refs.filter((r) => r.ref.startsWith("claims/sc-")).map((r) => [normId(r.ref.slice(7)), r]));
+// A claim branch whose tip is a "release …" commit is free.
+const claims = new Map(
+  refs.filter((r) => r.ref.startsWith("claims/sc-") && r.subject.startsWith("claim ")).map((r) => [normId(r.ref.slice(7)), r]),
+);
 
 const rows = [];
 for (const t of loadTasks(join(root, "backlog/tasks"))) {

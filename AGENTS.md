@@ -9,8 +9,8 @@
 
 ## Non-negotiable rules
 
-1. **Claim before you code.** `./scripts/agent-start.sh <agent> SC-<id>` pushes the claim branch
-   `claims/sc-<id>`; the server accepts only the first push, so a second agent on the same story is rejected.
+1. **Claim before you code.** `./scripts/agent-start.sh <agent> SC-<id>` pushes a "claim" commit to the
+   branch `claims/sc-<id>`; pushes are fast-forward only, so a second agent racing for the same story is rejected.
    Do not hand-edit status to claim.
 2. **One story = one branch = one PR into `main`.** Never bundle. Branch lifetime: hours, not days.
 3. **Own your paths.** Edit only the paths in your story's `paths_owned`. Need a change in someone else's
@@ -63,14 +63,17 @@ CLOSE
 
 ## Claiming
 
-- The claim is the remote branch `claims/sc-<id>` (one empty commit: owner, model, agent, host, time).
-  Creating a branch that exists is rejected by GitHub, so the claim is atomic across laptops, cloud
-  sessions, Codex and Cursor. Branches, not custom refs, because cloud egress proxies refuse non-branch refs.
+- The claim is the remote branch `claims/sc-<id>`. Its tip commit subject says the state:
+  `claim SC-<id> owner=… model=… agent=… at=…` (taken) or `release SC-<id> …` (free). Claiming pushes a
+  claim commit on top of the current tip (or creates the branch); a concurrent second push is a
+  non-fast-forward and is rejected, so the claim is atomic across laptops, cloud sessions, Codex and
+  Cursor (tested 2026-11-06: of two simultaneous pushes exactly one won). Branches, not custom refs, and
+  release commits, not deletions, because cloud egress proxies refuse custom refs and ref deletion.
 - Cloud sessions with a mandated branch name: `NO_WORKTREE=1 ./scripts/agent-start.sh claude SC-<id>`
   claims and updates the story on the current branch.
 - A claim with no activity for 48h (claim, story branch or story `updated_date`) is STALE in
   `claims-status.mjs`. Stale is a report, never permission: the coordinator or Ale releases it
-  (`git push origin --delete claims/sc-<id>`). Never steal a claim.
+  (`./scripts/agent-teardown.sh --yes SC-<id>` from any checkout pushes the release commit). Never steal a claim.
 
 ## The coordinator
 

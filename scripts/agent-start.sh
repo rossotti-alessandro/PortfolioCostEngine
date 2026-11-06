@@ -5,10 +5,9 @@
 # Example: OWNER="Build demo thread" AGENT_MODEL=claude-opus-5-5 SLUG=fee-ledger \
 #            ./scripts/agent-start.sh claude SC-7.1
 #
-# The claim is a remote BRANCH `claims/sc-<id>` holding one empty commit whose message records
-# owner, model, agent, host and time. Creating a branch that already exists is rejected by the
-# server (non-fast-forward), so two sessions racing for the same story cannot both win. Branches,
-# not a custom ref namespace, because the cloud egress proxy refuses non-branch refs.
+# The claim is a remote BRANCH `claims/sc-<id>` whose tip is an empty commit "claim SC-<id> owner=…
+# model=… agent=… at=…". Pushes are fast-forward only, so two sessions racing for the same story
+# cannot both win. Branches, not custom refs, because the cloud egress proxy refuses non-branch refs.
 #
 # Then: worktree `.claude/worktrees/<agent>-sc-<id>` on branch `<agent>/sc-<id>-<slug>` from BASE
 # (default origin/main), story frontmatter set to In Progress with owner/model/branch, committed.
@@ -39,23 +38,33 @@ fi
 git fetch origin --quiet --prune
 
 # --- Atomic claim ----------------------------------------------------------
+# Free  = no claim branch, or its tip commit subject starts with "release".
+# Claim = push a commit "claim ..." whose parent is the current tip (or a new branch).
+# Two sessions racing from the same tip: the server accepts the first fast-forward and rejects
+# the second as non-fast-forward. Release is a "release ..." commit, not a branch delete,
+# because cloud egress proxies refuse ref deletion.
 ISO_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-BASE_SHA=$(git rev-parse "${BASE:-origin/main}")
 MSG="claim SC-${ID} owner=${OWNER:-$AGENT} model=${AGENT_MODEL:-unknown} agent=${AGENT}@$(hostname -s 2>/dev/null || echo host) at=${ISO_TS}"
-CLAIM_COMMIT=$(git commit-tree "${BASE_SHA}^{tree}" -p "$BASE_SHA" -m "$MSG")
-CLAIM_TTL_HOURS="${CLAIM_TTL_HOURS:-48}"
-
+TIP=$(git ls-remote origin "refs/heads/${CLAIM_BRANCH}" | awk '{print $1}')
+if [ -n "$TIP" ]; then
+  git fetch --quiet origin "refs/heads/${CLAIM_BRANCH}"
+  SUBJECT=$(git log -1 --format=%s "$TIP")
+  case "$SUBJECT" in
+    release*) PARENT="$TIP" ;;
+    *)
+      echo "✗ SC-${ID} is already claimed: ${SUBJECT} ($(git log -1 --format=%cr "$TIP"))" >&2
+      echo "  Stale (> ${CLAIM_TTL_HOURS:-48}h, no branch activity)? Ask the coordinator to release it. Never steal a claim." >&2
+      exit 1
+      ;;
+  esac
+else
+  PARENT=$(git rev-parse origin/main)
+fi
+CLAIM_COMMIT=$(git commit-tree "${PARENT}^{tree}" -p "$PARENT" -m "$MSG")
 if git push --quiet origin "${CLAIM_COMMIT}:refs/heads/${CLAIM_BRANCH}" 2>/dev/null; then
   echo "✓ Claimed SC-${ID} (origin/${CLAIM_BRANCH})"
 else
-  EXISTING=$(git ls-remote origin "refs/heads/${CLAIM_BRANCH}" | awk '{print $1}')
-  if [ -z "$EXISTING" ]; then
-    echo "✗ Push of ${CLAIM_BRANCH} failed and no claim exists: check your push access." >&2
-    exit 1
-  fi
-  git fetch --quiet origin "refs/heads/${CLAIM_BRANCH}" 2>/dev/null || true
-  echo "✗ SC-${ID} is already claimed: $(git log -1 --format='%s (%cr)' "$EXISTING" 2>/dev/null || echo "$EXISTING")" >&2
-  echo "  Stale (> ${CLAIM_TTL_HOURS}h, no branch activity)? Ask the coordinator to release it. Never steal a claim." >&2
+  echo "✗ Lost the race for SC-${ID} (or no push access). Run node scripts/claims-status.mjs and pick another story." >&2
   exit 1
 fi
 
@@ -68,7 +77,8 @@ else
   mkdir -p .claude/worktrees
   if ! git worktree add "$WTPATH" -b "$BRANCH" "${BASE:-origin/main}"; then
     echo "✗ Worktree creation failed. Releasing claim." >&2
-    git push --quiet origin --delete "$CLAIM_BRANCH" 2>/dev/null || true
+    REL=$(git commit-tree "${CLAIM_COMMIT}^{tree}" -p "$CLAIM_COMMIT" -m "release SC-${ID} (worktree creation failed)")
+    git push --quiet origin "${REL}:refs/heads/${CLAIM_BRANCH}" 2>/dev/null || true
     exit 1
   fi
   for envf in .env backend/.env frontend/.env.local; do

@@ -47,10 +47,18 @@ if [ -n "$TASK_FILE" ] && grep -qE '^status: *"?In Progress"?' "$WTPATH/backlog/
   echo "✓ Cleared owner on SC-${ID} (still In Progress)"
 fi
 
-if git push --quiet origin --delete "claims/sc-${ID}" 2>/dev/null; then
-  echo "✓ Released claim claims/sc-${ID}"
+# Release = a "release" commit on the claim branch (deleting refs is refused by cloud proxies).
+TIP=$(git ls-remote origin "refs/heads/claims/sc-${ID}" | awk '{print $1}')
+if [ -z "$TIP" ]; then
+  echo "(no claim branch for SC-${ID})"
 else
-  echo "(no claim branch to release for SC-${ID})"
+  git fetch --quiet origin "refs/heads/claims/sc-${ID}"
+  if git log -1 --format=%s "$TIP" | grep -q '^release'; then
+    echo "(SC-${ID} already released)"
+  else
+    REL=$(git commit-tree "${TIP}^{tree}" -p "$TIP" -m "release SC-${ID} by ${OWNER:-$(git config user.name)} at $(date -u +%Y-%m-%dT%H:%M:%SZ)")
+    git push --quiet origin "${REL}:refs/heads/claims/sc-${ID}" && echo "✓ Released claim claims/sc-${ID}"
+  fi
 fi
 
 if [ "$WTPATH" != "$ROOT" ]; then
