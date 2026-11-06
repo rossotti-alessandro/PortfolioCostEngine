@@ -65,7 +65,7 @@ function imgSize(file) {
     margin: [0.5, 0.6, 0.6, 0.6],
     objects: [
       { placeholder: { options: { name: "title", type: "title", x: 0.6, y: 0.62, w: 12.1, h: 0.75, fontFace: THEME.headFontFace, fontSize: 30, bold: true, color: C.text2, valign: "top", align: "left", margin: 0 }, text: "" } },
-      { text: { text: `${NAME} · concept for Safe Capital · all figures synthetic`, options: { x: 0.6, y: 7.02, w: 9, h: 0.28, fontSize: 10, color: C.accent6, margin: 0 } } },
+      { text: { text: `${NAME} · concept for Safe Capital · client figures synthetic, public sources cited`, options: { x: 0.6, y: 7.02, w: 9, h: 0.28, fontSize: 10, color: C.accent6, margin: 0 } } },
     ],
     slideNumber: { x: 12.2, y: 7.02, w: 0.5, h: 0.28, fontSize: 10, color: C.accent6, align: "right" },
   });
@@ -121,13 +121,13 @@ function imgSize(file) {
     s.addNotes(`${NAME} (working name) reads a prospect's bank and product documents, finds every cost with its source, and compares it fairly with Safe Capital's offer. Everything shown uses the synthetic demo prospect P-1042; no real client, bank or saving is represented.`);
   }
   {
-    const s = content("The problem", "Statements show less than half the story", "Why");
+    const s = content("The problem", "Bank statements show only part of the cost", "Why");
     s.addText([
-      { text: "CHF 38'086", options: { fontSize: 54, bold: true, color: C.text2, breakLine: true } },
+      { text: "CHF 40'160", options: { fontSize: 54, bold: true, color: C.text2, breakLine: true } },
       { text: "what the bank's cost report lists as charged", options: { fontSize: 16, color: C.accent6 } },
     ], tb({ x: 0.6, y: 1.8, w: 5.6, h: 1.4 }));
     s.addText([
-      { text: "CHF 59'376", options: { fontSize: 54, bold: true, color: C.accent1, breakLine: true } },
+      { text: "CHF 61'450", options: { fontSize: 54, bold: true, color: C.accent1, breakLine: true } },
       { text: "what the portfolio actually costs per year, at least", options: { fontSize: 16, color: C.accent6 } },
     ], tb({ x: 0.6, y: 3.45, w: 5.6, h: 1.4 }));
     s.addText("Synthetic prospect P-1042, CHF 4.3m at two banks. The CHF 21'290 gap is fund costs taken inside product prices, and Bank Beta's fees are still unknown.", tb({ x: 0.6, y: 5.15, w: 5.4, h: 1.2, fontSize: 14, color: C.accent6 }));
@@ -228,6 +228,45 @@ function imgSize(file) {
     s.addNotes("Full taxonomy of 31 document types with IT/DE/EN names is in data/taxonomy/document_types.csv. In Switzerland the annual cost report is often only provided on request, so the engine drafts that request.");
   }
   {
+    const s = content("Real documents", "Real public documents, and the figures FeeLens takes from them", "How it works");
+    const docs = [
+      ["Bank price list", "Zürcher Kantonalbank", "Preisübersicht Anlagegeschäft · Sept 2025 · German", [
+        ["Custody, Swiss-held securities", "0.30% p.a., min CHF 3/month", "p.1"],
+        ["Custody, foreign-held securities", "0.40% p.a., min CHF 4/month", "p.1"],
+        ["Brokerage, Swiss shares to 100k", "0.50% online · 1.00% other", "p.2"],
+        ["FX spread, main currency < 50k", "up to 1.00%", "p.3"],
+        ["Swiss stamp duty, shares", "0.075–0.150%", "p.5"]]],
+      ["Bank price list", "Raiffeisenbank Locarno", "Dienstleistungspreise Anlegen · from 1 Jan 2025 · German", [
+        ["Custody, securities account", "0.25% p.a.", "p.2"],
+        ["Minimum", "CHF 12.50 per quarter", "p.2"],
+        ["Surcharge, complex markets (e.g. USA)", "+0.10% p.a.", "p.2"],
+        ["Low-priced securities", "CHF 5.00 per quarter, per position", "p.2"],
+        ["Fund savings-plan account", "0.25% p.a., min CHF 5 per quarter", "p.2"]]],
+      ["Fund KID (PRIIPs)", "iShares Core MSCI World UCITS ETF", "IE00B4L5Y983 · USD Acc · BlackRock · 3 Sep 2026", [
+        ["Ongoing costs", "0.20% p.a.", "p.3"],
+        ["Transaction costs", "0.00% p.a.", "p.3"],
+        ["Entry / exit charge", "none / none", "p.3"],
+        ["Performance fee", "none", "p.3"],
+        ["Cost on USD 10'000, year 1", "USD 20", "p.3"]]],
+    ];
+    for (let i = 0; i < 3; i++) {
+      const x = 0.6 + i * 4.1, d = docs[i];
+      card(s, x, 1.6, 3.85, 4.75, X.bg, d[1]);
+      chip(s, x + 0.25, 1.82, d[0], i === 2 ? "con" : "info", 1.75);
+      s.addText(d[1], tb({ x: x + 0.25, y: 2.25, w: 3.4, h: 0.4, fontSize: 16, bold: true, color: C.text2 }));
+      s.addText(d[2], tb({ x: x + 0.25, y: 2.65, w: 3.4, h: 0.5, fontSize: 11, color: C.accent6 }));
+      d[3].forEach((r, j) => {
+        const y = 3.25 + j * 0.6;
+        s.addShape(pres.shapes.LINE, { x: x + 0.25, y: y - 0.05, w: 3.35, h: 0, line: { color: X.border, width: 0.5 }, objectName: "rr" + i + j });
+        s.addText(r[0], tb({ x: x + 0.25, y, w: 2.9, h: 0.25, fontSize: 11, color: C.accent6 }));
+        s.addText(r[1], tb({ x: x + 0.25, y: y + 0.24, w: 2.9, h: 0.3, fontSize: 13, bold: true }));
+        s.addText(r[2], tb({ x: x + 3.15, y: y + 0.24, w: 0.45, h: 0.3, fontSize: 11, color: C.accent1, align: "right" }));
+      });
+    }
+    s.addText("Figures quoted as printed by each issuer; every value keeps its page. Client statements in the demo stay synthetic for privacy. Fees change: FeeLens checks the document date and the issuing entity.", tb({ x: 0.6, y: 6.5, w: 12.1, h: 0.4, fontSize: 12, color: C.accent6 }));
+    s.addNotes("Public sources, read on 6 Nov 2026. ZKB: zkb.ch/media/zkb/dokumente/legal/preisuebersichten/preisuebersicht_anlagegeschaeft_de_sept2025.pdf. Raiffeisenbank Locarno: raiffeisen.ch/content/dam/www/locarno/pdf/de-prezzi-servizi-2025/dienstleistungspreise-anlegen-ab-01-2025. KID for IE00B4L5Y983 (BlackRock Asset Management Ireland, created 3 Sep 2026), also confirmed by the iShares factsheet (TER 0.20%). Quoted for illustration only; no endorsement or comparison of these banks is implied. Example: CHF 1m of foreign-held securities at ZKB would cost 0.40% = CHF 4'000 a year in custody alone.");
+  }
+  {
     const s = content("Data", "Everything extracted becomes one of five kinds of data", "How it works");
     const ents = [
       ["LuLayers", "Positions", ["ISIN and share class", "Quantity, price, value", "Currency, valuation date", "Bank, account"]],
@@ -322,7 +361,7 @@ function imgSize(file) {
     return s;
   };
   screen("Screen · costs", "The headline always comes with its coverage", "v2_overview.png",
-    "Mockup in the shared design system, with the engine's synthetic P-1042 output. Known cost CHF 59'376 (1.38%), 64% observed in bank documents, 36% estimated from KIDs, five items not determined and shown as such. The bank-by-layer grid shows at a glance where evidence is missing.");
+    "Mockup in the shared design system, with the engine's synthetic P-1042 output. Known cost CHF 61'450 (1.43%), 65% observed in bank documents, 35% estimated from KIDs, five items not determined and shown as such. The bank-by-layer grid shows at a glance where evidence is missing.");
   screen("Screen · drill-down", "Click any number: formula, checks and source page", "v2_drill.png",
     "Every line opens a side panel with the amount, its status, the source page with the value highlighted, the formula and the cross-checks it passed. Overlaps (management fee inside ongoing charges) and maximums are shown but not added.");
   screen("Screen · review", "Scans and uncertain values get a human check", "v2_review.png",
@@ -339,18 +378,18 @@ function imgSize(file) {
     s.addChart(pres.charts.BAR, [
       { name: "Management / advisory", labels, values: [25600, 25500, 25500] },
       { name: "Custody, trading, FX", labels, values: [11390, 5140, 5140] },
-      { name: "VAT", labels, values: [486, 2389.5, 2389.5] },
+      { name: "VAT", labels, values: [2559.6, 2389.5, 2389.5] },
       { name: "Fund costs inside prices", labels, values: [21290, 21290, 13110] },
     ], {
       x: 0.6, y: 1.55, w: 7.4, h: 5.25, barDir: "col", barGrouping: "stacked", barGapWidthPct: 70,
       chartColors: [X.navy, X.l2, X.l9, X.teal], showValue: false,
       catAxisLabelFontFace: "+mn-lt", valAxisLabelFontFace: "+mn-lt", legendFontFace: "+mn-lt", titleFontFace: "+mn-lt",
       catAxisLabelColor: X.muted, valAxisLabelColor: X.muted, catAxisLabelFontSize: 12, valAxisLabelFontSize: 11, valAxisLabelFormatCode: "#,##0",
-      valGridLine: { color: "E5E2DA", size: 0.5 }, catGridLine: { style: "none" }, valAxisMaxVal: 60000,
+      valGridLine: { color: "E5E2DA", size: 0.5 }, catGridLine: { style: "none" }, valAxisMaxVal: 70000,
       showLegend: true, legendPos: "b", legendFontSize: 12, legendColor: X.muted,
       showTitle: true, title: "Annual cost, CHF (synthetic P-1042)", titleFontSize: 13, titleColor: X.muted,
     });
-    const rows = [["Today, comparable", "CHF 58'766", "1.37%", C.text1], ["Safe Capital, same holdings", "CHF 54'320", "1.26%", C.accent1], ["Safe Capital, new funds", "CHF 46'140", "1.07%", C.accent6]];
+    const rows = [["Today, comparable", "CHF 60'840", "1.41%", C.text1], ["Safe Capital, same holdings", "CHF 54'320", "1.26%", C.accent1], ["Safe Capital, new funds", "CHF 46'140", "1.07%", C.accent6]];
     rows.forEach((r, i) => {
       const y = 1.6 + i * 0.85;
       s.addText(r[0], tb({ x: 8.4, y, w: 3.0, h: 0.3, fontSize: 13, color: C.accent6 }));
@@ -358,7 +397,7 @@ function imgSize(file) {
       s.addText(r[2], tb({ x: 11.3, y: y + 0.33, w: 1.4, h: 0.4, fontSize: 16, color: C.accent6, align: "right" }));
     });
     card(s, 8.4, 4.25, 4.3, 0.85, X.tealSoft, "saving");
-    s.addText([{ text: "at least CHF 4'447 per year", options: { bold: true, color: C.accent1, fontSize: 18, breakLine: true } }, { text: "same holdings, like for like", options: { fontSize: 12, color: C.accent6 } }], tb({ x: 8.6, y: 4.3, w: 4.0, h: 0.75, valign: "middle" }));
+    s.addText([{ text: "at least CHF 6'520 per year", options: { bold: true, color: C.accent1, fontSize: 18, breakLine: true } }, { text: "same holdings, like for like", options: { fontSize: 12, color: C.accent6 } }], tb({ x: 8.6, y: 4.3, w: 4.0, h: 0.75, valign: "middle" }));
     s.addText([
       { text: "\"At least\": Bank Beta's own fees are still unknown, so today's real cost is higher.", options: { bullet: true, breakLine: true } },
       { text: "Swiss stamp duty (CHF 610) is left out on both sides: it is due at any Swiss bank.", options: { bullet: true, breakLine: true } },
@@ -370,10 +409,10 @@ function imgSize(file) {
     const s = content("Year one", "Switching costs are counted, and paid back within months here", "The result");
     const tbl = [
       ["", "Same holdings", "New funds"],
-      ["Annual difference, at least", "CHF 4'446.50", "CHF 12'626.50"],
+      ["Annual difference, at least", "CHF 6'520.10", "CHF 14'700.10"],
       ["One-off switching costs", "– CHF 1'500.00", "– CHF 4'000.00"],
-      ["Net in year one", "CHF 2'946.50", "CHF 8'626.50"],
-      ["Payback", "4.0 months", "3.8 months"],
+      ["Net in year one", "CHF 5'020.10", "CHF 10'700.10"],
+      ["Payback", "2.8 months", "3.3 months"],
       ["Like for like?", "Yes", "No: products change"],
     ];
     const hdr = { bold: true, color: C.background1, fill: { color: X.navy }, fontSize: 14 };
@@ -385,7 +424,7 @@ function imgSize(file) {
     s.addText("Payback = switching cost ÷ annual difference × 12", tb({ x: 8.8, y: 2.6, w: 3.9, h: 0.7, fontSize: 16, bold: true, color: C.text2 }));
     s.addText("Switching costs come from the banks' transfer fees and the positions sold. In this synthetic case they are small; with real prospects exit fees and taxes can change the picture, and the tool shows that honestly.", tb({ x: 8.8, y: 3.4, w: 3.9, h: 2.2, fontSize: 14 }));
     s.addText("Safe Capital's own margin on the prospect is calculated on a separate internal screen and never appears in client material.", tb({ x: 0.6, y: 6.0, w: 7.6, h: 0.6, fontSize: 13, color: C.accent6 }));
-    s.addNotes("Engine output for P-1042: same holdings 1'500 transfer fees (Alpha 500, Beta estimate 1'000), payback 4.0 months; new funds 4'000 switching, payback 3.8 months. The internal view reports 'insufficient evidence' for an acquisition decision until Bank Beta's fees are known.");
+    s.addNotes("Engine output for P-1042: same holdings 1'500 transfer fees (Alpha 500, Beta estimate 1'000), payback 2.8 months; new funds 4'000 switching, payback 3.3 months. The internal view reports 'insufficient evidence' for an acquisition decision until Bank Beta's fees are known.");
   }
   {
     const s = content("Client report", "One page the client can read, approved before it leaves", "The result");

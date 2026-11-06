@@ -1,6 +1,6 @@
 # Executive deck: FeeLens for Safe Capital
 
-Audience: Massimo (Safe Capital, Lugano), non-technical. 26 slides, English: 22 main slides and a 4-slide deep-dive appendix.
+Audience: Massimo (Safe Capital, Lugano), non-technical. 27 slides, English: 23 main slides and a 4-slide deep-dive appendix.
 FeeLens is the product's working name, chosen by Ale on 6 Nov 2026. It still needs a trademark check.
 
 - `FeeLens_Executive_Deck.pptx`: editable deck, with speaker notes and sections
@@ -12,19 +12,20 @@ FeeLens is the product's working name, chosen by Ale on 6 Nov 2026. It still nee
 
 ## Storyline
 
-1. Why: the problem (38'086 shown vs 59'376 real), what FeeLens does and its three rules (slides 1–3)
-2. How it works (4–9):
+1. Why: the problem (40'160 shown vs 61'450 real), what FeeLens does and its three rules (slides 1–3)
+2. How it works (4–10):
    - swimlane workflow (client / FeeLens / analyst / output)
    - documents table: what we read, what it proves, what it cannot prove
+   - real public documents (ZKB and Raiffeisen Locarno price lists, the iShares Core MSCI World KID) with the figures quoted as printed and the page of each
    - five kinds of data
    - ten cost layers in four places
    - evidence statuses
    - reconciliation checks
-3. The screens (10–13): costs overview with coverage, drill-down to the source page, review of scans, checks and request letter
-4. The result (14–16): stacked comparison, year one and payback, client report
-5. Data & privacy (17–18): hosting options, confidentiality controls
-6. Next steps (19–22): people vs machine, phases, six decisions, close
-7. Deep dive (23–26): the ten layers in detail, the pipeline and guardrails, the extraction stack and licences, a glossary
+3. The screens (11–14): costs overview with coverage, drill-down to the source page, review of scans, checks and request letter
+4. The result (15–17): stacked comparison, year one and payback, client report
+5. Data & privacy (18–19): hosting options, confidentiality controls
+6. Next steps (20–23): people vs machine, phases, six decisions, close
+7. Deep dive (24–27): the ten layers in detail, the pipeline and guardrails, the extraction stack and licences, a glossary
 
 ## Every figure is synthetic
 
@@ -34,16 +35,23 @@ The numbers are the output of the demo engine (branch `claude/project-thread-ste
 |---|---|---|---|
 | Management / advisory | 25'600 | 25'500 (EAM, 70/50 bps tiers) | 25'500 |
 | Custody, trading, FX | 11'390 | 5'140 (partner custodian) | 5'140 |
-| VAT | 486 | 2'389.50 (8.1%, CH domicile) | 2'389.50 |
+| VAT | 2'559.60 (8.1% on advisory + custody) | 2'389.50 (8.1%, CH domicile) | 2'389.50 |
 | Fund costs inside prices | 21'290 | 21'290 | 13'110 |
-| **Total** | **58'766** | **54'319.50** | **46'139.50** |
+| **Total** | **60'839.60** | **54'319.50** | **46'139.50** |
 
-- Known current cost, including stamp duty of 610: 59'376 (138 bps). Of this, 64% is observed and 36% is estimated from KIDs.
+- Known current cost, including stamp duty of 610: 61'449.60 (143 bps). Of this, 65% is observed and 35% is estimated from KIDs.
 - Five items are not determined and are never counted as zero.
 - Stamp duty is excluded from both sides of the comparison.
-- The saving is "at least" 4'446.50 for the same holdings and 12'626.50 for the new funds.
-- Switching costs are 1'500 and 4'000. The payback is 4.0 and 3.8 months.
-- Open question with the app thread: the current-side VAT (486) looks low compared with the proposal's VAT. The deck will follow the engine if that changes.
+- The saving is "at least" 6'520.10 for the same holdings and 14'700.10 for the new funds.
+- Switching costs are 1'500 and 4'000. The payback is 2.8 and 3.3 months.
+- The app thread fixed a synthetic-data bug on 6 Nov 2026: the current-side VAT was 486 and is now 2'559.60.
+
+## Real public documents quoted (slide 6)
+
+Read on 6 Nov 2026 as text, with figures quoted as printed. The PDFs are not stored in the repo.
+- Zürcher Kantonalbank, *Preisübersicht Anlagegeschäft, Preise ab September 2025*: https://www.zkb.ch/media/zkb/dokumente/legal/preisuebersichten/preisuebersicht_anlagegeschaeft_de_sept2025.pdf
+- Raiffeisenbank Locarno, *Dienstleistungspreise Anlegen, gültig ab 1. Januar 2025*: https://www.raiffeisen.ch/content/dam/www/locarno/pdf/de-prezzi-servizi-2025/dienstleistungspreise-anlegen-ab-01-2025
+- BlackRock, PRIIPs KID for iShares Core MSCI World UCITS ETF USD (Acc), IE00B4L5Y983, created 3 Sep 2026 (copy hosted by LV 1871): https://fsl.lv1871.de/product/IE00B4L5Y983/kid. The iShares factsheet gives a TER of 0.20%.
 
 ## Facts the deck relies on, and what is not verified
 
