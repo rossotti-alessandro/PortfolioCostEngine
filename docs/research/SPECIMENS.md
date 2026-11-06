@@ -1,7 +1,7 @@
 # Specimen corpus: real public documents
 
-395 real, public PDFs from 285 institutions, used to test FeeLens extraction against real layouts
-instead of synthetic ones. Collected 2026-11-06 (story SC-2.3) in two waves, by 14 search agents with one
+399 real, public PDFs from 289 institutions, used to test FeeLens extraction against real layouts
+instead of synthetic ones. Collected 2026-11-06 (story SC-2.3) in three waves, by 15 search agents with one
 document family each.
 
 - **Which documents a client has, and which are public:** [CLIENT_DOCUMENTS.md](CLIENT_DOCUMENTS.md).
@@ -29,7 +29,8 @@ document family each.
 | Fund factsheet | 42 | 39 | 17 / 8 / 12 / 5 |
 | Bank tariff CH | 42 | 35 | 23 / 5 / 9 / 5 |
 | Insurance KID / IBIP disclosure (incl. Italian DIP aggiuntivo) | 30 | 25 | 12 / 15 / 3 / 0 |
-| Client document specimen (published sample statements, ex-post cost reports, mandate contracts) | 25 | 24 | see COVERAGE.md |
+| Client document specimen with real figures (sample statements, ex-post cost reports, mandate contracts) | 17 | 17 | see COVERAGE.md |
+| Client document reference without figures (statement guides, legends, spec sheets, a blank tax form) | 12 | 12 | see COVERAGE.md |
 | Bank tariff IT (Fogli Informativi, incl. 5 GPM mandate fee sheets) | 20 | 17 | 0 / 20 / 0 / 0 |
 | Bank tariff EU/other (DE, AT, FR, LU, BE, MC, SM) | 19 | 18 | 8 / 0 / 9 / 2 |
 | Cost disclosure, FinSA/MiFID ex-ante | 19 | 19 | see COVERAGE.md |
@@ -39,11 +40,11 @@ document family each.
 | Fund prospectus / annual report | 15 | 15 | 5 / 0 / 6 / 4 |
 | Other (FinSA info brochures, fee notices, 3a conditions) | 5 | 5 | |
 
-Totals: 152 German, 91 Italian, 90 French, 62 English. 28 files carry owner-password encryption
+Totals: 152 German, 91 Italian, 90 French, 66 English. 28 files carry owner-password encryption
 (permissions only, text extracts) and 2 are mostly scanned images: both are useful intake edge cases.
 
 Not public and therefore not in the corpus as real documents: portfolio statements, cash statements, trade
-confirmations, ex-post cost reports, fee advices and individual contracts of real clients. The 25 specimens
+confirmations, ex-post cost reports, fee advices and individual contracts of real clients. The 29 specimens and references
 are what banks, brokers and regulators publish as samples; CLIENT_DOCUMENTS.md §3 proposes synthetic
 look-alikes for the rest.
 
@@ -88,29 +89,33 @@ Xetra-Gold KID is regenerated on every download and will always report `CHANGED`
 
 ## Extraction results
 
-Full tables: [`data/specimens/RESULTS.md`](../../data/specimens/RESULTS.md). Run on the parser at 16d5225
-(demo thread), 395 files:
+Full tables: [`data/specimens/RESULTS.md`](../../data/specimens/RESULTS.md). Three runs; the last is on the
+parser at 0972cc3 (demo thread), 399 files:
 
-| Metric | Result |
-|---|---|
-| Crashes | 1 (IndexError in `parse_kid`, Fideuram Vita insurance KID) |
-| Refused at intake | 10: 7 prospectuses/annual reports over 200 pages, 1 over 25 MB, 2 Vontobel tariffs killed by one ambiguous amount ("250,000") |
-| Document type right | 314/384 |
-| Files with at least one fact | 169/384 |
-| Facts, all with page + bbox inside the page | 592 |
-| KID ongoing cost matched, values read on the page | 26/31 (claude-read 17/22, demo thread 9/9) |
-| KID ongoing cost matched vs an independent extractor (pdftotext + regex) | 58/107: every miss is a missing value, none is a different value |
+| Metric | 72 files @ eb4b412 | 395 files @ 16d5225 | 399 files @ 0972cc3 |
+|---|---|---|---|
+| Crashes | 0 | 1 | 0 |
+| Refused at intake (page or size limit) | 0 | 10 | 8 (7 over 200 pages, 1 over 25 MB) |
+| Document type right | 45/72 | 314/384 | 315/391 |
+| Files with at least one fact | 31/72 | 169/384 | 201/391 |
+| Facts, all with page + bbox inside the page | 99 | 592 | 713 |
+| KID ongoing cost vs values read on the page | 13/31 | 26/31 | 32/34 |
+| KID ongoing cost vs an independent extractor (pdftotext + regex) | – | 58/107 | 94/104 |
 
-Where it works: fund, ETF and structured-product KIDs are classified 160/161, and wrong ongoing-cost values
-were not observed. Where it does not yet: factsheets (1 fact in 42; no parser), insurance KIDs (2 of 29 give a
-fact), sample client statements (3 of 25), prospectuses (page limit), and tariffs (32 of 79 give
-facts).
+Every remaining KID ongoing-cost miss is a missing value; no wrong value was found. Three early
+"disagreements" came from the reference extractor, not the parser, and were corrected after reading the page.
+
+Where it works: fund, ETF and structured-product KIDs are classified 160/161, and most give their ongoing
+cost. Where it does not yet: factsheets (1 fact in 42; no parser), insurance KIDs (3 of 30 give a fact), filled
+client specimens (3 of 17; the 4 best UK/US sample statements give nothing), prospectuses (page limit), and
+tariffs (34 of 81 give facts). Public filled specimens with real figures barely exist in DE/IT/CH: banks there
+publish reading guides or images, so statement testing needs the synthetic plan in CLIENT_DOCUMENTS.md §3.
 
 **Honest caveats.**
 
 - "Inside the page" is a sanity check of the bounding box, not proof that it covers the right figure.
-- Only 31 values were read on the page by Claude or the demo thread; no human has re-checked them.
-  The 107 `pdftotext-regex` values measure agreement between two extractors, not truth.
+- Only 34 values were read on the page by Claude or the demo thread; no human has re-checked them.
+  The 104 `pdftotext-regex` values measure agreement between two extractors, not truth.
 - **Tariff precision is the main open risk.** In the first spot check, tariff facts had wrong fee codes or
   were not fees at all. The demo thread fixed most of them (16d5225), but ZKB brokerage tiers are still
   labelled as custody and multi-column tables keep column 1 without its header. Tariff facts must stay

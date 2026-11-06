@@ -65,11 +65,11 @@ evaluator imports its parser.
 
 ## Outcome
 
-395 real public PDFs from 285 institutions (152 de, 91 it, 90 fr, 62 en) across 14 categories: fund, ETF,
+399 real public PDFs from 289 institutions (152 de, 91 it, 90 fr, 66 en) across 14 categories: fund, ETF,
 Swiss, structured and insurance KIDs, factsheets, prospectuses and annual reports, CH/IT/EU bank tariffs,
-FinSA/MiFID ex-ante cost disclosures, termsheets, and 25 published client-document specimens. Each row has
-URL, retrieval date, SHA-256, licence and robots note. Every file ran through `extract()` (parser 16d5225):
-1 crash, 10 intake refusals, 314/384 typed right, 592 facts all with in-page bbox. Bugs sent to the demo
+FinSA/MiFID ex-ante cost disclosures, termsheets, 17 filled client-document specimens and 12 statement guides/specs/forms. Each row has
+URL, retrieval date, SHA-256, licence and robots note. Every file ran through `extract()` (parser 0972cc3):
+0 crashes, 8 intake refusals, 315/391 typed right, 713 facts all with in-page bbox. Bugs sent to the demo
 thread after each run. See `docs/research/SPECIMENS.md`, `docs/research/CLIENT_DOCUMENTS.md`,
 `data/specimens/COVERAGE.md` and `data/specimens/RESULTS.md`.
 
