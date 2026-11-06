@@ -1,0 +1,32 @@
+family,document_type,label_en,label_it,label_de,priority,extract_targets,proves,cannot_prove,typical_source
+holdings,portfolio_statement,Portfolio / asset statement,Estratto patrimoniale,Vermögensausweis,1,"account; as_of_date; ISIN; name; quantity_or_nominal; price; price_unit; currency; market_value; accrued_interest; total",holdings and values at a date,fees,client
+holdings,consolidated_report,Consolidated multi-bank report,Rendiconto consolidato,Konsolidierter Vermögensausweis,3,"per-account totals; positions; scope",overall scope,fees; may double count accounts,client
+holdings,tax_statement,Tax statement,Estratto fiscale,Steuerauszug,4,"year-end values; income; withholding; fees listed",year-end values,full fee picture,client
+cash,cash_statement,Cash account statement,Estratto conto,Kontoauszug,2,"date; description; debit; credit; currency; balance; fee memo text",every billed debit,embedded costs,client
+cash,interest_advice,Interest advice,Avviso interessi,Zinsabrechnung,5,"rate; period; amount",financing cost,portfolio fees,client
+trading,trade_confirmation,Trade confirmation,Conferma d'ordine / fissato bollato,Abrechnung,2,"trade date; ISIN; side; quantity; price; gross; brokerage; third-party fees; stamp duty; FX rate; net",explicit trade costs,contract terms,client
+trading,transaction_list,Transaction list,Lista transazioni,Transaktionsliste,2,"same as confirmation, aggregated",explicit trade costs over period,current-account-only fees,client
+trading,fx_confirmation,FX confirmation,Conferma cambio,Devisenabrechnung,3,"timestamp; pair; rate; notional; commission",FX margin estimate with reference rate,nothing without timestamp,client
+trading,corporate_action_notice,Corporate action notice,Avviso evento societario,Corporate Action Anzeige,6,"event; ISIN; fees; taxes",event fees,recurring fees,client
+fees,annual_cost_report,Annual cost and fee statement,Rendiconto annuale costi e oneri,Kosten- und Gebührenausweis,1,"period; service costs; product costs; third-party payments; amounts and %",near-complete annual cost,FX margins if not included,client (on request in CH)
+fees,fee_advice,Fee advice / debit note,Avviso di addebito commissioni,Gebührenbelastung,1,"fee type; period; base; rate; amount; VAT",observed fee,embedded costs,client
+fees,retrocession_statement,Retrocession / inducement statement,Rendiconto retrocessioni,Retrozessionsausweis,3,"product; amount; rate; refunded or retained",conflicts and refunds,client cost directly,client (on request)
+contracts,mandate_contract,Discretionary mandate contract,Contratto di gestione patrimoniale,Vermögensverwaltungsvertrag,2,"fee rates; tiers; minimum; billing frequency; base; all-in scope; exclusions; retrocession clause",client's agreed rates,what was billed,client
+contracts,advisory_contract,Advisory contract,Contratto di consulenza,Anlageberatungsvertrag,2,same as mandate,client's agreed rates,what was billed,client
+contracts,custody_tariff,Individual custody/trading tariff,Tariffario individuale,Individueller Tarif,2,"custody bands; minimums; brokerage table; FX rules; surcharges",client's agreed rates,what was billed,client
+contracts,general_price_list,Bank public price list,Listino prezzi pubblico,Preisliste,5,"same as tariff",public list price (weak),client's negotiated rate,web (public)
+products,kid_priips,PRIIPs KID,KID PRIIPs,PRIIP-BIB,2,"ISIN; class; date; entry; exit; ongoing (mgmt+admin); transaction; performance; costs over time",product cost rates,what client paid,web (issuer; swissfunddata)
+products,kid_finsa,Swiss FinSA key information document,Foglio informativo di base (LSerFi),Basisinformationsblatt (FIDLEG),2,same as PRIIPs KID,product cost rates,what client paid,web (issuer)
+products,factsheet,Fund factsheet,Scheda prodotto,Factsheet,4,"ISIN; TER/OCF; management fee; date",cross-check of rates,transaction and performance costs,web
+products,prospectus,Fund prospectus,Prospetto,Prospekt,6,"max fees per class; fee policy",maximum rates; definitions,actual rates,web
+products,annual_report_fund,Fund annual report,Relazione annuale del fondo,Jahresbericht,6,"TER; performance fee actual",historical TER,client cost,web
+products,sp_termsheet,Structured product termsheet,Termsheet prodotto strutturato,Termsheet,3,"issuer; payoff; maturity; fees; distribution fee if shown",product terms,issuer margin unless stated,web or client
+wrappers,insurance_policy_statement,Insurance policy annual statement,Estratto annuale polizza,Policenauszug,2,"policy value; charges; underlying funds; surrender value",wrapper charges,underlying fund costs,client
+wrappers,insurance_kid,Insurance-based investment KID,KID assicurativo,Versicherungs-BIB,3,"wrapper costs; options",wrapper cost rates,actual charges,web or client
+credit,lombard_agreement,Lombard credit agreement,Contratto credito lombard,Lombardkreditvertrag,5,"rate; margin; commitment fee",financing terms,portfolio fees,client
+proposal,proposal_tariff,Safe Capital fee proposal,Proposta commissionale,Gebührenofferte,1,"fee rates; base; tiers; VAT; retrocession policy",proposed service fee,custody costs,internal
+proposal,proposal_custodian_tariff,Proposed custodian tariff,Tariffario banca depositaria proposta,Depotbank-Tarif,1,"custody; brokerage; FX rules",proposed custody/trading costs,service fee,internal
+proposal,proposal_portfolio,Proposed portfolio,Portafoglio proposto,Vorgeschlagenes Portfolio,3,"ISIN; weights; expected turnover",embedded costs of proposal,same-holdings comparison,internal
+proposal,transfer_quote,Transfer / switching quote,Preventivo trasferimento,Transferofferte,3,"per-position fees; positions to sell; taxes",switching cost,recurring cost,internal or client
+other,performance_report,Performance report,Rendiconto performance,Performancebericht,6,"TWR; MWR; period",performance,costs,client
+other,unknown,Unknown / mixed,Sconosciuto,Unbekannt,9,none (manual review),nothing until classified,everything,any

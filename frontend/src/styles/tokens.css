@@ -1,0 +1,30 @@
+/* Design tokens: docs/design/DESIGN_SYSTEM.md §1 (single source; mapped to Tailwind in index.css). */
+:root {
+  --color-bg: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #efede7;
+  --color-border: #dedad1;
+  --color-text: #14202e;
+  --color-text-muted: #5b6676;
+  --color-primary: #0f2a4a;
+  --color-primary-fg: #ffffff;
+  --color-accent: #0f766e;
+  --color-accent-soft: #e3f2f0;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf3e2;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-success: #1e7a46;
+  --color-success-soft: #e7f4ec;
+  /* cost-layer chart palette, in this order (§1 Chart palette) */
+  --chart-service: #0f2a4a;
+  --chart-custody: #2f5d8a;
+  --chart-trading: #6b8fb3;
+  --chart-product: #0f766e;
+  --chart-product-tx: #5fa8a0;
+  --chart-implicit: #b7c9d9;
+  --chart-wrapper: #8c6d46;
+  --chart-taxes: #a3a3a3;
+  --radius-control: 6px;
+  --radius-card: 10px;
+}
