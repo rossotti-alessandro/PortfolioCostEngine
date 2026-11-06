@@ -1,0 +1,250 @@
+import { MEASUREMENT, cn } from "@/lib/format";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { type VariantProps, cva } from "class-variance-authority";
+import { CheckCircle2, CircleHelp, FileSignature, FlaskConical, Gauge, Loader2, MinusCircle, X } from "lucide-react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+
+/* shadcn-style primitives, styled with the project tokens */
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 whitespace-nowrap",
+  {
+    variants: {
+      variant: {
+        primary: "bg-navy-900 text-white hover:bg-navy-800 shadow-sm",
+        accent: "bg-teal-700 text-white hover:bg-teal-600 shadow-sm",
+        outline: "border border-line-strong bg-surface text-ink hover:bg-paper",
+        ghost: "text-muted hover:bg-navy-100/60 hover:text-ink",
+        danger: "border border-red-700/30 bg-surface text-red-700 hover:bg-red-100",
+      },
+      size: { sm: "h-8 px-3 text-[13px]", md: "h-9 px-4", lg: "h-11 px-5 text-[15px]", icon: "h-8 w-8" },
+    },
+    defaultVariants: { variant: "primary", size: "md" },
+  },
+);
+
+export function Button({
+  className,
+  variant,
+  size,
+  loading,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants> & { loading?: boolean }) {
+  return (
+    <button type="button" className={cn(buttonVariants({ variant, size }), className)} {...props}>
+      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+      {children}
+    </button>
+  );
+}
+
+export function Card({ className, children, ...p }: { className?: string; children: ReactNode; id?: string }) {
+  return (
+    <section
+      className={cn(
+        "rounded-[var(--radius-card)] border border-line bg-surface shadow-[0_1px_2px_rgb(11_37_69/0.04)]",
+        className,
+      )}
+      {...p}
+    >
+      {children}
+    </section>
+  );
+}
+
+export function CardHeader({
+  title,
+  subtitle,
+  actions,
+  className,
+}: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex items-start justify-between gap-4 border-b border-line px-5 py-3.5", className)}>
+      <div className="min-w-0">
+        <h2 className="text-[15px] font-semibold text-navy-900">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+const TONES: Record<string, string> = {
+  teal: "bg-teal-50 text-teal-700 ring-teal-700/15",
+  green: "bg-green-100 text-green-700 ring-green-700/20",
+  navy: "bg-navy-100 text-navy-800 ring-navy-800/15",
+  "navy-soft": "bg-[#eef2f8] text-navy-700 ring-navy-700/10",
+  violet: "bg-violet-100 text-violet-700 ring-violet-700/15",
+  amber: "bg-amber-100 text-amber-700 ring-amber-700/20",
+  red: "bg-red-100 text-red-700 ring-red-700/20",
+  grey: "bg-[#efeee9] text-muted ring-black/5",
+};
+
+export function Badge({
+  tone = "grey",
+  children,
+  className,
+  title,
+}: { tone?: string; children: ReactNode; className?: string; title?: string }) {
+  return (
+    <span
+      title={title}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-medium ring-1 ring-inset whitespace-nowrap",
+        TONES[tone],
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+const STATUS_ICON = {
+  observed: CheckCircle2,
+  contractual: FileSignature,
+  estimated: Gauge,
+  illustrative: FlaskConical,
+  unknown: CircleHelp,
+  na: MinusCircle,
+} as const;
+
+/** Evidence status chip: label + icon + tone (never colour alone). */
+export function StatusBadge({ m }: { m: string }) {
+  const s = MEASUREMENT[m] ?? { label: m, tone: "grey", help: "", icon: "na" };
+  const Icon = STATUS_ICON[s.icon as keyof typeof STATUS_ICON] ?? MinusCircle;
+  return (
+    <Badge tone={s.tone} title={s.help}>
+      <Icon className="h-3 w-3" aria-hidden />
+      {s.label}
+    </Badge>
+  );
+}
+
+export function Kpi({
+  label,
+  value,
+  sub,
+  tone,
+  help,
+}: { label: string; value: ReactNode; sub?: ReactNode; tone?: "teal" | "amber" | "navy"; help?: string }) {
+  return (
+    <div className="rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3.5" title={help}>
+      <div className="text-[12px] font-medium uppercase tracking-wide text-subtle">{label}</div>
+      <div
+        className={cn(
+          "num mt-1 text-[22px] font-semibold leading-tight",
+          tone === "teal" ? "text-teal-700" : tone === "amber" ? "text-amber-700" : "text-navy-900",
+        )}
+      >
+        {value}
+      </div>
+      {sub && <div className="mt-1 text-[12.5px] text-muted">{sub}</div>}
+    </div>
+  );
+}
+
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  wide,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  title: string;
+  description?: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-navy-950/40 backdrop-blur-[1px]" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 max-h-[88vh] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-xl border border-line bg-surface p-5 shadow-2xl",
+            wide ? "max-w-4xl" : "max-w-lg",
+          )}
+        >
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <DialogPrimitive.Title className="text-base font-semibold text-navy-900">{title}</DialogPrimitive.Title>
+              {description && (
+                <DialogPrimitive.Description className="mt-1 text-[13px] text-muted">
+                  {description}
+                </DialogPrimitive.Description>
+              )}
+            </div>
+            <DialogPrimitive.Close className="rounded p-1 text-muted hover:bg-paper" aria-label="Close">
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+          </div>
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+export function Tip({ content, children }: { content: ReactNode; children: ReactNode }) {
+  return (
+    <TooltipPrimitive.Provider delayDuration={150}>
+      <TooltipPrimitive.Root>
+        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            sideOffset={6}
+            className="z-50 max-w-xs rounded-md bg-navy-950 px-2.5 py-1.5 text-[12px] leading-snug text-white shadow-lg"
+          >
+            {content}
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
+  );
+}
+
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: the control is passed as children
+    <label className="block">
+      <span className="text-[12.5px] font-medium text-ink">{label}</span>
+      <div className="mt-1">{children}</div>
+      {hint && <span className="mt-1 block text-[11.5px] text-subtle">{hint}</span>}
+    </label>
+  );
+}
+
+export const inputCls =
+  "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-subtle focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 num";
+
+export function Empty({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+      {icon && <div className="text-subtle">{icon}</div>}
+      <div className="text-[15px] font-semibold text-navy-900">{title}</div>
+      {children && <div className="max-w-md text-[13px] text-muted">{children}</div>}
+    </div>
+  );
+}
+
+export function Spinner({ label = "Loading" }: { label?: string }) {
+  return (
+    <output className="flex items-center gap-2 p-8 text-sm text-muted">
+      <Loader2 className="h-4 w-4 animate-spin" /> {label}…
+    </output>
+  );
+}
+
+export function ErrorBox({ error }: { error: unknown }) {
+  return (
+    <div className="m-4 rounded-md border border-red-700/20 bg-red-100 px-4 py-3 text-sm text-red-700" role="alert">
+      {error instanceof Error ? error.message : String(error)}
+    </div>
+  );
+}
