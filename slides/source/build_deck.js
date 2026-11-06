@@ -136,7 +136,7 @@ function imgSize(file) {
     const cols = [
       ["FaFileUpload", "1. The client hands over documents", "Statements, fee reports and contracts from one or more banks: PDF, scans or Excel."],
       ["FaStopwatch", "2. A cost picture within minutes", "The engine reads the documents and builds a first draft of the annual all-in cost. An analyst checks it."],
-      ["FaBalanceScale", "3. A fair comparison with Safe Capital", "Same holdings, Safe Capital's fees, switching costs included. Shown on one clear page."],
+      ["FaBalanceScale", "3. A fair comparison with Safe Capital", "Same holdings, Safe Capital's fee plus the custodian bank's fees, switching costs included. On one page."],
     ];
     for (let i = 0; i < 3; i++) {
       const x = 0.6 + i * 4.1;
@@ -338,7 +338,7 @@ function imgSize(file) {
   {
     const s = content("Step 4 · Compare: same holdings first, a new portfolio kept apart", "The result");
     s.addChart(pres.charts.BAR, [
-      { name: "Bank & service fees", labels: ["Today", "Safe Capital, same holdings", "Safe Capital, new portfolio"], values: [26300, 20740, 20740] },
+      { name: "Advisory, custodian bank & trading fees", labels: ["Today", "Safe Capital, same holdings", "Safe Capital, new portfolio"], values: [26300, 20740, 20740] },
       { name: "Product costs (funds, notes)", labels: ["Today", "Safe Capital, same holdings", "Safe Capital, new portfolio"], values: [11800, 11800, 3000] },
     ], {
       x: 0.6, y: 1.55, w: 7.6, h: 5.2, barDir: "col", barGrouping: "stacked", barGapWidthPct: 60,
@@ -361,8 +361,8 @@ function imgSize(file) {
       s.addText(rows[i][2], tb({ x: 11.2, y: y + 0.38, w: 1.5, h: 0.5, fontSize: 18, color: C.accent6, align: "right" }));
     }
     card(s, 8.6, 4.95, 4.1, 1.75, "FBF1DE", "caveat");
-    s.addText("The new-portfolio case changes products and risk, so it is not a like-for-like saving. It is shown only next to the same-holdings case, with that warning.", tb({ x: 8.8, y: 5.05, w: 3.75, h: 1.55, fontSize: 13, valign: "middle" }));
-    s.addNotes("Same-holdings comparison: identical positions, Safe Capital's advisory and custody terms. This is the fair headline. The new-portfolio case (e.g. cheaper share classes or ETFs) can show a larger difference but needs a suitability review and must never be presented as a pure fee saving. Figures are synthetic.");
+    s.addText("Safe Capital columns include the custodian bank's fees: assets stay at a bank, Safe Capital manages them. The new-portfolio case changes products and risk, so it is not a like-for-like saving.", tb({ x: 8.8, y: 5.05, w: 3.75, h: 1.55, fontSize: 13, valign: "middle" }));
+    s.addNotes("Safe Capital is an external asset manager: the client's assets stay at a custodian bank, so every Safe Capital scenario adds Safe Capital's fee AND the custodian bank's custody, trading and FX fees. VAT on fees depends on the client's domicile. Same-holdings comparison: identical positions, Safe Capital's advisory fee plus the custodian's terms. This is the fair headline. The new-portfolio case (e.g. cheaper share classes or ETFs) can show a larger difference but needs a suitability review and must never be presented as a pure fee saving. Figures are synthetic.");
   }
 
   // 14. First year & payback
@@ -387,7 +387,7 @@ function imgSize(file) {
     await circleIcon(s, 8.75, 1.75, 0.8, "FaHandshake", TEAL, "FFFFFF", "honest");
     s.addText("Why show a negative year one?", tb({ x: 8.75, y: 2.75, w: 3.95, h: 0.5, fontSize: 18, bold: true, color: C.text2 }));
     s.addText("Because a client will find out anyway. Showing the switching cost and the payback period up front makes the recommendation credible, and the saving from year two onward speaks for itself.", tb({ x: 8.75, y: 3.3, w: 3.95, h: 2.2, fontSize: 15 }));
-    s.addText("Switching costs (transfer, exit, taxes) come from the banks' quotes; here they are a synthetic placeholder.", tb({ x: 0.6, y: 5.25, w: 7.6, h: 0.8, fontSize: 13, italic: true, color: C.accent6 }));
+    s.addText("Switching costs (transfer, exit, taxes) come from the banks' quotes; here they are a synthetic placeholder. VAT on fees depends on the client's domicile and is applied per client.", tb({ x: 0.6, y: 5.25, w: 7.6, h: 0.8, fontSize: 13, italic: true, color: C.accent6 }));
     s.addNotes("Payback = one-off switching cost ÷ annual difference × 12. Same holdings: 8'000 ÷ 5'560 × 12 ≈ 17 months. New portfolio: 8'000 ÷ 14'360 × 12 ≈ 7 months. All synthetic. Safe Capital's own margin on the prospect is computed on a separate internal screen and never appears in client material.");
   }
 
@@ -471,7 +471,7 @@ function imgSize(file) {
     card(s, 6.8, 1.6, 5.9, 4.3, "FBF1DE", "human");
     await circleIcon(s, 7.1, 1.85, 0.75, "FaUserCheck", AMBER, "FFFFFF", "human");
     s.addText("A person at Safe Capital", tb({ x: 8.05, y: 1.95, w: 4.4, h: 0.5, fontSize: 20, bold: true, color: C.accent2 }));
-    const hum = ["Enter Safe Capital's own fee schedule (once)", "Confirm values the engine flags", "Decide if a comparison is like-for-like", "Approve and sign the client report", "Present it and talk to the client"];
+    const hum = ["Enter Safe Capital's and the custodian's fees (once)", "Confirm values the engine flags", "Decide if a comparison is like-for-like", "Approve and sign the client report", "Present it and talk to the client"];
     s.addText(hum.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < hum.length - 1 } })), tb({ x: 7.1, y: 2.8, w: 5.4, h: 3.6, fontSize: 16, paraSpaceAfter: 8 }));
     s.addNotes("Manual configuration is mostly one-time: Safe Capital's tariff, custodian terms and the report template. Per prospect, the human effort depends on document quality.");
   }
@@ -518,7 +518,7 @@ function imgSize(file) {
       s.addText(dec[i][0], tb({ x: x + 1.2, y: y + 0.22, w: 4.55, h: 0.45, fontSize: 17, bold: true, color: C.text2 }));
       s.addText(dec[i][1], tb({ x: x + 1.2, y: y + 0.68, w: 4.55, h: 0.5, fontSize: 14, color: C.accent6 }));
     }
-    s.addNotes("Decision 6: the public commercial register lists Safe Capital Management SA and Safe Capital Holding SA in Lugano. We have not verified the regulatory licence or supervisory organisation; Safe Capital should confirm exactly what to cite before anything goes to a client.");
+    s.addNotes("Decision 6: the public commercial register lists Safe Capital Management SA and Safe Capital Holding SA in Lugano. Safe Capital's website states FINMA authorisation with OSIF supervision, but this has not yet been checked in the FINMA register; Safe Capital should confirm exactly what to cite before anything goes to a client.");
   }
 
   // 21. Close

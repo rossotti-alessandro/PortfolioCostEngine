@@ -37,7 +37,8 @@ The fund cost split (8'640 + 490 + 1'070 = 10'200) and the KID example (OCF 1.08
 ## Facts the deck relies on, and what is not verified
 
 - Swiss revised FADP in force since 1 September 2023 (slide 17). Not legal advice; counsel must review.
-- Commercial register (secondary copy of Zefix, checked 6 Nov 2026): Safe Capital Management SA (CHE-381.156.096) and Safe Capital Holding SA (CHE-291.799.912), Via Serafino Balestra 5, Lugano, both active. **FINMA licence and supervisory organisation not verified**, so the deck asks Safe Capital to confirm what to cite (decision 6) instead of stating it.
+- Safe Capital is an external asset manager: client assets stay at a custodian bank, so every Safe Capital scenario includes the custodian bank's fees. VAT on fees depends on the client's domicile.
+- Commercial register (secondary copy of Zefix, checked 6 Nov 2026): Safe Capital Management SA (CHE-381.156.096) and Safe Capital Holding SA (CHE-291.799.912), Via Serafino Balestra 5, Lugano, both active. **FINMA licence and supervisory organisation not verified** (the website states FINMA authorisation with OSIF supervision; not yet checked in the FINMA register), so the deck asks Safe Capital to confirm what to cite (decision 6) instead of stating it.
 - "Ready in minutes" is the design target for the automatic first draft, not a measured result.
 - Screens are mockups, not the running app. When the app lands, replace `source/img/*.png` with real screenshots and check every figure against the live engine.
 
