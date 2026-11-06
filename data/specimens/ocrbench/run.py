@@ -49,6 +49,7 @@ def main() -> None:
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--core", action="store_true", help="only the VLM core subset (vlm_core.json)")
+    ap.add_argument("--mini", action="store_true", help="only the 8-page VLM set (vlm_core.json 'mini')")
     ap.add_argument("--force", action="store_true", help="re-run pages that already have output")
     a = ap.parse_args()
 
@@ -58,6 +59,9 @@ def main() -> None:
     if a.core:
         core = json.loads(PAGES_JSON.with_name("vlm_core.json").read_text(encoding="utf-8"))["pages"]
         pages = [p for p in pages if p["id"] in core]
+    if a.mini:
+        mini = json.loads(PAGES_JSON.with_name("vlm_core.json").read_text(encoding="utf-8"))["mini"]
+        pages = [p for p in pages if p["id"] in mini]
     if a.limit:
         pages = pages[: a.limit]
     out_dir = OUT / a.engine

@@ -329,6 +329,7 @@ def run_docling(img: Image.Image, pdf_page: str | None = None, **_: Any) -> Resu
 # ---------------------------------------------------------------- VLMs (image -> text)
 
 _vlm: dict[str, Any] = {}
+MAX_TIME = 600.0  # seconds per generate call
 
 
 def _load_vlm(repo: str, **kw: Any):
@@ -355,7 +356,8 @@ def _chat(repo: str, img: Image.Image, prompt: str | None, max_new: int, **kw: A
     inputs = {k: (v.to(torch.bfloat16) if v.dtype.is_floating_point else v) for k, v in inputs.items()}
     with torch.inference_mode():
         # Some repos ship use_cache=false in generation_config: 8x slower decoding on CPU.
-        gen = model.generate(**inputs, max_new_tokens=max_new, do_sample=False, use_cache=True)
+        # max_time caps one call on CPU; a cut-off answer is scored as it stands, never padded.
+        gen = model.generate(**inputs, max_new_tokens=max_new, do_sample=False, use_cache=True, max_time=MAX_TIME)
     return proc.decode(gen[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
 
 
@@ -387,7 +389,7 @@ def run_got(img: Image.Image, **_: Any) -> Result:
     inputs = {k: (v.to(torch.bfloat16) if v.dtype.is_floating_point else v) for k, v in inputs.items()}
     with torch.inference_mode():
         gen = model.generate(**inputs, do_sample=False, tokenizer=proc.tokenizer,
-                             stop_strings="<|im_end|>", max_new_tokens=2048)
+                             stop_strings="<|im_end|>", max_new_tokens=2048, max_time=MAX_TIME)
     text = proc.decode(gen[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True)
     return _vlm_text_result(text)
 

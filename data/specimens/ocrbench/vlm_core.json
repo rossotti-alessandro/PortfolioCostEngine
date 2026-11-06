@@ -1,13 +1,38 @@
 {
- "about": "Core page subset for the slow VLM engines on CPU (one page per stratum, the scan, three simulated scans, one fee-trap page). Fast engines run on every page.",
+ "about": "Core page subset for the slow VLM engines on CPU (one page per stratum, the scan, three simulated scans, one fee-trap page). Fast engines run on every page. 'mini' is the 8-page set every VLM runs on CPU (EN/DE/FR/IT, KIDs, tariffs, fee table, a true scan and a simulated one); 'pages' is for a GPU box.",
  "pages": [
-  "kid-21shares-ch0454664001-en-p3", "kid-ff-ch0228419740-p3", "kid-amundi-msci-world-swap-ii-dist-fr-p3",
-  "kid-anima-crescitaitalia-a-p3", "ikid-axa-mps-investiplan-unico-generic-it-p2", "kid-gerifonds-ns-ch-swiss-excellence-fr-p3",
-  "tariff-aekbank-anlagegeschaeft-de-p3", "tariff-bcf-gestion-fortune-2026-p12", "tariff-banca-passadore-intermediazione-it-p2",
-  "tariff-vontobel-eam-prices-conditions-2021-p5", "tariff-juliusbaer-lu-banking-custody-en-p3",
-  "costs-gutzwiller-exante-execution-only-2021-p5", "sample-hsbc-pb-cc-guide-p3", "sample-investcentre-demo-client-report-p5",
-  "fs-blackrock-bgf-global-equity-income-en-p1", "ts-vontobel-mini-future-gold-final-terms-de-p2", "ar-fundsmith-sicav-2025-p29",
-  "tariff-invest-banca-gp-ib-navigator-it-p1", "ts-juliusbaer-capital-protection-ft-en-de-p25", "sample-utrade-sg-statement-p2",
-  "kid-21shares-ch0454664001-en-p3-scan", "tariff-akb-anlageberatung-fokus-2025-p1-scan", "sample-hsbc-pb-cc-guide-p3-scan"
+  "kid-21shares-ch0454664001-en-p3",
+  "kid-ff-ch0228419740-p3",
+  "kid-amundi-msci-world-swap-ii-dist-fr-p3",
+  "kid-anima-crescitaitalia-a-p3",
+  "ikid-axa-mps-investiplan-unico-generic-it-p2",
+  "kid-gerifonds-ns-ch-swiss-excellence-fr-p3",
+  "tariff-aekbank-anlagegeschaeft-de-p3",
+  "tariff-bcf-gestion-fortune-2026-p12",
+  "tariff-banca-passadore-intermediazione-it-p2",
+  "tariff-vontobel-eam-prices-conditions-2021-p5",
+  "tariff-juliusbaer-lu-banking-custody-en-p3",
+  "costs-gutzwiller-exante-execution-only-2021-p5",
+  "sample-hsbc-pb-cc-guide-p3",
+  "sample-investcentre-demo-client-report-p5",
+  "fs-blackrock-bgf-global-equity-income-en-p1",
+  "ts-vontobel-mini-future-gold-final-terms-de-p2",
+  "ar-fundsmith-sicav-2025-p29",
+  "tariff-invest-banca-gp-ib-navigator-it-p1",
+  "ts-juliusbaer-capital-protection-ft-en-de-p25",
+  "sample-utrade-sg-statement-p2",
+  "kid-21shares-ch0454664001-en-p3-scan",
+  "tariff-akb-anlageberatung-fokus-2025-p1-scan",
+  "sample-hsbc-pb-cc-guide-p3-scan"
+ ],
+ "mini": [
+  "kid-21shares-ch0454664001-en-p3",
+  "kid-ff-ch0228419740-p3",
+  "kid-anima-crescitaitalia-a-p3",
+  "tariff-aekbank-anlagegeschaeft-de-p3",
+  "tariff-bcf-gestion-fortune-2026-p12",
+  "sample-hsbc-pb-cc-guide-p3",
+  "sample-utrade-sg-statement-p2",
+  "kid-21shares-ch0454664001-en-p3-scan"
  ]
 }

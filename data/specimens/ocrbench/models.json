@@ -23,7 +23,7 @@
   {"repo": "deepseek-ai/DeepSeek-OCR-2", "size_gb": 6.78, "licence": "Apache-2.0", "why": "3B; GPU-oriented. Candidate for a GPU box later."},
   {"repo": "dots-studio/dots.ocr", "size_gb": 6.08, "licence": "MIT", "why": "3B layout+OCR VLM; needs custom code and a GPU for useful speed."},
   {"repo": "nanonets/Nanonets-OCR2-3B", "size_gb": 7.51, "licence": "not stated on the card", "why": "No licence tag: not usable until clarified."},
-  {"repo": "tencent/HunyuanOCR", "size_gb": 4.6, "licence": "Tencent licence (other)", "why": "Tencent Hunyuan licences exclude the EU, UK and South Korea: not usable for a Swiss/EU product."},
+  {"repo": "tencent/HunyuanOCR", "size_gb": 4.6, "licence": "Tencent licence (other)", "why": "Custom Tencent licence with territory and use limits: check the card before any EU/Swiss use. Not run."},
   {"repo": "opendatalab/MinerU2.5-Pro-2605-1.2B", "size_gb": 2.31, "licence": "weights Apache-2.0, MinerU toolkit AGPL-3.0", "why": "Strong parser, but the official pipeline is AGPL; would need a clean re-implementation of its prompts."},
   {"repo": "datalab-to/surya-ocr-2", "size_gb": 1.0, "licence": "OpenRAIL-M style with revenue cap; code GPL-3.0", "why": "Licence risk (GPL code, commercial cap)."},
   {"repo": "microsoft/layoutlmv3-base", "size_gb": 0.5, "licence": "CC-BY-NC-SA-4.0", "why": "Non-commercial licence, and needs fine-tuning on labelled fee data. LayoutLM v1 QA (MIT) was run instead."},
