@@ -22,6 +22,7 @@ from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+from pce.api import MAX_UPLOAD_BYTES
 from pce.extraction.models import DocType
 from pce.extraction.parsers import EXTRACTOR_VERSION, extract
 
@@ -42,9 +43,13 @@ EXPECTED_PIPELINE_TYPE = {
     "sp_termsheet": DocType.TERMSHEET,
     "annual_cost_report": DocType.COST_REPORT,
     "cost_disclosure": DocType.COST_REPORT,
+    "portfolio_statement": DocType.PORTFOLIO_STATEMENT,
     "factsheet": None,
     "prospectus": None,
     "annual_report_fund": None,
+    "insurance_dip": None,
+    "mandate_contract": None,
+    "other": None,
 }
 
 # The fields an analyst needs from each family, checked by fee code / fact key.
@@ -118,9 +123,17 @@ def run_one(row: dict) -> dict:
     if not path.exists():
         rec["error"] = "file missing: run fetch.py"
         return rec
+    data = path.read_bytes()
+    if len(data) > MAX_UPLOAD_BYTES:
+        rec["rejected"] = f"larger than the upload limit ({len(data) // 2**20} MB)"
+        return rec
     t0 = time.perf_counter()
     try:
-        res, pages = extract(row["file"], path.read_bytes())
+        res, pages = extract(row["file"], data)
+    except ValueError as exc:  # the pipeline's own refusal (page limit, not a PDF): an intake result
+        rec["rejected"] = str(exc)
+        rec["seconds"] = round(time.perf_counter() - t0, 2)
+        return rec
     except Exception as exc:  # noqa: BLE001 - a crash on a real file is a result, not a stop
         rec["error"] = f"{type(exc).__name__}: {exc}"
         rec["traceback"] = traceback.format_exc(limit=4)
@@ -179,18 +192,19 @@ def write_md(results: list[dict]) -> None:
         "",
         "## Per category",
         "",
-        "| Category | Files | Crashed | Type right | ≥1 fact | Facts | With bbox | Bbox in page | "
+        "| Category | Files | Crashed | Rejected at intake | Type right | ≥1 fact | Facts | With bbox | Bbox in page | "
         "Key fields hit | Expected values right | Needs review |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     tot = Counter()
     for cat in sorted(by_cat):
         rs = by_cat[cat]
-        ok = [r for r in rs if "error" not in r]
+        ok = [r for r in rs if "error" not in r and "rejected" not in r]
         kf = [v for r in ok for v in r.get("key_fields", {}).values()]
         row = Counter(
             files=len(rs),
-            crashed=len(rs) - len(ok),
+            crashed=sum("error" in r for r in rs),
+            rejected=sum("rejected" in r for r in rs),
             typed=sum(bool(r.get("classified_ok")) for r in ok),
             anyfact=sum(r["n_facts"] > 0 for r in ok),
             facts=sum(r["n_facts"] for r in ok),
@@ -204,14 +218,14 @@ def write_md(results: list[dict]) -> None:
         )
         tot.update(row)
         lines.append(
-            f"| {cat} | {row['files']} | {row['crashed']} | {pct(row['typed'], len(ok))} | "
+            f"| {cat} | {row['files']} | {row['crashed']} | {row['rejected']} | {pct(row['typed'], len(ok))} | "
             f"{pct(row['anyfact'], len(ok))} | {row['facts']} | {row['bbox']} | {row['inpage']} | "
             f"{pct(row['kf_hit'], row['kf_all'])} | {pct(row['exp_ok'], row['exp_all'])} | "
             f"{pct(row['review'], len(ok))} |"
         )
-    n_ok = tot["files"] - tot["crashed"]
+    n_ok = tot["files"] - tot["crashed"] - tot["rejected"]
     lines.append(
-        f"| **All** | {tot['files']} | {tot['crashed']} | {pct(tot['typed'], n_ok)} | {pct(tot['anyfact'], n_ok)} | "
+        f"| **All** | {tot['files']} | {tot['crashed']} | {tot['rejected']} | {pct(tot['typed'], n_ok)} | {pct(tot['anyfact'], n_ok)} | "
         f"{tot['facts']} | {tot['bbox']} | {tot['inpage']} | {pct(tot['kf_hit'], tot['kf_all'])} | "
         f"{pct(tot['exp_ok'], tot['exp_all'])} | {pct(tot['review'], n_ok)} |"
     )
@@ -229,6 +243,12 @@ def write_md(results: list[dict]) -> None:
         "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in sorted(results, key=lambda r: (r["category"], r["file"])):
+        if "rejected" in r:
+            lines.append(
+                f"| {r['file']} | {r['category']} | {r['language']} | {r['expected_pipeline_type']} → rejected | "
+                f"| | | | | {r.get('seconds', '')} | {r['rejected'][:120]} |"
+            )
+            continue
         if "error" in r:
             lines.append(
                 f"| {r['file']} | {r['category']} | {r['language']} | {r['expected_pipeline_type']} → crash | "
@@ -253,7 +273,7 @@ def main() -> None:
     for row in rows:
         r = run_one(row)
         print(f"{r['file']:<60} {r.get('predicted_type', 'ERR'):<12} facts={r.get('n_facts', '-')}"
-              f" {r.get('error', '')}", flush=True)
+              f" {r.get('error', r.get('rejected', ''))}", flush=True)
         results.append(r)
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
