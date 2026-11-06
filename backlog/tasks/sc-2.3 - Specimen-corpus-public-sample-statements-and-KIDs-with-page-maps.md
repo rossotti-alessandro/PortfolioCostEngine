@@ -1,15 +1,15 @@
 ---
 id: SC-2.3
 title: Specimen corpus: public sample statements and KIDs with page maps
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Build 50+ real PDF test corpus"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-coe0g4"
 pr: ""
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-06 15:05"
+updated_date: "2026-11-06 15:36"
 labels:
   - research
 dependencies:
