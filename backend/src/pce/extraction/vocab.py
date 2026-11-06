@@ -71,6 +71,8 @@ DOC_TYPE_KEYWORDS: dict[str, list[str]] = {
         "relevé de fortune",
         "estratto patrimoniale",
         "holdings report",
+        "client valuation",
+        "valuation breakdown",
         "situazione patrimoniale",
         "dossier titoli",
         "controvalore",

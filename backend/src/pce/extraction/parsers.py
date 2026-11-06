@@ -145,6 +145,12 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
         scores[dt] = sum(2.0 if k in low_first else (0.5 if k in low_all else 0.0) for k in kws)
     if ISIN_RE.search(alltext) and "market value" in low_all:
         scores["portfolio_statement"] += 1.0
+    if any(
+        re.search(r"(?:quantity|units)\W+price\W+(?:\(\W\)\s*)?(?:market )?value", ln.text.lower())
+        for p in pages
+        for ln in p.lines
+    ):
+        scores["portfolio_statement"] += 1.0  # a holdings table header, as UK/US statements print it
     best = max(scores, key=lambda k: scores[k]) if scores else "unknown"
     score = scores.get(best, 0.0)
     doc_type = DocType(best) if score >= 2.0 else DocType.UNKNOWN
@@ -214,22 +220,26 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
 
 # ---------------------------------------------------------------- PDF parsers
 def _no_isin_position(ln: Line, name: str | None = None) -> tuple[str, Decimal, Decimal, Decimal] | None:
-    """Name | quantity | price | value, accepted only when quantity x price matches the value (±1%),
-    so a row of unrelated numbers is never mistaken for a holding. UK and US statements often print
-    no ISIN; the holding is kept and its product costs stay unknown until it is identified."""
+    """Name | quantity | price | value (more columns, such as cost and change, may follow), accepted
+    only when quantity x price matches the value (±1%), so a row of unrelated numbers is never
+    mistaken for a holding. UK and US statements often print no ISIN; the holding is kept and its
+    product costs stay unknown until it is identified."""
+    first = 0 if name else 1
     name = (name or ln.cells[0].text).strip()
     if not re.search(r"[A-Za-z]{3}", name) or re.search(r"^total|^cash|^money held", name, re.I):
         return None
-    try:
-        qty = parse_amount(_CCY_SYMBOL.sub(r"\1", ln.cells[-3].text.strip()))
-        pm = _PRICE_4DP.match(ln.cells[-2].text.strip())
+    texts = [c.text.strip() for c in ln.cells]
+    for j in range(first, len(texts) - 2):
+        try:
+            qty = parse_amount(_CCY_SYMBOL.sub(r"\1", texts[j]))
+            pm = _PRICE_4DP.match(texts[j + 1])
+            mv = parse_amount(_CCY_SYMBOL.sub(r"\1", texts[j + 2]))
+        except (ValueError, ArithmeticError):
+            continue
         price = Decimal(pm.group(1).replace(",", "")) if pm else None
-        mv = parse_amount(_CCY_SYMBOL.sub(r"\1", ln.cells[-1].text.strip()))
-    except (ValueError, ArithmeticError):
-        return None
-    if price is None or mv <= 0 or abs(qty * price - mv) > mv * Decimal("0.01"):
-        return None
-    return name, qty, price, mv
+        if price is not None and mv > 0 and abs(qty * price - mv) <= mv * Decimal("0.01"):
+            return name, qty, price, mv
+    return None
 
 
 def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
@@ -250,12 +260,12 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                     if ff:
                         facts.append(ff)
                 continue
-            if "isin" in low and re.search(r"weight|gewicht|peso|poids", low):
-                in_weights = page.number  # look-through / X-ray tables list weights, not holdings
+            if "isin" in low and re.search(r"weight|gewicht|peso|poids|proceeds|profit/loss|realised", low):
+                in_weights = page.number  # X-ray weights and disposal (capital gains) tables are not holdings
                 continue
             if in_weights == page.number and _isin_at(ln) is not None:
                 continue
-            if no_isin_table and re.search(r"\bweight\b|\(%\)", low):
+            if no_isin_table and re.search(r"\bweight\b|\(%\)", low) and not _QTY_PRICE_VALUE.search(low):
                 in_table = no_isin_table = False  # an allocation table follows: its numbers are not holdings
                 continue
             if "isin" in low and ("value" in low or "valore" in low or "wert" in low):
@@ -266,6 +276,8 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                 continue
             if _QTY_PRICE_VALUE.search(low) and re.search(r"price|prezzo|kurs|cours", low) and not in_fees:
                 in_table, no_isin_table = True, True  # "Quantity | Price | Value" without an ISIN column
+                sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+                ccy = _SYMBOL_CCY[sym] if sym else ccy  # "Price (£) | Value (£)": the rows carry no symbol
                 continue
             hit = _isin_at(ln)
             amounts = _amount_cells(ln)
@@ -339,12 +351,16 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                         )
                     )
                 continue
-            if in_table and amounts and len(ln.cells) <= 3:
+            # "Total | 388,714.25 | 374,716.14 | 3.74": value, then cost and change columns
+            wide_total = no_isin_table and len(ln.cells) > 3 and low.startswith("total")
+            if in_table and amounts and (len(ln.cells) <= 3 or wide_total):
                 label = ln.cells[0].text
                 sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
                 if re.search(r"^total", label, re.I):
                     prev = next((f for f in facts if f.key == "total:assets"), None)
-                    value = amounts[-1][1] + (Decimal(prev.value) if prev and no_isin_table else 0)
+                    value = amounts[0 if wide_total else -1][1] + (
+                        Decimal(prev.value) if prev and no_isin_table else 0
+                    )
                     if prev and no_isin_table:  # one statement, several accounts: their totals add up
                         facts.remove(prev)
                     facts.append(

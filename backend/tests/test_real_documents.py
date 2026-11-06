@@ -141,3 +141,29 @@ def test_statement_without_isins_reconciles_holdings_to_account_totals(tmp_path)
     assert sum(Dec(v) for v, _ in pos.values()) == Dec("5000.00")  # the weight row is not a holding
     assert pos["Beta Very Long Fund Name Accumulation"] == ("2000.00", "GBP")
     assert all(f.evidence.bbox for f in res.facts if f.kind == "position")
+
+
+def test_holdings_table_with_cost_columns_and_symbol_in_header(tmp_path):
+    # AJ Bell-style layout (corpus): "Price (£) | Value (£) | Cost (£) | Change (%)", a wide total row,
+    # then a capital-gains disposal table with an ISIN that is not a holding.
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / "uk2.pdf", "Client valuation")
+    d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client report", "Valuation breakdown")
+    cols = [(50, "l"), (250, "r"), (310, "r"), (370, "r"), (430, "r"), (490, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    row("Holding name", "Quantity", "Price (£)", "Value (£)", "Cost (£)", "Change (%)")
+    row("ALPHA EQUITY I ACC", "1,000.00000", "2.50000", "2,500.00", "2,000.00", "25.00")
+    row("BETA BOND FUND INC", "400.00000", "5.00000", "2,000.00", "2,100.00", "-4.76")
+    row("Total", "4,500.00", "4,100.00", "9.76")
+    row("Date", "ISIN", "Holding name", "Quantity", "Proceeds (£)", "Profit/loss (£)")
+    row("16/04/2019", "IE00B3NS4D25", "Sold Fund", "100.00", "£1,000.00", "£200.00")
+    d.save()
+    res, _ = extract("uk2.pdf", (tmp_path / "uk2.pdf").read_bytes())
+    pos = {f.label: (f.value, f.currency) for f in res.facts if f.kind == "position"}
+    assert res.profile.doc_type == "portfolio_statement"
+    assert pos == {"ALPHA EQUITY I ACC": ("2500.00", "GBP"), "BETA BOND FUND INC": ("2000.00", "GBP")}
+    assert {f.key: f.value for f in res.facts}["total:assets"] == "4500.00"
