@@ -151,7 +151,10 @@ test("10 pipeline: every processing step of a document, with details on demand",
   await expect(values.getByText("Looked for")).toBeVisible();
   await expect(values.getByText("Found on the page")).toBeVisible();
   await expect(values.locator(".evidence-box").first()).toBeVisible(); // boxes drawn on the real page
-  await values.getByRole("row", { name: /Totale patrimonio/ }).getByRole("button").click();
+  await values
+    .getByRole("row", { name: /Totale patrimonio/ })
+    .getByRole("button")
+    .click();
   await expect(values.locator('.evidence-box[data-active="true"]')).toHaveCount(1);
   await expect(page.locator("#stage-validate").getByText(/checks passed/)).toBeVisible();
   await shot(page, "11-pipeline-statement");
