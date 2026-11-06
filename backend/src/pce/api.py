@@ -1,8 +1,8 @@
 """FastAPI application. Local-first: no outbound network calls anywhere in request handling.
 
-Auth is a demo stub: tenant, user and role come from headers set by the UI
-(X-Tenant-Id, X-User, X-Role). Every query is filtered by tenant. Replace with
-real SSO/RBAC before any non-synthetic use (see docs/app/SECURITY.md).
+Every /api route needs a signed-in session (pce.security). Tenant and user come from the
+account, never from the client; X-Role only picks among the roles the account holds (the demo
+role switch). Every query is filtered by tenant. See docs/app/SECURITY.md.
 """
 
 from __future__ import annotations
@@ -10,19 +10,20 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import time
 import zipfile
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import __version__
+from . import __version__, security
 from .analysis import analyse
 from .crm.router import router as crm_router
 from .db import (
@@ -46,18 +47,21 @@ from .pipeline_view import document_pipeline
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_XLSX_UNCOMPRESSED = 100 * 1024 * 1024
+MAX_FILES_PER_UPLOAD = 20
 ALLOWED = {
     ".pdf": "application/pdf",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 app = FastAPI(title="PortfolioCostEngine API", version=__version__)
+app.add_middleware(security.SecurityMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(security.router)
 app.include_router(crm_router)
 SessionFactory = make_session_factory()
 
@@ -76,14 +80,14 @@ class Ctx(BaseModel):
     role: str
 
 
-def ctx(
-    x_tenant_id: Annotated[str, Header()] = "demo-firm",
-    x_user: Annotated[str, Header()] = "analyst",
-    x_role: Annotated[str, Header()] = "analyst",
-) -> Ctx:
-    if x_role not in ("analyst", "senior", "relationship_manager"):
-        raise HTTPException(400, "unknown role")
-    return Ctx(tenant=x_tenant_id, user=x_user, role=x_role)
+def ctx(request: Request, x_role: Annotated[str | None, Header()] = None) -> Ctx:
+    acc = getattr(request.state, "account", None)
+    if acc is None:  # the middleware sets it on every gated route; refuse if a route slipped past
+        raise HTTPException(401, "sign in required")
+    role = x_role or ("analyst" if "analyst" in acc.roles else acc.roles[0])
+    if role not in acc.roles:
+        raise HTTPException(403, "role not allowed for this account")
+    return Ctx(tenant=acc.tenant, user=acc.username, role=role)
 
 
 DB = Annotated[Session, Depends(get_db)]
@@ -239,14 +243,30 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     return result
 
 
+def safe_filename(name: str) -> str:
+    """Keep the base name only, drop control and path characters, cap the length."""
+    base = Path(name.replace("\\", "/")).name
+    clean = "".join(ch for ch in base if ch.isprintable() and ch not in '<>:"/\\|?*').strip(" .")
+    return (clean or "upload")[-150:]
+
+
+def sniffed_type(data: bytes) -> str:
+    import magic  # libmagic: the bytes decide, not the extension
+
+    return magic.from_buffer(data[:8192], mime=True)
+
+
 def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tuple[Document, bool]:
+    filename = safe_filename(filename)
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED:
         raise HTTPException(415, f"{filename}: only PDF and XLSX are accepted")
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"{filename}: larger than {MAX_UPLOAD_BYTES // 1024 // 1024} MB")
-    if suffix == ".pdf" and not data.startswith(b"%PDF"):
+    if suffix == ".pdf" and (not data.startswith(b"%PDF") or sniffed_type(data) != "application/pdf"):
         raise HTTPException(415, f"{filename}: not a PDF file")
+    if suffix == ".xlsx" and sniffed_type(data) not in (ALLOWED[".xlsx"], "application/zip"):
+        raise HTTPException(415, f"{filename}: not an XLSX file")
     if suffix == ".xlsx":
         try:
             with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -508,6 +528,8 @@ def get_one(pid: int, db: DB, c: C) -> dict:
 @app.post("/api/prospects/{pid}/documents")
 async def upload(pid: int, db: DB, c: C, files: Annotated[list[UploadFile], File()]) -> dict:
     p = get_prospect(db, c, pid)
+    if len(files) > MAX_FILES_PER_UPLOAD:
+        raise HTTPException(413, f"at most {MAX_FILES_PER_UPLOAD} files per upload")
     out = []
     for uf in files:
         data = await uf.read(MAX_UPLOAD_BYTES + 1)
@@ -887,6 +909,7 @@ def report_pdf(pid: int, db: DB, c: C) -> Response:
         compute(db, c, p)
     )  # defence in depth: the client report never receives internal economics
     pdf = render_client_report(r)
+    safe_code = re.sub(r"[^A-Za-z0-9_-]", "", p.code)  # the code is user input; keep the header clean
     audit(
         db,
         c,
@@ -899,5 +922,5 @@ def report_pdf(pid: int, db: DB, c: C) -> Response:
     return Response(
         pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="cost-review-{p.code}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="cost-review-{safe_code}.pdf"'},
     )

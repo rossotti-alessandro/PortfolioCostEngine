@@ -6,14 +6,16 @@ import tempfile
 os.environ.setdefault("PCE_DATA_DIR", tempfile.mkdtemp(prefix="pce-test-"))
 os.environ.setdefault("PCE_DATABASE_URL", f"sqlite:///{os.environ['PCE_DATA_DIR']}/t.sqlite")
 
+from conftest import session_headers
 from fastapi.testclient import TestClient
 
 from pce.api import app
 from pce.crm.funnel import compute_funnel
 
 client = TestClient(app)
-A = {"X-Tenant-Id": "crm-a", "X-User": "ana", "X-Role": "analyst"}
-B = {"X-Tenant-Id": "crm-b", "X-User": "bob", "X-Role": "senior"}
+A = session_headers("crm-a", "crm.ana", "analyst")
+B = session_headers("crm-b", "crm.bob", "senior")
+SEED = session_headers("crm-seed", "crm.seeder", "analyst")
 FORBIDDEN = ("margin", "internal", "revenue", "contribution")
 
 
@@ -85,13 +87,13 @@ def test_funnel_unknown_aum_is_counted_not_zero():
 
 def test_create_move_and_history():
     c = new("Vega test family", estimated_aum="3500000", current_banks=["Bank X (Synthetic)"])
-    assert c["stage"] == "lead" and c["lifecycle"] == "prospect" and c["owner"] == "ana"
+    assert c["stage"] == "lead" and c["lifecycle"] == "prospect" and c["owner"] == "crm.ana"
     assert stage(c["id"], "qualified", note="intro call ok").status_code == 200
     assert stage(c["id"], "qualified").status_code == 409
     r = stage(c["id"], "won").json()
     assert r["lifecycle"] == "client"
     assert [h["to_stage"] for h in r["history"]] == ["lead", "qualified", "won"]
-    assert r["history"][1]["note"] == "intro call ok" and r["history"][1]["user"] == "ana"
+    assert r["history"][1]["note"] == "intro call ok" and r["history"][1]["user"] == "crm.ana"
     clients = client.get("/api/crm/contacts?lifecycle=client", headers=A).json()
     assert c["id"] in [k["id"] for k in clients]
 
@@ -159,7 +161,7 @@ def test_cost_review_link_creates_prospect_once():
 
 
 def test_seed_is_idempotent_synthetic_and_funnel_is_consistent():
-    h = {**A, "X-Tenant-Id": "crm-seed"}
+    h = SEED
     first = client.post("/api/crm/demo/seed", headers=h).json()["contacts_added"]
     assert first == 41
     assert client.post("/api/crm/demo/seed", headers=h).json()["contacts_added"] == 0
@@ -182,7 +184,7 @@ def test_seed_is_idempotent_synthetic_and_funnel_is_consistent():
 
 
 def test_crm_payloads_never_carry_internal_economics():
-    h = {**A, "X-Tenant-Id": "crm-seed"}
+    h = SEED
     client.post("/api/crm/demo/seed", headers=h)
     cid = client.get("/api/crm/contacts", headers=h).json()[0]["id"]
     for path in ("/api/crm/contacts", f"/api/crm/contacts/{cid}", "/api/crm/funnel", "/api/crm/meta"):

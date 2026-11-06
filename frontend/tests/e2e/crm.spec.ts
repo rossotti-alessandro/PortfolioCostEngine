@@ -5,7 +5,13 @@
  */
 import { type Page, expect, test } from "@playwright/test";
 
-const HEADERS = { "X-Tenant-Id": "demo-firm", "X-User": "a.analyst", "X-Role": "analyst" };
+const HEADERS = { "X-Role": "analyst" }; // the signed-in session (global-setup.ts) decides tenant and user
+
+/** Writes also need the session's CSRF token. */
+async function writeHeaders(page: Page) {
+  const me = await (await page.request.get("/api/auth/me")).json();
+  return { ...HEADERS, "X-CSRF-Token": me.csrf_token as string };
+}
 
 async function funnel(page: Page) {
   const r = await page.request.get("/api/crm/funnel", { headers: HEADERS });
@@ -62,7 +68,10 @@ test("create a contact, move it to won, funnel and clients list update", async (
 
 test("losing a contact requires a reason and shows up in lost reasons", async ({ page }) => {
   const name = `E2E lost ${Date.now()}`;
-  const r = await page.request.post("/api/crm/contacts", { headers: HEADERS, data: { name, stage: "qualified" } });
+  const r = await page.request.post("/api/crm/contacts", {
+    headers: await writeHeaders(page),
+    data: { name, stage: "qualified" },
+  });
   const { id } = await r.json();
   await page.goto(`/crm/c/${id}`);
   await page.getByRole("button", { name: "Mark as lost" }).click();
@@ -78,7 +87,7 @@ test("losing a contact requires a reason and shows up in lost reasons", async ({
 
 test("start a cost review from a contact lands on the document upload step", async ({ page }) => {
   const r = await page.request.post("/api/crm/contacts", {
-    headers: HEADERS,
+    headers: await writeHeaders(page),
     data: { name: `E2E review ${Date.now()}`, stage: "documents_received" },
   });
   const { id } = await r.json();
@@ -91,7 +100,7 @@ test("start a cost review from a contact lands on the document upload step", asy
 });
 
 test("home is the pipeline; a seeded client drills down into its cost review", async ({ page }) => {
-  await page.request.post("/api/crm/demo/seed", { headers: HEADERS });
+  await page.request.post("/api/crm/demo/seed", { headers: await writeHeaders(page) });
   await page.goto("/");
   await expect(page).toHaveURL(/\/crm$/);
   await page
@@ -107,7 +116,7 @@ test("home is the pipeline; a seeded client drills down into its cost review", a
 });
 
 test("synthetic CRM seed renders board and funnel with the synthetic banner", async ({ page }) => {
-  await page.request.post("/api/crm/demo/seed", { headers: HEADERS });
+  await page.request.post("/api/crm/demo/seed", { headers: await writeHeaders(page) });
   await page.goto("/crm");
   await expect(page.getByText(/SYNTHETIC demo data/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Lead" })).toBeVisible();
@@ -117,7 +126,7 @@ test("synthetic CRM seed renders board and funnel with the synthetic banner", as
 });
 
 test("the pipeline and funnel render in Italian", async ({ page }) => {
-  await page.request.post("/api/crm/demo/seed", { headers: HEADERS });
+  await page.request.post("/api/crm/demo/seed", { headers: await writeHeaders(page) });
   await page.goto("/crm");
   await page.evaluate(() => localStorage.setItem("feelens.lang", "it"));
   await page.reload();

@@ -75,7 +75,7 @@ test("05 compare: proposal vs today, like for like", async ({ page }) => {
 });
 
 test("06 demo prospect P-1042: costs, compare, report PDF", async ({ page }) => {
-  const r = await page.request.get("/api/prospects", { headers: { "X-Tenant-Id": "demo-firm" } });
+  const r = await page.request.get("/api/prospects", { headers: { "X-Role": "analyst" } });
   const rows: { id: number; code: string }[] = await r.json();
   const demo = rows.find((x) => x.code === "P-1042");
   expect(demo).toBeTruthy();
@@ -99,7 +99,7 @@ test("06 demo prospect P-1042: costs, compare, report PDF", async ({ page }) => 
 
 test("07 roles: analysts cannot see internal margin, seniors can", async ({ page }) => {
   const rows: { id: number; code: string }[] = await (
-    await page.request.get("/api/prospects", { headers: { "X-Tenant-Id": "demo-firm" } })
+    await page.request.get("/api/prospects", { headers: { "X-Role": "analyst" } })
   ).json();
   const id = rows.find((x) => x.code === "P-1042")?.id;
   await page.goto(`/p/${id}/internal`);
@@ -108,14 +108,20 @@ test("07 roles: analysts cannot see internal margin, seniors can", async ({ page
   await expect(page.getByRole("heading", { name: "Internal economics" })).toBeVisible();
   await shot(page, "09-internal-senior");
   const client = await (
-    await page.request.get(`/api/prospects/${id}/analysis`, { headers: { "X-Tenant-Id": "demo-firm" } })
+    await page.request.get(`/api/prospects/${id}/analysis`, { headers: { "X-Role": "analyst" } })
   ).text();
   expect(client).not.toMatch(/min_margin_pct|servicing_cost|annual_contribution/);
 });
 
-test("08 tenant isolation: another firm cannot read this prospect", async ({ request }) => {
-  const res = await request.get(`/api/prospects/${pid}/analysis`, { headers: { "X-Tenant-Id": "other-firm" } });
-  expect([403, 404]).toContain(res.status());
+test("08 access: signed-out requests are refused, a firm header cannot switch firm", async ({
+  request,
+  playwright,
+}) => {
+  const anon = await playwright.request.newContext({ storageState: { cookies: [], origins: [] } });
+  expect((await anon.get(`/api/prospects/${pid}/analysis`)).status()).toBe(401);
+  await anon.dispose();
+  const spoofed = await request.get("/api/prospects", { headers: { "X-Tenant-Id": "other-firm" } });
+  expect((await spoofed.json()).some((p: { id: number }) => p.id === pid)).toBeTruthy(); // still the session's firm
 });
 
 test("09 Italian interface", async ({ page }) => {

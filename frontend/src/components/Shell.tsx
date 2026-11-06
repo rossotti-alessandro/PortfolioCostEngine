@@ -1,23 +1,32 @@
-import { ROLE_LABEL, type Role, api, getRole, setRole } from "@/lib/api";
+import { type Me, ROLE_LABEL, type Role, allowedRoleList, api, auth, getRole, setRole, signedOut } from "@/lib/api";
 import { PRODUCT } from "@/lib/brand";
 import { chf, cn } from "@/lib/format";
 import { setLang, t, useLang } from "@/lib/i18n";
 import { crm } from "@/pages/crm/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Users, Workflow } from "lucide-react";
+import { BookOpen, Check, ChevronRight, FolderOpen, Lock, LogOut, ShieldCheck, Users, Workflow } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, useMatch, useParams } from "react-router-dom";
 import { Badge, InfoTip } from "./ui";
 
-export function Brand() {
-  return (
-    <Link to="/crm" className="flex items-center gap-2.5 px-2">
+/** Logo and name; a link home inside the app, plain on the sign-in page (no router there). */
+export function Brand({ link = true }: { link?: boolean }) {
+  const inner = (
+    <>
       <img src="/favicon.svg" alt="" className="h-7 w-7" />
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-navy-900">{PRODUCT.name}</div>
         <div className="text-[11px] text-subtle">{t(PRODUCT.tagline)}</div>
       </div>
+    </>
+  );
+  const cls = "flex items-center gap-2.5 px-2";
+  return link ? (
+    <Link to="/crm" className={cls}>
+      {inner}
     </Link>
+  ) : (
+    <div className={cls}>{inner}</div>
   );
 }
 
@@ -49,6 +58,8 @@ function LangSwitch() {
 function RoleSwitch() {
   const qc = useQueryClient();
   const [role, setR] = useState<Role>(getRole());
+  const roles = allowedRoleList();
+  if (roles.length < 2) return null; // nothing to switch: the account holds one role
   return (
     <label className="block text-[11.5px] text-subtle">
       {t("Demo role")}
@@ -63,13 +74,34 @@ function RoleSwitch() {
         }}
         className="mt-1 h-8 w-full rounded-md border border-line-strong bg-surface px-2 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-teal-600/20"
       >
-        {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+        {roles.map((r) => (
           <option key={r} value={r}>
             {t(ROLE_LABEL[r])}
           </option>
         ))}
       </select>
     </label>
+  );
+}
+
+function Account() {
+  const qc = useQueryClient();
+  const me = qc.getQueryData<Me>(["me"]);
+  if (!me) return null;
+  return (
+    <div className="flex items-center justify-between gap-2 text-[11.5px] text-subtle">
+      <span className="truncate">{t("Signed in as {user}", { user: me.username })}</span>
+      <button
+        type="button"
+        onClick={async () => {
+          await auth.logout().catch(() => undefined);
+          signedOut(qc);
+        }}
+        className="flex shrink-0 items-center gap-1 rounded px-1.5 py-1 font-medium text-muted hover:bg-paper hover:text-ink"
+      >
+        <LogOut className="h-3.5 w-3.5" /> {t("Sign out")}
+      </button>
+    </div>
   );
 }
 
@@ -163,6 +195,7 @@ export function AppShell() {
           </div>
           <LangSwitch />
           <RoleSwitch />
+          <Account />
         </div>
       </aside>
       <main className="min-w-0 flex-1">

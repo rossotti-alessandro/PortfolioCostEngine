@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
+
+# Before any pce import: a fixed signing key, and plain-HTTP cookies so TestClient keeps them.
+os.environ.setdefault("PCE_SECRET_KEY", "test-only-signing-key-" + "x" * 32)
+os.environ.setdefault("PCE_COOKIE_SECURE", "0")
 
 FEE_LINE = "Custody fee 0.25% p.a. CHF 1,250.00"
 
@@ -41,3 +46,16 @@ def statement_pdf(tmp_path: Path) -> Path:
     pdf = tmp_path / "statement.pdf"
     write_text_pdf(pdf, [(72, 742, 14, "SYNTHETIC DEMO STATEMENT"), (72, 702, 12, FEE_LINE)])
     return pdf
+
+
+def session_headers(tenant: str, user: str, role: str) -> dict[str, str]:
+    """Headers of a signed-in user holding exactly one role: session cookie, CSRF token, X-Role."""
+    from pce import auth, security
+
+    acc = auth.add_account(user, "correct horse battery staple", tenant, (role,))
+    token = auth.issue_session(acc)
+    return {
+        "Cookie": f"{security.SESSION_COOKIE}={token}",
+        security.CSRF_HEADER: auth.csrf_token(token),
+        "X-Role": role,
+    }
