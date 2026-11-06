@@ -86,3 +86,4 @@ page, but there is no hand-written page map per specimen yet. Status stays In Pr
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
 | claude/project-thread-coe0g4 | 82e2948 | 2026-11-06 15:56 | Specimen corpus manifest, fetch, evaluation and results |
+| claude/project-thread-coe0g4 | 56fd4e1 | 2026-11-06 16:34 | Grow corpus to 395 PDFs, client document guide, coverage, re-run |
