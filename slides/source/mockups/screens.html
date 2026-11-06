@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deck mockups (synthetic)</title>
+<style>
+  :root{
+    --navy:#13233F; --ink:#1B2433; --muted:#5B6678; --line:#E2E6EC; --bg:#F6F7F9; --card:#FFFFFF;
+    --teal:#0E7C72; --teal-soft:#E3F2F0; --amber:#B7791F; --amber-soft:#FBF1DE; --red:#B42318; --red-soft:#FCE8E6;
+    --blue-soft:#E8EEF8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,"Liberation Sans",sans-serif;color:var(--ink);background:#ccc}
+  .screen{width:1600px;height:1000px;background:var(--bg);position:relative;overflow:hidden;margin:20px}
+  .demo-wm{position:absolute;right:24px;bottom:16px;font-size:13px;font-weight:700;letter-spacing:.12em;color:#fff;background:#B42318;padding:6px 12px;border-radius:4px;z-index:50}
+  /* app chrome */
+  .top{height:64px;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 28px;gap:28px}
+  .logo{font-weight:700;font-size:19px;letter-spacing:.01em}
+  .logo span{color:#7FD1C7}
+  .nav{display:flex;gap:6px;margin-left:24px}
+  .nav div{padding:8px 14px;border-radius:6px;font-size:15px;color:#C9D3E3}
+  .nav .on{background:rgba(255,255,255,.12);color:#fff}
+  .user{margin-left:auto;font-size:14px;color:#C9D3E3}
+  .stepper{display:flex;gap:0;padding:18px 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .step{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--muted);flex:1}
+  .step .n{width:28px;height:28px;border-radius:50%;border:2px solid #C5CCD8;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .step.done .n{background:var(--teal);border-color:var(--teal);color:#fff}
+  .step.cur .n{border-color:var(--navy);color:var(--navy)}
+  .step.cur{color:var(--ink);font-weight:600}
+  .page{padding:24px 28px}
+  h1{font-size:26px;font-weight:700;margin-bottom:4px}
+  .sub{color:var(--muted);font-size:15px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600}
+  .ok{background:var(--teal-soft);color:var(--teal)}
+  .est{background:var(--amber-soft);color:#8A5A12}
+  .miss{background:var(--red-soft);color:var(--red)}
+  .info{background:var(--blue-soft);color:#2B4C7E}
+  table{border-collapse:collapse;width:100%}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600}
+  td{font-size:15px;padding:12px;border-bottom:1px solid var(--line)}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+  .btn{display:inline-block;padding:11px 18px;border-radius:8px;font-weight:600;font-size:15px}
+  .btn.p{background:var(--teal);color:#fff}
+  .btn.s{background:#fff;border:1px solid #C5CCD8;color:var(--ink)}
+
+  /* statement facsimile */
+  .paper{width:1000px;height:1000px;background:#fff;margin:20px;position:relative;font-family:"Liberation Serif",serif;padding:56px 60px;color:#222;overflow:hidden}
+  .paper .bk{font-family:"Liberation Sans",sans-serif;font-weight:700;font-size:22px;letter-spacing:.04em;color:#2A3B5C}
+  .paper .meta{font-family:"Liberation Sans",sans-serif;font-size:14px;color:#555;margin-top:4px}
+  .paper h2{font-family:"Liberation Sans",sans-serif;font-size:20px;margin:28px 0 12px}
+  .paper table td,.paper table th{font-family:"Liberation Sans",sans-serif;font-size:14px;padding:8px 6px}
+  .paper th{color:#444;border-bottom:2px solid #333}
+  .hl{outline:3px solid #0E7C72;outline-offset:2px;background:rgba(14,124,114,.10)}
+  .hl-a{outline:3px solid #B7791F;outline-offset:2px;background:rgba(183,121,31,.12)}
+  .b{display:inline-flex;width:24px;height:24px;border-radius:50%;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;align-items:center;justify-content:center;margin-left:8px;vertical-align:middle}
+  .tag{position:absolute;font-family:Inter,sans-serif;font-size:13px;font-weight:700;color:#fff;padding:4px 9px;border-radius:4px}
+  .wm{position:absolute;top:44%;left:-60px;width:1200px;text-align:center;transform:rotate(-28deg);font-family:Inter,sans-serif;font-size:96px;font-weight:800;color:rgba(180,35,24,.10);letter-spacing:.1em;pointer-events:none}
+</style>
+</head>
+<body>
+
+<!-- 1. Synthetic bank statement facsimile -->
+<div class="paper" id="statement" style="height:760px">
+  <div class="wm">SYNTHETIC · DEMO</div>
+  <div style="display:flex;justify-content:space-between">
+    <div><div class="bk">BANCA ALFA (FICTIONAL)</div><div class="meta">Private Banking · Portfolio valuation</div></div>
+    <div class="meta" style="text-align:right">Client: PROSPECT-001<br>Account: A-0001 · Ref. currency CHF<br>Valuation date: 31.10.2026</div>
+  </div>
+  <h2>1. Positions</h2>
+  <table>
+    <tr><th>Asset class</th><th>Security</th><th>ISIN</th><th class="r">Quantity</th><th class="r">Value CHF</th></tr>
+    <tr><td>Fund</td><td>Global Equity Fund A (R-acc)</td><td><span class="hl" id="isin1">ZZDEMO000011</span><span class="b" style="background:#0E7C72">1</span></td><td class="r">5'000</td><td class="r"><span class="b" style="background:#0E7C72;margin:0 8px 0 0">2</span><span class="hl" id="val1">800'000.00</span></td></tr>
+    <tr><td>ETF</td><td>US Equity Index ETF</td><td>ZZDEMO000029</td><td class="r">1'400</td><td class="r">700'000.00</td></tr>
+    <tr><td>Equity</td><td>Direct equities (12 lines)</td><td>various</td><td class="r">—</td><td class="r">600'000.00</td></tr>
+    <tr><td>Cash</td><td>Current account CHF</td><td>n/a</td><td class="r">—</td><td class="r">500'000.00</td></tr>
+    <tr><td colspan="4"><b>Total account A-0001</b></td><td class="r"><b>2'600'000.00</b></td></tr>
+  </table>
+  <h2>2. Charges debited 01.01.2026 – 31.10.2026</h2>
+  <table>
+    <tr><th>Date</th><th>Description</th><th>Period</th><th class="r">Amount CHF</th></tr>
+    <tr><td>31.03.2026</td><td>Management fee mandate (0.55% p.a.)</td><td>Q1 2026</td><td class="r">3'575.00</td></tr>
+    <tr><td>30.06.2026</td><td><span class="hl-a" id="fee1">Management fee mandate (0.55% p.a.)</span></td><td>Q2 2026</td><td class="r"><span class="b" style="background:#B7791F;margin:0 8px 0 0">3</span><span class="hl-a" id="fee1v">3'575.00</span></td></tr>
+    <tr><td>30.06.2026</td><td>Custody fee</td><td>H1 2026</td><td class="r">1'950.00</td></tr>
+    <tr><td>30.09.2026</td><td>Management fee mandate (0.55% p.a.)</td><td>Q3 2026</td><td class="r">3'575.00</td></tr>
+    <tr><td>various</td><td>Brokerage &amp; third-party fees (14 orders)</td><td>2026</td><td class="r">1'480.00</td></tr>
+  </table>
+  <div style="font-family:Inter,sans-serif;font-size:14px;color:#333;margin-top:22px;display:flex;gap:22px;align-items:center"><span><span class="b" style="background:#0E7C72;margin:0 6px 0 0">1</span>ISIN recognised</span><span><span class="b" style="background:#0E7C72;margin:0 6px 0 0">2</span>Position value</span><span><span class="b" style="background:#B7791F;margin:0 6px 0 0">3</span>Fee actually billed</span></div>
+  <div style="font-family:'Liberation Sans',sans-serif;font-size:12px;color:#777;margin-top:14px">This document is a synthetic facsimile created for demonstration. It is not a statement of any real bank, client or account.</div>
+</div>
+
+<!-- 2. Upload & checklist -->
+<div class="screen" id="upload" style="height:860px">
+  <div class="top"><div class="logo">Portfolio <span>Cost</span> Engine</div>
+    <div class="nav"><div>Prospects</div><div class="on">Documents</div><div>Review</div><div>Costs</div><div>Compare</div><div>Report</div></div>
+    <div class="user">Analyst · Safe Capital (demo)</div></div>
+  <div class="stepper">
+    <div class="step cur"><div class="n">1</div>Upload</div><div class="step"><div class="n">2</div>Review</div><div class="step"><div class="n">3</div>Costs</div><div class="step"><div class="n">4</div>Compare</div><div class="step"><div class="n">5</div>Report</div>
+  </div>
+  <div class="page">
+    <h1>Prospect PROSPECT-001 · Documents</h1>
+    <div class="sub">2 banks · 7 files received · synthetic demo data</div>
+    <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:24px">
+      <div>
+        <div class="card" style="border:2px dashed #9FB3C8;text-align:center;padding:34px;margin-bottom:20px;background:#FBFCFD">
+          <div style="font-size:40px;color:#9FB3C8;line-height:1">⇪</div>
+          <div style="font-size:18px;font-weight:600;margin-top:8px">Drop PDF, Excel or CSV files here</div>
+          <div style="color:var(--muted);font-size:14px;margin-top:4px">Files stay on Safe Capital's own server · encrypted at rest</div>
+        </div>
+        <div class="card" style="padding:0">
+          <table>
+            <tr><th>File</th><th>Detected as</th><th>Bank</th><th>Status</th></tr>
+            <tr><td>valuation_oct26.pdf</td><td>Portfolio valuation</td><td>Banca Alfa</td><td><span class="pill ok">Read · 3 pages</span></td></tr>
+            <tr><td>charges_2026.pdf</td><td>Fee statement</td><td>Banca Alfa</td><td><span class="pill ok">Read · 2 pages</span></td></tr>
+            <tr><td>mandate_contract.pdf</td><td>Mandate agreement</td><td>Banca Alfa</td><td><span class="pill ok">Read · 6 pages</span></td></tr>
+            <tr><td>depot_B_q3.pdf</td><td>Securities statement</td><td>Banca Beta</td><td><span class="pill ok">Read · 2 pages</span></td></tr>
+            <tr><td>scan_tariff.jpg</td><td>Custody tariff (scan)</td><td>Banca Beta</td><td><span class="pill est">OCR · check 2 values</span></td></tr>
+            <tr><td>trades_2026.xlsx</td><td>Transaction list</td><td>Banca Beta</td><td><span class="pill ok">Read · 41 rows</span></td></tr>
+            <tr><td>note_termsheet.pdf</td><td>Structured product termsheet</td><td>Banca Beta</td><td><span class="pill info">Reading…</span></td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:18px;font-weight:700;margin-bottom:4px">Document checklist</div>
+        <div style="color:var(--muted);font-size:14px;margin-bottom:14px">What we need for a complete cost picture</div>
+        <table>
+          <tr><td>Holdings / valuation, both banks</td><td class="r"><span class="pill ok">Received</span></td></tr>
+          <tr><td>Fees charged, last 12 months — Alfa</td><td class="r"><span class="pill ok">Received</span></td></tr>
+          <tr><td>Fees charged, last 12 months — Beta</td><td class="r"><span class="pill ok">Received</span></td></tr>
+          <tr><td>Rebate (retrocession) disclosure</td><td class="r"><span class="pill miss">Missing</span></td></tr>
+          <tr><td>Mandate / advisory contract</td><td class="r"><span class="pill ok">Received</span></td></tr>
+          <tr><td>Custody &amp; trading tariff</td><td class="r"><span class="pill est">Partial</span></td></tr>
+          <tr><td>FX confirmations</td><td class="r"><span class="pill miss">Missing</span></td></tr>
+          <tr><td>Fund costs (official KIDs)</td><td class="r"><span class="pill ok">Found 3 of 3</span></td></tr>
+        </table>
+        <div style="margin-top:20px;display:flex;gap:10px"><span class="btn p">Continue to review</span><span class="btn s">Draft request to client</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-wm">SYNTHETIC DEMO</div>
+</div>
+
+<!-- 3. Review split screen -->
+<div class="screen" id="review">
+  <div class="top"><div class="logo">Portfolio <span>Cost</span> Engine</div>
+    <div class="nav"><div>Prospects</div><div>Documents</div><div class="on">Review</div><div>Costs</div><div>Compare</div><div>Report</div></div>
+    <div class="user">Analyst · Safe Capital (demo)</div></div>
+  <div class="stepper">
+    <div class="step done"><div class="n">✓</div>Upload</div><div class="step cur"><div class="n">2</div>Review</div><div class="step"><div class="n">3</div>Costs</div><div class="step"><div class="n">4</div>Compare</div><div class="step"><div class="n">5</div>Report</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;height:872px">
+    <div style="background:#5E6878;padding:22px;position:relative">
+      <div style="color:#fff;font-size:14px;margin-bottom:10px">charges_2026.pdf · page 1 of 2</div>
+      <div style="background:#fff;height:780px;padding:36px;font-family:'Liberation Sans',sans-serif;font-size:14px;color:#333;position:relative">
+        <div style="font-weight:700;font-size:18px;color:#2A3B5C">BANCA ALFA (FICTIONAL)</div>
+        <div style="color:#666;margin-bottom:24px">Charges debited · account A-0001</div>
+        <div style="display:grid;grid-template-columns:110px 1fr 90px;row-gap:16px">
+          <div>31.03.2026</div><div>Management fee (0.55% p.a.) Q1</div><div style="text-align:right">3'575.00</div>
+          <div>30.06.2026</div><div style="outline:3px solid #B7791F;background:rgba(183,121,31,.12)">Management fee (0.55% p.a.) Q2</div><div style="text-align:right;outline:3px solid #B7791F;background:rgba(183,121,31,.12)">3'575.00</div>
+          <div>30.06.2026</div><div>Custody fee H1</div><div style="text-align:right">1'950.00</div>
+          <div>30.09.2026</div><div>Management fee (0.55% p.a.) Q3</div><div style="text-align:right">3'575.00</div>
+          <div>various</div><div>Brokerage &amp; third-party fees</div><div style="text-align:right">1'480.00</div>
+        </div>
+        <div style="position:absolute;top:44%;left:0;right:0;text-align:center;transform:rotate(-24deg);font-size:64px;font-weight:800;color:rgba(180,35,24,.10);letter-spacing:.1em">SYNTHETIC</div>
+      </div>
+    </div>
+    <div style="padding:24px 28px;background:#fff">
+      <div style="font-size:20px;font-weight:700">Extracted facts</div>
+      <div style="color:var(--muted);font-size:14px;margin:4px 0 16px">Click any value to see where it came from</div>
+      <div class="card" style="border:2px solid #B7791F;background:#FFFBF3;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px">Management fee · Q2 2026</b><span class="pill est">Needs your check</span></div>
+        <table style="margin-top:10px">
+          <tr><td style="color:var(--muted)">Amount</td><td class="r"><b>CHF 3'575.00</b></td></tr>
+          <tr><td style="color:var(--muted)">Category</td><td class="r">Advisory / management</td></tr>
+          <tr><td style="color:var(--muted)">Source</td><td class="r">charges_2026.pdf · p.1 · row 2</td></tr>
+          <tr><td style="color:var(--muted)">Why flagged</td><td class="r">VAT not stated on this line</td></tr>
+        </table>
+        <div style="margin-top:14px;display:flex;gap:10px"><span class="btn p">Confirm</span><span class="btn s">Correct value</span><span class="btn s">Ask client</span></div>
+      </div>
+      <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between"><span>Management fee · Q1 2026 · CHF 3'575.00</span><span class="pill ok">Confirmed</span></div>
+      <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between"><span>Custody fee · H1 2026 · CHF 1'950.00</span><span class="pill ok">Confirmed</span></div>
+      <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between"><span>Management fee · Q3 2026 · CHF 3'575.00</span><span class="pill ok">Confirmed</span></div>
+      <div class="card" style="display:flex;justify-content:space-between"><span>Brokerage · 14 orders · CHF 1'480.00</span><span class="pill info">Matched to trades</span></div>
+    </div>
+  </div>
+  <div class="demo-wm">SYNTHETIC DEMO</div>
+</div>
+
+<!-- 4. Cost dashboard -->
+<div class="screen" id="costs" style="height:790px">
+  <div class="top"><div class="logo">Portfolio <span>Cost</span> Engine</div>
+    <div class="nav"><div>Prospects</div><div>Documents</div><div>Review</div><div class="on">Costs</div><div>Compare</div><div>Report</div></div>
+    <div class="user">Analyst · Safe Capital (demo)</div></div>
+  <div class="stepper">
+    <div class="step done"><div class="n">✓</div>Upload</div><div class="step done"><div class="n">✓</div>Review</div><div class="step cur"><div class="n">3</div>Costs</div><div class="step"><div class="n">4</div>Compare</div><div class="step"><div class="n">5</div>Report</div>
+  </div>
+  <div class="page">
+    <h1>Current annual cost · PROSPECT-001</h1>
+    <div class="sub">Assets in scope CHF 4'000'000 · 2 banks · 12-month view · synthetic demo data</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:22px">
+      <div class="card"><div style="color:var(--muted);font-size:14px">Total known cost / year</div><div style="font-size:34px;font-weight:700;margin-top:6px">CHF 38'100</div><div style="color:var(--muted);font-size:14px">0.95% of assets</div></div>
+      <div class="card"><div style="color:var(--muted);font-size:14px">Proven by documents</div><div style="font-size:34px;font-weight:700;margin-top:6px;color:var(--teal)">CHF 25'100</div><div style="color:var(--muted);font-size:14px">billed fees, source-linked</div></div>
+      <div class="card"><div style="color:var(--muted);font-size:14px">Estimated</div><div style="font-size:34px;font-weight:700;margin-top:6px;color:#8A5A12">CHF 13'000</div><div style="color:var(--muted);font-size:14px">fund costs from official KIDs, FX</div></div>
+      <div class="card" style="background:#FFF8F7;border-color:#F2C6C1"><div style="color:var(--red);font-size:14px;font-weight:600">Not yet quantified</div><div style="font-size:34px;font-weight:700;margin-top:6px;color:var(--red)">2 items</div><div style="color:var(--muted);font-size:14px">retrocessions, actual FX margins</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:22px">
+      <div class="card">
+        <div style="font-size:17px;font-weight:700;margin-bottom:16px">Where the money goes</div>
+        <div id="bars"></div>
+      </div>
+      <div class="card" style="padding:0">
+        <table>
+          <tr><th>Cost line</th><th class="r">CHF</th><th>Status</th></tr>
+          <tr><td>Management / advisory</td><td class="r">17'100</td><td><span class="pill ok">Proven</span></td></tr>
+          <tr><td>Fund costs inside prices</td><td class="r">10'200</td><td><span class="pill est">Estimated</span></td></tr>
+          <tr><td>Custody</td><td class="r">5'700</td><td><span class="pill ok">Proven</span></td></tr>
+          <tr><td>Brokerage &amp; trading</td><td class="r">2'300</td><td><span class="pill ok">Proven</span></td></tr>
+          <tr><td>Structured product costs</td><td class="r">1'600</td><td><span class="pill est">Estimated</span></td></tr>
+          <tr><td>FX conversion costs</td><td class="r">1'200</td><td><span class="pill est">Estimated</span></td></tr>
+          <tr><td>Retrocessions / rebates</td><td class="r">?</td><td><span class="pill miss">Missing</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="demo-wm">SYNTHETIC DEMO</div>
+</div>
+
+<!-- 5. Client report -->
+<div class="screen" id="report" style="height:900px;background:#5E6878;display:flex;align-items:center;justify-content:center">
+  <div style="width:760px;height:850px;background:#fff;padding:52px 56px;position:relative;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><div style="font-size:13px;letter-spacing:.14em;color:var(--teal);font-weight:700">PORTFOLIO COST REVIEW</div>
+      <div style="font-size:28px;font-weight:700;margin-top:6px">What your portfolio costs today</div>
+      <div style="color:var(--muted);font-size:15px;margin-top:4px">Prepared for PROSPECT-001 · 06.11.2026</div></div>
+      <div style="font-size:13px;color:var(--muted);text-align:right">Safe Capital<br>(demo layout)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px">
+      <div style="background:var(--bg);border-radius:10px;padding:18px"><div style="color:var(--muted);font-size:14px">You pay today</div><div style="font-size:32px;font-weight:700">CHF 38'100</div><div style="font-size:14px;color:var(--muted)">0.95% per year</div></div>
+      <div style="background:var(--teal-soft);border-radius:10px;padding:18px"><div style="color:var(--teal);font-size:14px">Same holdings: Safe Capital + custodian</div><div style="font-size:32px;font-weight:700;color:var(--teal)">CHF 32'540</div><div style="font-size:14px;color:var(--muted)">0.81% per year</div></div>
+    </div>
+    <div style="margin-top:26px;font-size:16px;font-weight:700">Breakdown</div>
+    <table style="margin-top:6px">
+      <tr><th>Cost</th><th class="r">Today</th><th class="r">Proposal</th></tr>
+      <tr><td>Management / advisory</td><td class="r">17'100</td><td class="r">15'200</td></tr>
+      <tr><td>Custody (custodian bank)</td><td class="r">5'700</td><td class="r">3'040</td></tr>
+      <tr><td>Trading &amp; FX</td><td class="r">3'500</td><td class="r">2'500</td></tr>
+      <tr><td>Product costs (funds, notes)</td><td class="r">11'800</td><td class="r">11'800</td></tr>
+      <tr><td><b>Total</b></td><td class="r"><b>38'100</b></td><td class="r"><b>32'540</b></td></tr>
+    </table>
+    <div style="margin-top:22px;font-size:16px;font-weight:700">What this analysis does not yet include</div>
+    <ul style="margin:8px 0 0 20px;font-size:14px;color:#333;line-height:1.7">
+      <li>Retrocession disclosure from both banks (requested 06.11.2026)</li>
+      <li>Actual FX margins — estimated from tariff only</li>
+      <li>One-off transfer costs, taxes and exit fees</li>
+    </ul>
+    <div style="margin-top:22px;font-size:12px;color:var(--muted);line-height:1.5">Proven = taken from your bank documents. Estimated = from official product documents or tariffs. Not investment advice. Reviewed and approved by: ________</div>
+    <div style="position:absolute;top:46%;left:-40px;width:840px;text-align:center;transform:rotate(-28deg);font-size:80px;font-weight:800;color:rgba(180,35,24,.08);letter-spacing:.1em">SYNTHETIC</div>
+  </div>
+  <div class="demo-wm">SYNTHETIC DEMO</div>
+</div>
+
+<script>
+  const data=[["Management / advisory",17100,"#0E7C72"],["Fund costs inside prices",10200,"#B7791F"],["Custody",5700,"#0E7C72"],["Brokerage & trading",2300,"#0E7C72"],["Structured products",1600,"#B7791F"],["FX conversion",1200,"#B7791F"]];
+  const max=17100;const el=document.getElementById('bars');
+  el.innerHTML=data.map(([l,v,c])=>`<div style="display:grid;grid-template-columns:230px 1fr 90px;align-items:center;gap:12px;margin-bottom:16px;font-size:15px"><div>${l}</div><div style="background:#EEF1F5;border-radius:4px;height:26px"><div style="width:${v/max*100}%;height:100%;background:${c};border-radius:4px"></div></div><div style="text-align:right;font-variant-numeric:tabular-nums">${v.toLocaleString('de-CH')}</div></div>`).join('')+`<div style="display:flex;gap:20px;font-size:13px;color:#5B6678;margin-top:22px"><span><span style="display:inline-block;width:12px;height:12px;background:#0E7C72;border-radius:2px"></span> Proven</span><span><span style="display:inline-block;width:12px;height:12px;background:#B7791F;border-radius:2px"></span> Estimated</span></div>`;
+</script>
+</body></html>
