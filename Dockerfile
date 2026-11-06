@@ -21,6 +21,7 @@ COPY backend/ backend/
 COPY data/ data/
 RUN cd backend && uv sync --frozen --no-dev
 COPY --from=ui /app/frontend/dist frontend/dist
-ENV PCE_DATA_DIR=/app/var PCE_ALLOW_EXTERNAL_AI=false PORT=8000
+# OMP_THREAD_LIMIT=1: Tesseract threads thrash on small shared CPUs (free tiers).
+ENV PCE_DATA_DIR=/app/var PCE_ALLOW_EXTERNAL_AI=false PORT=8000 OMP_THREAD_LIMIT=1
 EXPOSE 8000
-CMD ["sh", "-c", "cd backend && uv run --no-dev uvicorn pce.serve:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "cd backend && exec .venv/bin/uvicorn pce.serve:app --host 0.0.0.0 --port ${PORT}"]

@@ -418,8 +418,12 @@ _RULE_PATTERNS = [
         "MGMT_DISCRETIONARY",
         "aum",
     ),
+    (  # before custody: "commissione sul controvalore dell'operazione" is a trading fee
+        re.compile(r"brokerage|courtage|intermediazione|negoziazione|transaction fee|dell'operazione", re.I),
+        "BROKERAGE",
+        "trade_notional",
+    ),
     (re.compile(r"custody|custodia|depot|garde", re.I), "CUSTODY_FEE", "custody_eligible"),
-    (re.compile(r"brokerage|courtage|intermediazione|transaction fee", re.I), "BROKERAGE", "trade_notional"),
     (
         re.compile(r"foreign exchange|devisen|cambi\b|opérations de change", re.I),
         "FX_COMMISSION",
@@ -431,6 +435,13 @@ _RULE_PATTERNS = [
         "per_position",
     ),
 ]
+# Rows that carry a % or an amount but are not the fee itself (corpus spot check, 2026-11-06).
+_NOT_A_RATE = re.compile(
+    r"zuschl|surcharge|supplement|maggiorazion|corporate action|operazioni sul capitale|kapitalma(ss|ß)nahm|"
+    r"mindestbetrag|minimum investment|investimento minimo|^total|^gesamt|^max\b|\bmax\.? \d",
+    re.I,
+)
+_NUMBERING = re.compile(r"^\d+(?:\.\d+)*\.?\s+")
 _BAND_FIRST = re.compile(r"^(?:up to|bis|fino a|für die ersten|first|jusqu'à)\b", re.I)
 _BAND_OPEN = re.compile(r"^(?:\+\s*)?(?:over|above|über|oltre|au-delà|für beträge über)\b", re.I)
 _NUM = r"\d{1,3}(?:[ '’.,]\d{3})*(?:[.,]\d+)?"
@@ -523,12 +534,15 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 continue
             pm = PERCENT.search(" ".join(c.text for c in ln.cells[1:])) if len(ln.cells) > 1 else None
             if len(ln.cells) == 1 and not PERCENT.search(label) and len(label) < 60:
-                heading = (label.isupper() or not re.search(r"[()‘’'\".,:;•]|^\W", label)) and not (
-                    "|" in label or label[:1].islower()  # running page headers and wrapped sentences
+                hl = _NUMBERING.sub("", label)  # "2.1 Courtage" is a heading
+                heading = (hl.isupper() or not re.search(r"[()‘’'\".,:;•]|^\W", hl)) and not (
+                    "|" in hl or hl[:1].islower()  # running page headers and wrapped sentences
                 )
-                hcode, hbase = _rule_for(label) if heading else (None, None)
+                hcode, hbase = _rule_for(hl) if heading else (None, None)
                 if hcode:  # a fee heading opens a section; sub-headings ("Standard model") keep it
                     section, section_base, last_code = hcode, hbase, hcode
+                continue
+            if _NOT_A_RATE.search(label) or _NOT_A_RATE.search(" ".join(c.text for c in ln.cells[1:2])):
                 continue
             code, base = _rule_for(label)
             is_min = re.search(r"minimum|minimo|mindest", label, re.I)
@@ -619,7 +633,7 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 )
                 last_code = code
             elif code == "TRANSFER_OUT":
-                amt = _amount_cells(ln)
+                amt = [a for a in _amount_cells(ln) if a[1] > 0]  # "(2)" is a footnote, not -2
                 if amt:
                     ccy = next((c for c in CURRENCIES if c in ln.text), prof.currency)
                     add(
