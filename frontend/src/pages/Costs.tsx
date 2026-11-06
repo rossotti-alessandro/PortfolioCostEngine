@@ -1,6 +1,6 @@
 import { AtomEvidenceDialog } from "@/components/AtomEvidence";
 import { PageTitle } from "@/components/Shell";
-import { Badge, Button, Card, CardHeader, ErrorBox, Kpi, Spinner, StatusBadge } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -56,15 +56,27 @@ export default function CostsPage() {
         <CoverageMeter ledger={L} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">
-        <LayerBreakdown a={a} onPick={setAtom} />
-        <CoverageMatrix a={a} />
-      </div>
-
+      <LayerBreakdown a={a} onPick={setAtom} />
       <Requests a={a} />
       <LedgerTable a={a} onPick={setAtom} />
-      <Checks checks={a.checks} />
-      <Holdings a={a} />
+      <Fold
+        title={t("Validation and reconciliation")}
+        summary={t("{pass} checks passed · {fail} need attention", {
+          pass: a.checks.filter((c) => c.status === "pass").length,
+          fail: a.checks.filter((c) => c.status === "fail" || c.status === "warn").length,
+        })}
+      >
+        <Checks checks={a.checks} />
+      </Fold>
+      <Fold title={t("Evidence coverage by bank")} summary={t("Strongest evidence for each cost layer")}>
+        <CoverageMatrix a={a} />
+      </Fold>
+      <Fold
+        title={t("Positions")}
+        summary={t("{n} positions from {banks} banks", { n: a.holdings.length, banks: a.institutions.length })}
+      >
+        <Holdings a={a} />
+      </Fold>
       <AtomEvidenceDialog atom={atom} analysis={a} onClose={() => setAtom(null)} />
     </div>
   );
@@ -342,7 +354,7 @@ function LedgerTable({ a, onPick }: { a: Analysis; onPick: (x: Atom) => void }) 
           </thead>
           <tbody>
             {groups.map((g) => {
-              const isOpen = open[g.key] ?? true;
+              const isOpen = open[g.key] ?? false; // layers folded: totals first, lines on click
               return (
                 <Fragment key={g.key}>
                   <tr className="border-t border-line bg-surface hover:bg-paper">

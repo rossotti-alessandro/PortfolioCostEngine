@@ -533,9 +533,10 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 add(entity_fact)
                 continue
             pm = PERCENT.search(" ".join(c.text for c in ln.cells[1:])) if len(ln.cells) > 1 else None
-            if len(ln.cells) == 1 and not PERCENT.search(label) and len(label) < 60:
-                hl = _NUMBERING.sub("", label)  # "2.1 Courtage" is a heading
-                heading = (hl.isupper() or not re.search(r"[()‘’'\".,:;•]|^\W", hl)) and not (
+            numbered = bool(_NUMBERING.match(label))  # "2.1 Courtage für Aktien, andere …" is a heading
+            if len(ln.cells) == 1 and not PERCENT.search(label) and len(label) < (100 if numbered else 60):
+                hl = _NUMBERING.sub("", label)
+                heading = (numbered or hl.isupper() or not re.search(r"[()‘’'\".,:;•]|^\W", hl)) and not (
                     "|" in hl or hl[:1].islower()  # running page headers and wrapped sentences
                 )
                 hcode, hbase = _rule_for(hl) if heading else (None, None)

@@ -3,8 +3,19 @@ import { t } from "@/lib/i18n";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { type VariantProps, cva } from "class-variance-authority";
-import { CheckCircle2, CircleHelp, FileSignature, FlaskConical, Gauge, Loader2, MinusCircle, X } from "lucide-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  CircleHelp,
+  FileSignature,
+  FlaskConical,
+  Gauge,
+  Info,
+  Loader2,
+  MinusCircle,
+  X,
+} from "lucide-react";
+import { type ButtonHTMLAttributes, type ReactNode, useState } from "react";
 
 /* shadcn-style primitives, styled with the project tokens */
 
@@ -63,9 +74,9 @@ export function CardHeader({
 }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
     <div className={cn("flex items-start justify-between gap-4 border-b border-line px-5 py-3.5", className)}>
-      <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1.5">
         <h2 className="text-[15px] font-semibold text-navy-900">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
+        {subtitle && <InfoTip>{subtitle}</InfoTip>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -246,6 +257,46 @@ export function ErrorBox({ error }: { error: unknown }) {
   return (
     <div className="m-4 rounded-md border border-red-700/20 bg-red-100 px-4 py-3 text-sm text-red-700" role="alert">
       {error instanceof Error ? error.message : String(error)}
+    </div>
+  );
+}
+
+/** The (i) next to a title: explanations stay one hover or tap away instead of crowding the screen. */
+export function InfoTip({ children }: { children: ReactNode }) {
+  return (
+    <Tip content={children}>
+      <button
+        type="button"
+        aria-label={t("More information")}
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-paper hover:text-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+      >
+        <Info className="h-4 w-4" />
+      </button>
+    </Tip>
+  );
+}
+
+/** A secondary section folded behind one line: title, a short summary, and "Show details". */
+export function Fold({ title, summary, children }: { title: string; summary?: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-surface px-5 py-3 text-left hover:bg-paper"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-subtle transition-transform", open && "rotate-180")} />
+          <span className="text-[14px] font-semibold text-navy-900">{title}</span>
+          {summary && <span className="truncate text-[13px] text-muted">{summary}</span>}
+        </span>
+        <span className="shrink-0 text-[12.5px] font-medium text-teal-700">
+          {open ? t("Hide details") : t("Show details")}
+        </span>
+      </button>
+      {open && <div className="mt-2">{children}</div>}
     </div>
   );
 }

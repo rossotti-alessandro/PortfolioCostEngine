@@ -1,5 +1,9 @@
 /** Italian UI strings, keyed by the English source string used in t(). Keep financial terms as used by Swiss banks. */
 export const IT: Record<string, string> = {
+  "More information": "Maggiori informazioni",
+  "{pass} checks passed · {fail} need attention": "{pass} controlli superati · {fail} da verificare",
+  "Strongest evidence for each cost layer": "Evidenza più forte per ogni livello di costo",
+  "{n} positions from {banks} banks": "{n} posizioni da {banks} banche",
   "Clients & pipeline": "Clienti e pipeline",
   "Cost reviews": "Analisi dei costi",
   "Demo role": "Ruolo demo",

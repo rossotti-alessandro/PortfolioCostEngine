@@ -62,7 +62,7 @@ test("04 costs: totals in CHF, unknowns are not zero, checks reconcile", async (
   await page.goto(`/p/${pid}/costs`);
   await expect(page.getByRole("heading", { name: "Current costs" })).toBeVisible();
   await expect(page.getByText("Not determined").first()).toBeVisible();
-  await expect(page.getByText("Validation and reconciliation")).toBeVisible();
+  await page.getByRole("button", { name: /Validation and reconciliation/ }).click(); // folded by default
   await expect(page.getByText(/converted at the printed rate/).first()).toBeVisible();
   await shot(page, "04-costs");
 });

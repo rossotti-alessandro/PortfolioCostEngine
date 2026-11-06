@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Users, Workflow } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, useMatch, useParams } from "react-router-dom";
-import { Badge } from "./ui";
+import { Badge, InfoTip } from "./ui";
 
 export function Brand() {
   return (
@@ -239,9 +239,9 @@ export function Page({ children }: { children: ReactNode }) {
 export function PageTitle({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
+      <div className="flex items-center gap-1.5">
         <h2 className="text-lg font-semibold text-navy-900">{title}</h2>
-        {subtitle && <p className="mt-0.5 max-w-3xl text-[13.5px] text-muted">{subtitle}</p>}
+        {subtitle && <InfoTip>{subtitle}</InfoTip>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
