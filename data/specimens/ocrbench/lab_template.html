@@ -1,0 +1,384 @@
+<meta charset="utf-8">
+<title>FeeLens OCR Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a lab bench. Summary first, then a document bench with two engines side by side over the page. */
+:root {
+  --paper: #f5f6f3;      /* page ground, faint green-grey like ledger paper */
+  --sheet: #ffffff;      /* panels */
+  --ink: #1d2421;        /* text */
+  --ink-2: #56605b;      /* secondary text */
+  --rule: #d9ddd7;       /* hairlines */
+  --accent: #1f5e57;     /* deep teal: controls, selected state */
+  --accent-soft: #dce9e6;
+  --gt: #c27c0e;         /* ground truth: amber */
+  --hit: #1c7c3c;
+  --miss: #b8322a;
+  --boxes: #2f62c9;      /* engine text boxes */
+  --region: #7a4fb5;     /* layout regions */
+  --table: #c0398f;      /* table regions */
+  --bar: #8fb7b0;
+  --display: "Newsreader", Georgia, serif;
+  --body: "Hanken Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121614; --sheet: #1a1f1d; --ink: #e6ebe7; --ink-2: #9aa59f; --rule: #2d3531;
+  --accent: #6cc3b6; --accent-soft: #23403b; --gt: #f0a92e; --hit: #4cc073; --miss: #f0675d;
+  --boxes: #78a2ff; --region: #b48cf0; --table: #f07cc4; --bar: #3d7a71; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121614; --sheet: #1a1f1d; --ink: #e6ebe7; --ink-2: #9aa59f; --rule: #2d3531;
+  --accent: #6cc3b6; --accent-soft: #23403b; --gt: #f0a92e; --hit: #4cc073; --miss: #f0675d;
+  --boxes: #78a2ff; --region: #b48cf0; --table: #f07cc4; --bar: #3d7a71; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; border-bottom: 1px solid var(--rule); padding-bottom: 14px }
+h1 { font: 600 2rem/1.1 var(--display); margin: 0; letter-spacing: -.01em; text-wrap: balance }
+h2 { font: 600 1.35rem/1.2 var(--display); margin: 0 0 10px; text-wrap: balance }
+h3 { font: 600 1rem/1.3 var(--body); margin: 0 0 6px }
+.sub { color: var(--ink-2); margin: 4px 0 0; max-width: 70ch }
+nav.tabs { display: flex; gap: 4px; flex-wrap: wrap }
+nav.tabs a { padding: 7px 14px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font-weight: 600; font-size: .92rem }
+nav.tabs a[aria-current="page"] { background: var(--accent); color: var(--sheet) }
+nav.tabs a:focus-visible, button:focus-visible, select:focus-visible, .doc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+section.view { padding-top: 22px; display: grid; gap: 22px }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px }
+.tile { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px }
+.tile .n { font: 600 2rem/1 var(--display); font-variant-numeric: tabular-nums }
+.tile .l { color: var(--ink-2); font-size: .88rem; margin-top: 6px }
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; min-width: 0 }
+.scroll { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: .9rem }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle }
+th { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); font-weight: 600; white-space: nowrap }
+th[data-sort] { cursor: pointer }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: .82rem }
+.barcell { display: flex; align-items: center; gap: 8px; min-width: 150px }
+.bar { height: 8px; border-radius: 4px; background: var(--bar); }
+.bartrack { flex: 1; background: var(--rule); border-radius: 4px; height: 8px; overflow: hidden }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .74rem; font-weight: 600; border: 1px solid var(--rule); color: var(--ink-2); white-space: nowrap }
+.chip.ok { color: var(--hit); border-color: color-mix(in srgb, var(--hit) 40%, transparent) }
+.chip.risk { color: var(--miss); border-color: color-mix(in srgb, var(--miss) 40%, transparent) }
+.chip.fam { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent) }
+details { border-top: 1px solid var(--rule); padding: 10px 0 0 }
+details > summary { cursor: pointer; font-weight: 600; color: var(--accent) }
+details p, details li { color: var(--ink-2); max-width: 75ch }
+.muted { color: var(--ink-2) }
+.mono { font-family: var(--mono); font-size: .8rem }
+/* Documents bench */
+.bench { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start }
+.doclist { max-height: 80vh; overflow-y: auto; padding: 8px }
+.doclist h4 { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 12px 8px 4px }
+.doc { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 0; background: none; width: 100%; text-align: left; color: var(--ink); font: inherit; font-size: .85rem }
+.doc:hover { background: var(--accent-soft) }
+.doc[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent) }
+.doc .lang { font: 500 .7rem var(--mono); color: var(--ink-2); text-transform: uppercase }
+.doc .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.doc .sc { font: 500 .75rem var(--mono); color: var(--ink-2) }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center }
+.controls label { font-size: .85rem; display: inline-flex; gap: 6px; align-items: center }
+select { font: inherit; font-size: .88rem; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); max-width: 100% }
+.panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.pane { min-width: 0 }
+.pane .cap { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px }
+.pane .cap b { font-size: .95rem }
+.stage { position: relative; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: #fff }
+.stage svg { display: block; width: 100%; height: auto }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .78rem; color: var(--ink-2) }
+.sw { display: inline-block; width: 12px; height: 12px; border: 2px solid; border-radius: 2px; vertical-align: -2px; margin-right: 5px }
+.ok { color: var(--hit) } .ko { color: var(--miss) }
+.gtt td:nth-child(n+3) { text-align: center; font-family: var(--mono) }
+.pagehead { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; justify-content: space-between }
+.out { white-space: pre-wrap; font: .76rem/1.45 var(--mono); max-height: 360px; overflow: auto; background: var(--paper); padding: 10px; border-radius: 6px; border: 1px solid var(--rule) }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px }
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: .84rem }
+.kv dt { color: var(--ink-2) } .kv dd { margin: 0; font-variant-numeric: tabular-nums }
+.flow { display: grid; gap: 10px }
+.step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 14px }
+.step .no { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--sheet); display: grid; place-items: center; font-weight: 700 }
+.step p { margin: 4px 0 0; color: var(--ink-2); max-width: 80ch }
+.prose p { max-width: 75ch }
+svg text { fill: var(--ink-2); font-family: var(--body) }
+@media (max-width: 900px) { .bench { grid-template-columns: 1fr } .doclist { max-height: 260px } .panes { grid-template-columns: 1fr } }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: width .3s } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>FeeLens OCR Lab</h1>
+      <p class="sub" id="lede">Local OCR, layout, table and vision-language models run on real public bank and fund documents, scored against hand-checked fee figures.</p>
+    </div>
+    <nav class="tabs" aria-label="Views">
+      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
+    </nav>
+  </header>
+
+  <section class="view" id="v-overview">
+    <div class="tiles" id="tiles"></div>
+    <div class="panel">
+      <h2>Ranking</h2>
+      <p class="muted" style="margin-top:0">Main score: <b>fee figure read with its label on the same row</b>, the input a fee parser needs. Click a column to sort. All runs on 4 CPU cores, no GPU.</p>
+      <div class="scroll"><table id="rank"></table></div>
+      <details><summary>What each column means</summary>
+        <ul>
+          <li><b>Label + value same row</b>: share of hand-checked fee figures whose value and at least half of its label words appear on one line or table row of the engine's output.</li>
+          <li><b>Values read</b>: the number appears anywhere in the output (reading only, no structure).</li>
+          <li><b>Value boxed</b>: the engine gives a box that holds the number and covers the printed value (word or line level, at most ~3 lines high).</li>
+          <li><b>Table ROI hit</b>: for fees printed in tables, the engine marked a table region covering them.</li>
+          <li><b>Extract precision / recall</b>: the same simple fee-line extractor runs on every engine's text (or the engine's own fee list). Precision counts wrong numbers taken as fees, including on pages with no fees.</li>
+          <li><b>Text F1</b>: word overlap with the PDF's own text layer on born-digital pages.</li>
+          <li><b>s/page</b>: median seconds per page after the model is loaded.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="panel">
+      <h2>Speed against row accuracy</h2>
+      <div class="scroll"><svg id="scatter" viewBox="0 0 900 380" role="img" aria-label="Scatter of seconds per page against label and value on the same row"></svg></div>
+    </div>
+    <div class="panel">
+      <h2>By document family</h2>
+      <p class="muted" style="margin-top:0">Label + value on the same row, per family of pages, for the engines that read text.</p>
+      <div class="scroll"><table id="byfam"></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-documents" hidden>
+    <div class="bench">
+      <div class="panel doclist" id="doclist" role="listbox" aria-label="Benchmark pages"></div>
+      <div class="panel" style="display:grid;gap:12px;min-width:0">
+        <div class="pagehead"><div><h2 id="ptitle" style="margin:0"></h2><div class="muted" id="pmeta"></div></div></div>
+        <div class="controls">
+          <label for="engA">Left <select id="engA"></select></label>
+          <label for="engB">Right <select id="engB"></select></label>
+          <label><input type="checkbox" id="lgt" checked> Fee figures (truth)</label>
+          <label><input type="checkbox" id="lwords" checked> Text boxes</label>
+          <label><input type="checkbox" id="lregions" checked> Regions</label>
+          <label><input type="checkbox" id="ltables" checked> Tables</label>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="border-color:var(--hit)"></i>truth: read on its row</span>
+          <span><i class="sw" style="border-color:var(--miss)"></i>truth: missed</span>
+          <span><i class="sw" style="border-color:var(--boxes)"></i>engine text box</span>
+          <span><i class="sw" style="border-color:var(--region)"></i>layout region</span>
+          <span><i class="sw" style="border-color:var(--table)"></i>table</span>
+        </div>
+        <div class="panes"><div class="pane" id="paneA"></div><div class="pane" id="paneB"></div></div>
+        <div class="scroll"><table class="gtt" id="gtt"></table></div>
+        <details><summary>All engines on this page</summary><div class="scroll"><table id="pscores"></table></div></details>
+        <details><summary>What the left engine produced (text, tables, fees)</summary><div id="rawA"></div></details>
+        <details><summary>What the right engine produced (text, tables, fees)</summary><div id="rawB"></div></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-models" hidden>
+    <div class="cards" id="cards"></div>
+    <div class="panel">
+      <h2>Looked at, not run</h2>
+      <p class="muted" style="margin-top:0">Found on Hugging Face and checked against our rules (local only, no AGPL or non-commercial licences, runs on a normal office machine).</p>
+      <div class="scroll"><table id="notrun"></table></div>
+    </div>
+  </section>
+
+  <section class="view prose" id="v-pipeline" hidden>
+    <!--PIPELINE-->
+  </section>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+let D, cur = null;
+
+const FAM = {baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
+const TEXT_FAMS = new Set(["baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
+
+fetch("data.json").then(r => r.json()).then(d => { D = d; boot(); }).catch(e => {
+  $("#lede").textContent = "Could not load data.json: " + e;
+});
+
+function boot() {
+  const E = Object.values(D.engines);
+  const nItems = D.pages.reduce((a, p) => a + (p.variant === "original" ? p.gt.length : 0), 0);
+  const best = E.filter(e => TEXT_FAMS.has(e.family)).sort((a, b) => (b.pair_recall ?? 0) - (a.pair_recall ?? 0))[0];
+  const real = D.pages.filter(p => p.variant === "original").length;
+  const sims = D.pages.length - real;
+  $("#tiles").innerHTML = [
+    [D.pages.length, `pages: ${real} real, ${sims} simulated scans`],
+    [nItems, "fee figures checked by hand"],
+    [E.length, "engines run locally"],
+    [best ? pct(best.pair_recall) : "–", best ? `best row accuracy: ${best.name || best.engine}` : ""],
+  ].map(([n, l]) => `<div class="tile"><div class="n">${n}</div><div class="l">${esc(l)}</div></div>`).join("");
+  rankTable("pair_recall");
+  scatter();
+  byFamily();
+  docList();
+  ["engA", "engB"].forEach((id, i) => {
+    const s = $("#" + id);
+    s.innerHTML = Object.keys(D.engines).sort().map(k => `<option value="${k}">${esc(D.engines[k].name || k)}</option>`).join("");
+  });
+  $("#engA").value = D.engines.paddleocr_vl ? "paddleocr_vl" : "pdfplumber";
+  $("#engB").value = D.engines.docling ? "docling" : "tesseract";
+  ["engA", "engB", "lgt", "lwords", "lregions", "ltables"].forEach(id => $("#" + id).addEventListener("change", render));
+  cards();
+  route();
+  window.addEventListener("hashchange", route);
+}
+
+function route() {
+  const h = (location.hash || "#overview").slice(1);
+  const views = ["overview", "documents", "models", "pipeline"];
+  const v = views.includes(h) ? h : "overview";
+  views.forEach(x => { $("#v-" + x).hidden = x !== v; });
+  document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + v ? "page" : "false"));
+  if (v === "documents" && !cur) pick(D.pages[0].id);
+}
+
+const COLS = [
+  ["pair_recall", "Label + value same row", "bar"], ["value_recall", "Values read", "pct"], ["located_tight", "Value boxed", "pct"],
+  ["table_roi_recall", "Table ROI hit", "pct"], ["extract_precision", "Extract precision", "pct"], ["extract_recall", "Extract recall", "pct"],
+  ["text_f1", "Text F1", "f2"], ["sec_per_page", "s/page", "num"], ["peak_rss_gb", "Peak RAM GB", "num"], ["download_gb", "Download GB", "num"],
+];
+function rankTable(key) {
+  const E = Object.values(D.engines).sort((a, b) => {
+    const x = a[key], y = b[key];
+    if (x == null) return 1; if (y == null) return -1;
+    return ["sec_per_page", "peak_rss_gb", "download_gb"].includes(key) ? x - y : y - x;
+  });
+  const head = `<tr><th>Engine</th><th>Kind</th>${COLS.map(([k, l]) => `<th data-sort="${k}" class="${k === "pair_recall" ? "" : "num"}">${l}${k === key ? " ↓" : ""}</th>`).join("")}<th>Licence</th></tr>`;
+  const rows = E.map(e => `<tr><td><b>${esc(e.name || e.engine)}</b><div class="muted mono">${esc(e.engine)}</div></td><td><span class="chip fam">${FAM[e.family] || e.family}</span></td>${COLS.map(([k, , t]) => {
+    const v = e[k];
+    if (t === "bar") return `<td><div class="barcell"><div class="bartrack"><div class="bar" style="width:${(v ?? 0) * 100}%"></div></div><span class="mono">${pct(v)}</span></div></td>`;
+    if (t === "pct") return `<td class="num">${pct(v)}</td>`;
+    if (t === "f2") return `<td class="num">${v == null ? "–" : v.toFixed(2)}</td>`;
+    return `<td class="num">${v == null ? "–" : v}</td>`;
+  }).join("")}<td><span class="chip ${e.licence_risk === "high" ? "risk" : "ok"}">${esc(e.licence)}</span></td></tr>`).join("");
+  $("#rank").innerHTML = head + rows;
+  document.querySelectorAll("#rank th[data-sort]").forEach(th => th.addEventListener("click", () => rankTable(th.dataset.sort)));
+}
+
+function scatter() {
+  const E = Object.values(D.engines).filter(e => e.sec_per_page && e.pair_recall != null && TEXT_FAMS.has(e.family));
+  const W = 900, H = 380, L = 60, R = 20, T = 20, B = 50;
+  const xs = E.map(e => e.sec_per_page), lo = 0.1, hi = Math.max(10, ...xs) * 1.3;
+  const X = v => L + (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * (W - L - R);
+  const Y = v => T + (1 - v) * (H - T - B);
+  let s = "";
+  [0, .25, .5, .75, 1].forEach(v => { s += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)"/><text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="12">${v * 100}%</text>`; });
+  [0.1, 1, 10, 100, 1000].filter(v => v <= hi).forEach(v => { s += `<line y1="${T}" y2="${H - B}" x1="${X(v)}" x2="${X(v)}" stroke="var(--rule)"/><text x="${X(v)}" y="${H - B + 18}" text-anchor="middle" font-size="12">${v} s</text>`; });
+  s += `<text x="${(W + L) / 2}" y="${H - 8}" text-anchor="middle" font-size="12">seconds per page (log scale, CPU)</text>`;
+  s += `<text x="16" y="${(H - B) / 2}" font-size="12" transform="rotate(-90 16 ${(H - B) / 2})" text-anchor="middle">label + value on same row</text>`;
+  E.forEach(e => {
+    const x = X(e.sec_per_page), y = Y(e.pair_recall);
+    s += `<circle cx="${x}" cy="${y}" r="6" fill="var(--accent)" stroke="var(--sheet)" stroke-width="2"><title>${esc(e.name || e.engine)}: ${pct(e.pair_recall)}, ${e.sec_per_page} s/page</title></circle>`;
+    s += `<text x="${x + 9}" y="${y + 4}" font-size="12" style="fill:var(--ink)">${esc(e.engine)}</text>`;
+  });
+  $("#scatter").innerHTML = s;
+}
+
+function famOf(p) { return p.variant === "scan-sim" ? "Simulated scan" : p.stratum.replace(/ (EN|DE|FR|IT)$/, ""); }
+function byFamily() {
+  const E = Object.values(D.engines).filter(e => TEXT_FAMS.has(e.family)).sort((a, b) => (b.pair_recall ?? 0) - (a.pair_recall ?? 0));
+  const fams = [...new Set(D.pages.map(famOf))];
+  const cell = (fam, eng) => {
+    let n = 0, h = 0;
+    D.pages.filter(p => famOf(p) === fam).forEach(p => {
+      const s = p.scores[eng]; if (!s || !s.items) return;
+      s.items.forEach(f => { if (f) { n++; h += f.p ? 1 : 0; } });
+    });
+    return n ? h / n : null;
+  };
+  const head = `<tr><th>Family</th>${E.map(e => `<th class="num">${esc(e.engine)}</th>`).join("")}</tr>`;
+  const rows = fams.map(f => {
+    const vals = E.map(e => cell(f, e.engine));
+    const mx = Math.max(...vals.filter(v => v != null));
+    return `<tr><td>${esc(f)}</td>${vals.map(v => `<td class="num" style="${v != null && v === mx ? "font-weight:700;color:var(--accent)" : ""}">${pct(v)}</td>`).join("")}</tr>`;
+  }).join("");
+  $("#byfam").innerHTML = head + rows;
+}
+
+function docList() {
+  const groups = {};
+  D.pages.forEach(p => (groups[p.stratum] ||= []).push(p));
+  $("#doclist").innerHTML = Object.entries(groups).map(([g, ps]) => `<h4>${esc(g)}</h4>` + ps.map(p => {
+    const best = Math.max(0, ...Object.values(p.scores).map(s => s.gt ? s.pair / s.gt : 0));
+    return `<button class="doc" role="option" data-id="${p.id}" aria-selected="false"><span class="lang">${p.language}</span><span class="nm" title="${esc(p.file)}">${esc(p.issuer)} · p${p.page}${p.variant === "scan-sim" ? " · scan" : ""}</span><span class="sc">${p.gt.length ? pct(best) : "no fees"}</span></button>`;
+  }).join("")).join("");
+  document.querySelectorAll(".doc").forEach(b => b.addEventListener("click", () => pick(b.dataset.id)));
+}
+
+function pick(id) {
+  cur = D.pages.find(p => p.id === id);
+  document.querySelectorAll(".doc").forEach(b => b.setAttribute("aria-selected", b.dataset.id === id ? "true" : "false"));
+  render();
+}
+
+function render() {
+  if (!cur) return;
+  const p = cur;
+  $("#ptitle").textContent = `${p.issuer} — page ${p.page}`;
+  $("#pmeta").innerHTML = `${esc(p.file)} · ${esc(p.document_type)} · ${p.language.toUpperCase()} · ${p.variant === "scan-sim" ? "<b>SIMULATED SCAN</b> (degraded on purpose)" : p.text_layer ? "born-digital" : "image only (scan)"} · ${p.gt.length} fee figures`;
+  const a = $("#engA").value, b = $("#engB").value;
+  pane("#paneA", a); pane("#paneB", b);
+  const sa = p.scores[a] || {}, sb = p.scores[b] || {};
+  const mark = (s, i) => { const f = s.items && s.items[i]; if (!f) return "<span class='muted'>–</span>"; return f.p ? "<span class='ok'>row ✓</span>" : f.v ? "<span class='muted'>read, row ✗</span>" : "<span class='ko'>missed</span>"; };
+  $("#gtt").innerHTML = p.gt.length ? `<tr><th>Fee (as printed)</th><th>Value</th><th>${esc(a)}</th><th>${esc(b)}</th></tr>` + p.gt.map((g, i) => `<tr><td>${esc(g.label)}${g.in_table ? " <span class='chip'>table</span>" : ""}</td><td class="mono">${esc(g.value)}</td><td>${mark(sa, i)}</td><td>${mark(sb, i)}</td></tr>`).join("") : `<tr><td class="muted">This page has no fee figures. It tests whether engines invent fees: see false positives below.</td></tr>`;
+  const E = Object.keys(p.scores).sort((x, y) => (p.scores[y].pair || 0) - (p.scores[x].pair || 0));
+  $("#pscores").innerHTML = `<tr><th>Engine</th><th class="num">Row ✓</th><th class="num">Read</th><th class="num">Boxed</th><th class="num">Table ROI</th><th class="num">False fees</th><th class="num">Seconds</th></tr>` + E.map(k => {
+    const s = p.scores[k], o = (D.outputs[k] || {})[p.id] || {};
+    const r = (x, n) => n ? `${x}/${n}` : "–";
+    return `<tr><td>${esc(D.engines[k]?.name || k)}</td><td class="num">${r(s.pair || 0, s.gt)}</td><td class="num">${r(s.value || 0, s.gt)}</td><td class="num">${r(s.located_tight || 0, s.gt_boxed)}</td><td class="num">${r(s.table_roi || 0, s.gt_table_boxed)}</td><td class="num">${s.false_pos ?? "–"}</td><td class="num">${o.sec ?? "–"}${o.err ? " ⚠" : ""}</td></tr>`;
+  }).join("");
+  $("#rawA").innerHTML = raw(a); $("#rawB").innerHTML = raw(b);
+}
+
+function raw(k) {
+  const o = (D.outputs[k] || {})[cur.id];
+  if (!o) return "<p class='muted'>Not run on this page.</p>";
+  let h = o.err ? `<p class="ko">Error: ${esc(o.err)}</p>` : "";
+  if (o.fees.length) h += `<h3>Fees the engine returned</h3><table>${o.fees.map(f => `<tr><td>${esc(f[0])}</td><td class="mono">${esc(f[1])}</td></tr>`).join("")}</table>`;
+  o.tables.forEach((t, i) => { h += `<h3>Table ${i + 1}</h3><div class="scroll"><table>${t.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</table></div>`; });
+  if (o.text) h += `<h3>Text</h3><div class="out">${esc(o.text)}</div>`;
+  if (!o.fees.length && !o.tables.length && !o.text) h += "<p class='muted'>This engine returns boxes only (no text): see the overlay.</p>";
+  return h;
+}
+
+function pane(sel, k) {
+  const p = cur, o = (D.outputs[k] || {})[p.id], s = p.scores[k] || {};
+  const e = D.engines[k] || {};
+  const rect = (b, col, w, dash, title) => b ? `<rect x="${b[0]}" y="${b[1]}" width="${Math.max(1, b[2] - b[0])}" height="${Math.max(1, b[3] - b[1])}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""} vector-effect="non-scaling-stroke"><title>${esc(title)}</title></rect>` : "";
+  let g = "";
+  if (o) {
+    if ($("#lregions").checked) o.regions.forEach(r => { const t = /table|otsl/i.test(r[0]); if (!t || !$("#ltables").checked) g += rect(r[1], t ? "var(--table)" : "var(--region)", 1.5, "", `${r[0]}${r[2] != null ? " " + r[2] : ""}`); });
+    if ($("#ltables").checked) { o.tables.forEach(t => g += rect(t.b, "var(--table)", 2.5, "", "table")); o.regions.filter(r => /table|otsl/i.test(r[0])).forEach(r => g += rect(r[1], "var(--table)", 2.5, "", r[0])); }
+    if ($("#lwords").checked) { o.words.forEach(w => g += rect(w[1], "var(--boxes)", 1, "", w[0])); o.fees.forEach(f => g += rect(f[2], "var(--boxes)", 2.5, "", `${f[0]}: ${f[1]}`)); }
+  }
+  if ($("#lgt").checked) p.gt.forEach((t, i) => {
+    const f = s.items && s.items[i];
+    const col = f && f.p ? "var(--hit)" : "var(--miss)";
+    if (t.b) { const b = [t.b[0] - 3, t.b[1] - 3, t.b[2] + 3, t.b[3] + 3]; g += rect(b, col, 2.5, "4 2", `${t.label}: ${t.value}`); }
+  });
+  const hits = s.gt ? `${s.pair}/${s.gt} fees on their row` : (p.gt.length ? "" : `${s.false_pos ?? 0} false fees`);
+  $(sel).innerHTML = `<div class="cap"><b>${esc(e.name || k)}</b><span class="muted mono">${o ? (o.sec ?? "–") + " s" : "not run"} · ${hits}</span></div>
+    <div class="stage"><svg viewBox="0 0 ${p.w} ${p.h}" role="img" aria-label="${esc(k)} output over page"><image href="img/${p.id}.jpg" x="0" y="0" width="${p.w}" height="${p.h}"/>${g}</svg></div>`;
+}
+
+function cards() {
+  const M = D.models;
+  $("#cards").innerHTML = Object.values(D.engines).sort((a, b) => (b.pair_recall ?? -1) - (a.pair_recall ?? -1)).map(e => `<div class="card">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><h3>${esc(e.name || e.engine)}</h3><span class="chip fam">${FAM[e.family] || e.family}</span></div>
+    <div class="muted" style="font-size:.86rem">${esc(e.role || "")}</div>
+    <dl class="kv"><dt>Hugging Face</dt><dd class="mono">${esc(e.repo)}</dd><dt>Size</dt><dd>${e.params || "–"} · ${e.download_gb ?? "–"} GB download</dd>
+    <dt>Gives</dt><dd>boxes: ${esc(e.boxes || "–")}; tables: ${esc(e.tables || "–")}</dd>
+    <dt>Row accuracy</dt><dd><b>${pct(e.pair_recall)}</b> (tables ${pct(e.table_pair_recall)})</dd>
+    <dt>Speed</dt><dd>${e.sec_per_page ?? "–"} s/page · ${e.peak_rss_gb ?? "–"} GB RAM</dd>
+    <dt>Licence</dt><dd><span class="chip ${e.licence_risk === "high" ? "risk" : "ok"}">${esc(e.licence)}</span></dd></dl></div>`).join("");
+  $("#notrun").innerHTML = `<tr><th>Model</th><th class="num">Size GB</th><th>Licence</th><th>Why not run here</th></tr>` + (M._not_run || []).map(m => `<tr><td class="mono">${esc(m.repo)}</td><td class="num">${m.size_gb}</td><td>${esc(m.licence)}</td><td>${esc(m.why)}</td></tr>`).join("");
+}
+</script>

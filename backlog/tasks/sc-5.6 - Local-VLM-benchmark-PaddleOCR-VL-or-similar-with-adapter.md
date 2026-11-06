@@ -18,6 +18,7 @@ dependencies:
 parent_task_id: SC-5
 priority: P2
 paths_owned:
+  - "data/specimens/ocrbench/**"
   - "backend/src/pce/extraction/vlm/**"
   - "backend/tests/evaluation/vlm/**"
 spec_ref: docs/adr/0003-document-extraction-and-ocr.md
