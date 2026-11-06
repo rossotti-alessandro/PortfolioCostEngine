@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+# Env and secrets
+.env
+.env.*
+!.env.example
+# Local data: never commit client documents or runtime stores
+var/
+uploads/
+*.sqlite
+*.sqlite3
+*.db
+artifacts/
+# Agent worktrees
+.claude/worktrees/
+.claude/settings.local.json
+# OS
+.DS_Store
