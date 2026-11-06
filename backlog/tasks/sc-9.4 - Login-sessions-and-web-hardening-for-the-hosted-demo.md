@@ -1,15 +1,15 @@
 ---
 id: SC-9.4
 title: Login, sessions and web hardening for the hosted demo
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Secure FeeLens with login and hardening"
 model: "claude"
-progress: 5
+progress: 100
 branch: "claude/project-thread-9vg77k"
 pr: ""
 created_date: "2026-11-06 17:40"
-updated_date: "2026-11-06 17:33"
+updated_date: "2026-11-06 18:05"
 labels:
   - security
 dependencies: []
@@ -73,22 +73,36 @@ everyone out. Multi-user accounts and SSO belong to SC-11.2.
 
 ## Acceptance Criteria
 
-- [ ] #1 Every `/api/*` route except health and login returns 401 without a valid session (tested)
-- [ ] #2 Mutations without the CSRF token or from a foreign Origin return 403 (tested)
-- [ ] #3 The sixth wrong password in a row from one client returns 429 (tested)
-- [ ] #4 Client headers cannot change tenant or user, nor raise the role above the account's (tested)
-- [ ] #5 Responses carry CSP, HSTS, nosniff, frame-ancestors none; the built UI loads with no CSP violation
-- [ ] #6 Regression: the existing API, CRM and E2E suites pass signed in
+- [x] #1 Every `/api/*` route except health and login returns 401 without a valid session (tested)
+- [x] #2 Mutations without the CSRF token or from a foreign Origin return 403 (tested)
+- [x] #3 The sixth wrong password in a row from one client returns 429 (tested)
+- [x] #4 Client headers cannot change tenant or user, nor raise the role above the account's (tested)
+- [x] #5 Responses carry CSP, HSTS, nosniff, frame-ancestors none; the built UI loads with no CSP violation
+- [x] #6 Regression: the existing API, CRM and E2E suites pass signed in
 
 ## Implementation Notes
 
+Owned paths as listed, plus `.env.example`, `frontend/playwright.config.ts` and
+`frontend/tests/e2e/global-setup.ts`. No new dependency: scrypt and HMAC are stdlib, libmagic was
+already a dependency. Security design and operator steps: `docs/app/SECURITY.md`.
+
 ## Outcome
 
-- **Status**: blocked
+- **Status**: completed
+
+Backend suite green (new `tests/test_security.py`: 12 tests), Playwright E2E 15/15 signed in,
+built UI exercised through sign-in, review (PDF.js), costs and compare with zero CSP violations.
+pip-audit clean; frontend audit findings recorded in SECURITY.md for a separate `deps:` PR.
 
 ## Issues Encountered
+
+- The sign-in page rendered `<Link>` outside the router and crashed; E2E missed it because tests start
+  signed in. Fixed (`Brand link={false}`) and checked in a real browser.
+- Two sign-ins in the same second produced the same token; a random nonce now makes each unique.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-9vg77k | dd58310 | 2026-11-06 | backend: login, sessions, CSRF, throttling, headers, upload guards |
+| claude/project-thread-9vg77k | 6568889 | 2026-11-06 | frontend sign-in, Render secrets, SECURITY.md |
