@@ -8,6 +8,7 @@ they cannot place lands as a warning for human review, never as a guessed value.
 from __future__ import annotations
 
 import re
+import time
 from decimal import Decimal
 
 from openpyxl import load_workbook
@@ -1076,16 +1077,27 @@ PARSERS = {
 }
 
 
+def _ms(start: float, end: float | None = None) -> int:
+    return round(((end if end is not None else time.perf_counter()) - start) * 1000)
+
+
 def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo]]:
     name = filename.lower()
     if name.endswith((".xlsx", ".xlsm")):
-        return parse_positions_xlsx(data), []
+        t0 = time.perf_counter()
+        res = parse_positions_xlsx(data)
+        res.profile.timings_ms["extract"] = _ms(t0)
+        return res, []
     if not name.endswith(".pdf") and not data.startswith(b"%PDF"):
         raise ValueError("unsupported file type: upload PDF or XLSX")
+    t0 = time.perf_counter()
     pages = read_pdf(data)
+    t1 = time.perf_counter()
     prof = classify(pages)
+    t2 = time.perf_counter()
     parser = PARSERS.get(prof.doc_type)
     facts = parser(pages, prof) if parser else []
+    prof.timings_ms = {"read": _ms(t0, t1), "classify": _ms(t1, t2), "extract": _ms(t2)}
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None
     )

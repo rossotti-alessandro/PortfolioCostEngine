@@ -121,3 +121,34 @@ def test_proposal_versioning():
         client.put(f"/api/prospects/{pid}/proposal", headers=A, json={"custody_bps": "-1"}).status_code == 422
     )
     client.put(f"/api/prospects/{pid}/proposal", headers=A, json={"custody_bps": "10"})
+
+
+def test_document_pipeline_traces_every_stage():
+    pid = seeded()
+    docs = client.get(f"/api/prospects/{pid}/documents", headers=A).json()
+    by_name = {d["filename"]: d for d in docs}
+    keys = ["upload", "read", "classify", "extract", "review", "validate", "categorize", "result"]
+    for d in docs:
+        r = client.get(f"/api/documents/{d['id']}/pipeline", headers=A)
+        assert r.status_code == 200
+        body = r.json()
+        assert [s["key"] for s in body["stages"]] == keys
+        assert all(s["status"] in ("ok", "warn", "fail", "skipped") for s in body["stages"])
+        assert {"label": "SHA-256", "value": d["sha256"]} in body["stages"][0]["details"]
+        assert not re.search(r"min_margin_pct|servicing_cost|annual_contribution", json.dumps(body))
+    scan = client.get(
+        f"/api/documents/{by_name['alpha_estratto_conto_Q3_2026_scan.pdf']['id']}/pipeline", headers=A
+    ).json()
+    read = scan["stages"][1]
+    assert read["status"] == "warn" and any("OCR" in w for w in read["warnings"])  # scanned pages flagged
+    assert read["ms"] is not None and scan["total_ms"] > 0
+    stmt = by_name["alpha_statement_of_assets_2026-09-30.pdf"]
+    st = {
+        s["key"]: s for s in client.get(f"/api/documents/{stmt['id']}/pipeline", headers=A).json()["stages"]
+    }
+    assert all(v["where"].startswith("p.") for v in st["extract"]["values"])  # every value has its page
+    assert any("add up" in c["title"] for c in st["validate"]["checks"])
+    kid = by_name["kid_ZZGEQLDRA013.pdf"]
+    cat = client.get(f"/api/documents/{kid['id']}/pipeline", headers=A).json()["stages"][6]
+    assert {"counted", "included_in_parent"} <= {a["role"] for a in cat["atoms"]}  # AMF inside OCF, once
+    assert client.get(f"/api/documents/{kid['id']}/pipeline", headers=B).status_code == 404

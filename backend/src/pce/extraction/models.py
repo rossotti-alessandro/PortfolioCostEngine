@@ -70,6 +70,7 @@ class DocumentProfile(BaseModel):
     page_count: int = 0
     engines: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    timings_ms: dict[str, int] = Field(default_factory=dict)  # per pipeline stage, shown to the analyst
 
 
 class ExtractionResult(BaseModel):

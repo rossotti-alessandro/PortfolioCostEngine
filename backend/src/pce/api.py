@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import time
 import zipfile
 from pathlib import Path
 from typing import Annotated, Any
@@ -41,6 +42,7 @@ from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify, extract
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
 from .finance.money import D
+from .pipeline_view import document_pipeline
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_XLSX_UNCOMPRESSED = 100 * 1024 * 1024
@@ -254,6 +256,7 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
                     raise HTTPException(415, f"{filename}: macro-enabled content is not accepted")
         except zipfile.BadZipFile as exc:
             raise HTTPException(415, f"{filename}: not a valid XLSX file") from exc
+    t0 = time.perf_counter()
     sha = hashlib.sha256(data).hexdigest()
     existing = db.scalar(
         select(Document).where(
@@ -267,10 +270,12 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
     path = store / f"{sha}{suffix}"
     if not path.exists():
         path.write_bytes(data)
+    stored_ms = round((time.perf_counter() - t0) * 1000)
     try:
         res, pages = extract(filename, data)
     except ValueError as exc:
         raise HTTPException(422, f"{filename}: {exc}") from exc
+    res.profile.timings_ms = {"upload": stored_ms, **res.profile.timings_ms}
     doc = Document(
         tenant_id=c.tenant,
         prospect_id=p.id,
@@ -581,6 +586,17 @@ def document_facts(did: int, db: DB, c: C) -> list[dict]:
 
 class DocPatch(BaseModel):
     doc_type: DocType
+
+
+@app.get("/api/documents/{did}/pipeline")
+def document_pipeline_view(did: int, db: DB, c: C) -> dict:
+    """Every processing stage for one document: status, timing, warnings and what it produced."""
+    d = get_doc(db, c, did)
+    p = get_prospect(db, c, d.prospect_id)
+    facts = db.scalars(
+        select(FactRow).where(FactRow.document_id == d.id, FactRow.tenant_id == c.tenant)
+    ).all()
+    return document_pipeline(d, list(facts), client_safe(compute(db, c, p)), p.base_ccy)
 
 
 @app.patch("/api/documents/{did}")
