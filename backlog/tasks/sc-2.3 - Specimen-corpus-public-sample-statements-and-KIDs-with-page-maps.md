@@ -84,3 +84,4 @@ but there is no hand-written page map per specimen yet. Status stays In Progress
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-coe0g4 | 82e2948 | 2026-11-06 15:56 | Specimen corpus manifest, fetch, evaluation and results |
