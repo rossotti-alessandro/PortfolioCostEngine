@@ -50,10 +50,21 @@ Downloaded on 6 Nov 2026; figures quoted as printed. The PDFs are not stored in 
 
 Not reachable or not public: the UBS private-client price list (the site refuses automated download; download it by hand from https://www.ubs.com/content/dam/ubs/ch/swissbank/private/zahlen-und-sparen/konten/dienstleistungen-und-preise.pdf), any UBS or Julius Baer mandate fee rates, and any public specimen of a statement of assets or an ex-post cost report.
 
+## Technical workflow deck (Italian)
+
+`FeeLens_Workflow_IT.pptx` / `.pdf`: a second deck, separate from the client one, for anyone who wants to see how the system works. 17 main slides and 5 appendix slides.
+- The eight pipeline steps (upload, reading, classification, review, reconciliation, cost ledger, comparison, approval), each with a real screenshot of the app in Italian (`source/img/app_it_*.png`, from branch `claude/project-thread-steqtm`, synthetic prospect P-1042).
+- Where AI fits: today rules + local OCR (no language model); next local layout models after a benchmark; optional LLM/agents only behind the privacy switch. The agent architecture is labelled "proposta, non ancora costruita".
+- How it generalises: six document families with a key-field schema each, "unknown" said openly.
+- Real metrics from the 72 public PDFs (PR #7, `data/specimens/RESULTS.md`): 0 crashes, type 63/72, 189/189 values with a box, 26/31 expected values right, and the price-list weakness.
+- Source: `source/build_workflow_deck.js` (`node build_workflow_deck.js`).
+- Live version (private until shared): https://claude.ai/artifact/3w7hhh7xFuXmqSGS4kwvGG
+
 ## Live versions (private until shared)
 
 - Italian deck: https://claude.ai/artifact/CWsTBHgfGCQex6jbXeHbPM
 - English deck: https://claude.ai/artifact/Hd88azNdk8C1CsnHaNwb1q
+- Technical workflow deck: https://claude.ai/artifact/3w7hhh7xFuXmqSGS4kwvGG
 - Explorer page (details behind expanders): https://claude.ai/artifact/HAR2cwFgZU2QLeLrDCZrLZ
 
 ## Facts the deck relies on, and what is not verified
