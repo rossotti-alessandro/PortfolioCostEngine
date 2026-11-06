@@ -7,9 +7,9 @@ owner: "Build 50+ real PDF test corpus"
 model: "claude-opus-5-5"
 progress: 90
 branch: "claude/project-thread-coe0g4"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/7"
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-06 15:56"
+updated_date: "2026-11-06 15:57"
 labels:
   - research
 dependencies:
