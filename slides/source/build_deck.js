@@ -1,41 +1,42 @@
-// Builds slides/PortfolioCostEngine_Executive_Deck.pptx
-// All financial figures are SYNTHETIC demo values (see data notes in slides/README.md).
+// Builds slides/<NAME>_Executive_Deck.pptx  (v2)
+// All figures are SYNTHETIC. Numbers come from the app's demo prospect P-1042,
+// produced by the engine on branch claude/project-thread-steqtm (see slides/README.md).
 const path = require("path");
 const fs = require("fs");
 const pptxgen = require("pptxgenjs");
 const React = require("react");
 const ReactDOMServer = require("react-dom/server");
 const sharp = require("sharp");
-const fa = require("react-icons/fa");
+const lu = require("react-icons/lu");
 
-const SKILL_THEME = process.env.APPLY_THEME_JS; // path to apply_theme.js (optional)
-const OUT = path.resolve(__dirname, "..", "PortfolioCostEngine_Executive_Deck.pptx");
+const NAME = process.env.PRODUCT_NAME || "FeeLens";
+const OUT = path.resolve(__dirname, "..", `${NAME.replace(/\s+/g, "")}_Executive_Deck.pptx`);
 const IMG = (n) => path.join(__dirname, "img", n);
 
+// Shared design tokens (docs/design/DESIGN_SYSTEM.md)
 const THEME = {
-  name: "Portfolio Cost Engine",
-  headFontFace: "Cambria",
+  name: NAME,
+  headFontFace: "Calibri",
   bodyFontFace: "Calibri",
   colors: {
-    dk1: "1B2433", lt1: "FFFFFF", dk2: "13233F", lt2: "F3F5F8",
-    accent1: "0E7C72", accent2: "B7791F", accent3: "B42318", accent4: "3D5A80",
-    accent5: "7FD1C7", accent6: "5B6678", hlink: "0E7C72", folHlink: "3D5A80",
+    dk1: "14202E", lt1: "FFFFFF", dk2: "0F2A4A", lt2: "F7F6F2",
+    accent1: "0F766E", accent2: "B45309", accent3: "B42318", accent4: "1E7A46",
+    accent5: "2F5D8A", accent6: "5B6676", hlink: "0F766E", folHlink: "2F5D8A",
   },
 };
-const H = THEME.colors; // hex, for hex-only options
-const NAVY = H.dk2, TEAL = H.accent1, AMBER = H.accent2, RED = H.accent3, MUTED = H.accent6, MINT = H.accent5;
+const X = {
+  text: "14202E", navy: "0F2A4A", teal: "0F766E", tealSoft: "E3F2F0", amber: "B45309", amberSoft: "FDF3E2",
+  red: "B42318", redSoft: "FDECEA", green: "1E7A46", greenSoft: "E7F4EC", muted: "5B6676", bg: "F7F6F2",
+  mutedSurface: "EFEDE7", border: "DEDAD1", l2: "2F5D8A", l3: "6B8FB3", l9: "A3A3A3", white: "FFFFFF",
+};
 
-// ---------- icons ----------
 async function icon(name, color, size = 256) {
-  const svg = ReactDOMServer.renderToStaticMarkup(
-    React.createElement(fa[name], { color: "#" + color, size: String(size) })
-  );
+  const C = lu[name] || lu.LuCircle;
+  const svg = ReactDOMServer.renderToStaticMarkup(React.createElement(C, { color: "#" + color, size: String(size), strokeWidth: 1.75 }));
   const buf = await sharp(Buffer.from(svg)).png().toBuffer();
   return "image/png;base64," + buf.toString("base64");
 }
-
 function imgSize(file) {
-  // read PNG width/height from IHDR
   const b = fs.readFileSync(file);
   return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
 }
@@ -43,20 +44,19 @@ function imgSize(file) {
 (async () => {
   const pres = new pptxgen();
   pres.layout = "LAYOUT_WIDE"; // 13.333 x 7.5
-  pres.title = "Portfolio Cost Engine — briefing for Safe Capital";
-  pres.author = "Portfolio Cost Engine project";
-  pres.company = "Portfolio Cost Engine";
+  pres.title = `${NAME} · briefing for Safe Capital`;
+  pres.author = `${NAME} project`;
+  pres.company = NAME;
   pres.theme = { headFontFace: THEME.headFontFace, bodyFontFace: THEME.bodyFontFace };
   const C = pres.SchemeColor;
-  const W = 13.333;
 
   // ---------- layouts ----------
   pres.defineSlideMaster({
-    title: "Dark title",
+    title: "Dark",
     background: { color: C.text2 },
     objects: [
-      { placeholder: { options: { name: "title", type: "title", x: 0.8, y: 2.2, w: 10.5, h: 1.9, fontFace: THEME.headFontFace, fontSize: 44, bold: true, color: C.background1, valign: "bottom", align: "left", margin: 0 }, text: "" } },
-      { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 4.3, w: 10.5, h: 1.2, fontSize: 20, color: C.accent5, valign: "top", margin: 0 }, text: "" } },
+      { placeholder: { options: { name: "title", type: "title", x: 0.8, y: 2.0, w: 11.5, h: 1.6, fontFace: THEME.headFontFace, fontSize: 60, bold: true, color: C.background1, valign: "bottom", align: "left", margin: 0 }, text: "" } },
+      { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 3.8, w: 11.5, h: 1.4, fontSize: 24, color: C.background1, valign: "top", align: "left", margin: 0 }, text: "" } },
     ],
   });
   pres.defineSlideMaster({
@@ -64,475 +64,543 @@ function imgSize(file) {
     background: { color: C.background1 },
     margin: [0.5, 0.6, 0.6, 0.6],
     objects: [
-      { placeholder: { options: { name: "title", type: "title", x: 0.6, y: 0.35, w: 12.1, h: 0.95, fontFace: THEME.headFontFace, fontSize: 28, bold: true, color: C.text2, valign: "middle", align: "left", margin: 0 }, text: "" } },
-      { text: { text: "Portfolio Cost Engine · concept for Safe Capital · all figures are synthetic demo values", options: { x: 0.6, y: 7.0, w: 9, h: 0.3, fontSize: 10, color: C.accent6, margin: 0 } } },
+      { placeholder: { options: { name: "title", type: "title", x: 0.6, y: 0.62, w: 12.1, h: 0.75, fontFace: THEME.headFontFace, fontSize: 30, bold: true, color: C.text2, valign: "top", align: "left", margin: 0 }, text: "" } },
+      { text: { text: `${NAME} · concept for Safe Capital · all figures synthetic`, options: { x: 0.6, y: 7.02, w: 9, h: 0.28, fontSize: 10, color: C.accent6, margin: 0 } } },
     ],
-    slideNumber: { x: 12.2, y: 7.0, w: 0.5, h: 0.3, fontSize: 10, color: C.accent6, align: "right" },
+    slideNumber: { x: 12.2, y: 7.02, w: 0.5, h: 0.28, fontSize: 10, color: C.accent6, align: "right" },
   });
 
   const tb = (o) => Object.assign({ isTextBox: true, margin: 0, fontSize: 16, color: C.text1, valign: "top" }, o);
-  const content = (title, section) => {
+  const content = (kicker, title, section) => {
     const s = pres.addSlide({ masterName: "Content", sectionTitle: section });
+    s.addText(kicker.toUpperCase(), tb({ x: 0.6, y: 0.35, w: 9, h: 0.25, fontSize: 11, bold: true, color: C.accent1, charSpacing: 2 }));
     s.addText(title, { placeholder: "title" });
     return s;
   };
   const card = (s, x, y, w, h, fill, name) =>
-    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.08, fill: { color: fill || C.background2 }, line: { color: fill || C.background2 }, objectName: name });
-  const circleIcon = async (s, x, y, d, iconName, bg, fg, name) => {
-    s.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: bg }, line: { color: bg }, objectName: name + " circle" });
-    const pad = d * 0.25;
-    s.addImage({ data: await icon(iconName, fg), x: x + pad, y: y + pad, w: d - 2 * pad, h: d - 2 * pad, objectName: name + " icon" });
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.06, fill: { color: fill || X.bg }, line: { color: fill || X.bg }, objectName: name });
+  const iconIn = async (s, x, y, d, name, bg, fg, objName) => {
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: d, h: d, rectRadius: 0.08, fill: { color: bg }, line: { color: bg }, objectName: objName + " tile" });
+    const p = d * 0.22;
+    s.addImage({ data: await icon(name, fg), x: x + p, y: y + p, w: d - 2 * p, h: d - 2 * p, objectName: objName + " icon" });
+  };
+  const KIND = {
+    obs: [X.greenSoft, X.green], con: ["E6ECF4", X.navy], est: [X.amberSoft, X.amber], unk: [X.redSoft, X.red],
+    na: [X.mutedSurface, X.muted], pass: [X.greenSoft, X.green], fail: [X.redSoft, X.red], info: ["E6ECF4", X.navy],
+  };
+  const chip = (s, x, y, text, kind, w) => {
+    const [bg, fg] = KIND[kind];
+    const ww = w || Math.max(0.9, 0.09 * text.length + 0.35);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: ww, h: 0.3, rectRadius: 0.15, fill: { color: bg }, line: { color: bg }, objectName: "chip " + text });
+    s.addText(text, tb({ x, y, w: ww, h: 0.3, fontSize: 11, bold: true, color: fg, align: "center", valign: "middle" }));
+    return ww;
   };
   const fitImage = (s, file, box, name) => {
     const { w, h } = imgSize(file);
     const r = Math.min(box.w / w, box.h / h);
     const iw = w * r, ih = h * r;
-    s.addImage({ path: file, x: box.x + (box.w - iw) / 2, y: box.y + (box.h - ih) / 2, w: iw, h: ih, objectName: name, altText: name });
-    return { x: box.x + (box.w - iw) / 2, y: box.y + (box.h - ih) / 2, w: iw, h: ih };
+    const rr = { x: box.x + (box.w - iw) / 2, y: box.y + (box.h - ih) / 2, w: iw, h: ih };
+    s.addImage({ path: file, ...rr, objectName: name, altText: name });
+    s.addShape(pres.shapes.RECTANGLE, { ...rr, fill: { type: "none" }, line: { color: X.border, width: 0.75 }, objectName: name + " frame" });
+    return rr;
   };
-  const frame = (s, r) => s.addShape(pres.shapes.RECTANGLE, { x: r.x, y: r.y, w: r.w, h: r.h, fill: { type: "none" }, line: { color: "D5DBE3", width: 1 }, objectName: "screenshot frame" });
+  const arrow = (s, x, y, w, h, name) =>
+    s.addShape(pres.shapes.LINE, { x, y, w, h, line: { color: X.muted, width: 1.5, endArrowType: "triangle" }, objectName: name });
+  const arrowUp = (s, x, y, h, name) =>
+    s.addShape(pres.shapes.LINE, { x, y, w: 0, h, flipV: true, line: { color: X.muted, width: 1.5, endArrowType: "triangle" }, objectName: name });
 
   // =====================================================================
-  // 1. Title
+  // WHY
   pres.addSection({ title: "Why" });
   {
-    const s = pres.addSlide({ masterName: "Dark title", sectionTitle: "Why" });
-    s.addText("A free portfolio cost check, ready in minutes", { placeholder: "title" });
-    s.addText("How the Portfolio Cost Engine would work for Safe Capital\nBriefing for Massimo · November 2026", { placeholder: "body" });
-    s.addText("Concept and demo · every figure in this deck is synthetic", tb({ x: 0.8, y: 6.5, w: 8, h: 0.4, fontSize: 14, color: C.background1, transparency: 25 }));
-    await circleIcon(s, 11.4, 0.8, 1.2, "FaSearchDollar", TEAL, "FFFFFF", "title");
-    s.addNotes("Purpose of this deck: show, without technical detail, how a prospect's bank documents become a clear, evidence-backed cost picture and a fair comparison with Safe Capital. Everything shown is a concept with synthetic data; no real client, bank or saving is represented.");
+    const s = pres.addSlide({ masterName: "Dark", sectionTitle: "Why" });
+    s.addText(NAME, { placeholder: "title" });
+    s.addText("See what a portfolio really costs. In minutes, with proof.", { placeholder: "body" });
+    s.addText("Briefing for Massimo · Safe Capital, Lugano · November 2026", tb({ x: 0.8, y: 4.65, w: 11, h: 0.4, fontSize: 16, color: "9FB3C8" }));
+    s.addText("Concept and working demo · every figure in this deck is synthetic", tb({ x: 0.8, y: 6.55, w: 11, h: 0.35, fontSize: 12, color: "9FB3C8" }));
+    s.addNotes(`${NAME} (working name) reads a prospect's bank and product documents, finds every cost with its source, and compares it fairly with Safe Capital's offer. Everything shown uses the synthetic demo prospect P-1042; no real client, bank or saving is represented.`);
   }
-
-  // 2. Problem
   {
-    const s = content("Clients rarely know what their portfolio really costs", "Why");
-    card(s, 0.6, 1.6, 4.6, 4.9, C.text2, "quote card");
-    s.addImage({ data: await icon("FaQuoteLeft", MINT), x: 0.95, y: 1.95, w: 0.55, h: 0.45, objectName: "quote mark" });
-    s.addText("“My bank charges me about half a percent… I think. I’ve never added it all up.”", tb({ x: 0.95, y: 2.6, w: 3.95, h: 2.4, fontFace: THEME.headFontFace, fontSize: 22, italic: true, color: C.background1 }));
-    s.addText("Typical prospect remark (illustrative, not a real quote)", tb({ x: 0.95, y: 5.6, w: 3.95, h: 0.6, fontSize: 12, color: C.accent5 }));
-    s.addText("The costs are spread over many documents, and some are never shown as a charge", tb({ x: 5.7, y: 1.6, w: 7.0, h: 0.8, fontSize: 18, bold: true, color: C.text2 }));
+    const s = content("The problem", "Statements show less than half the story", "Why");
+    s.addText([
+      { text: "CHF 38'086", options: { fontSize: 54, bold: true, color: C.text2, breakLine: true } },
+      { text: "what the bank's cost report lists as charged", options: { fontSize: 16, color: C.accent6 } },
+    ], tb({ x: 0.6, y: 1.8, w: 5.6, h: 1.4 }));
+    s.addText([
+      { text: "CHF 59'376", options: { fontSize: 54, bold: true, color: C.accent1, breakLine: true } },
+      { text: "what the portfolio actually costs per year, at least", options: { fontSize: 16, color: C.accent6 } },
+    ], tb({ x: 0.6, y: 3.45, w: 5.6, h: 1.4 }));
+    s.addText("Synthetic prospect P-1042, CHF 4.3m at two banks. The CHF 21'290 gap is fund costs taken inside product prices, and Bank Beta's fees are still unknown.", tb({ x: 0.6, y: 5.15, w: 5.4, h: 1.2, fontSize: 14, color: C.accent6 }));
     const items = [
-      ["FaUniversity", "Bank fee statement", "management and custody debits"],
-      ["FaFileContract", "Mandate & tariff", "rates, tiers, minimums, VAT"],
-      ["FaExchangeAlt", "Trades & FX", "brokerage, third-party, FX margin"],
-      ["FaChartPie", "Fund prices", "ongoing charges taken inside the price"],
-      ["FaCubes", "Structured notes", "margins built into the issue price"],
-      ["FaUmbrella", "Insurance wrappers", "policy fees on top of the funds"],
+      ["LuLandmark", "Fee statements", "management, custody"],
+      ["LuFileSignature", "Contracts & tariffs", "rates, tiers, minimums"],
+      ["LuArrowLeftRight", "Trades & FX", "commissions, FX margins"],
+      ["LuPieChart", "Fund prices", "ongoing charges inside NAV"],
+      ["LuBoxes", "Structured notes", "issuer margin in the price"],
+      ["LuUmbrella", "Insurance wrappers", "policy fees on top"],
     ];
-    for (let i = 0; i < items.length; i++) {
-      const col = i % 2, row = Math.floor(i / 2);
-      const x = 5.7 + col * 3.55, y = 2.65 + row * 1.3;
-      await circleIcon(s, x, y, 0.7, items[i][0], col ? "FBF1DE" : "E3F2F0", col ? AMBER : TEAL, items[i][1]);
-      s.addText(items[i][1], tb({ x: x + 0.85, y: y + 0.02, w: 2.6, h: 0.35, fontSize: 16, bold: true }));
-      s.addText(items[i][2], tb({ x: x + 0.85, y: y + 0.38, w: 2.6, h: 0.6, fontSize: 13, color: C.accent6 }));
+    s.addText("Costs are spread over six kinds of document", tb({ x: 6.9, y: 1.8, w: 5.8, h: 0.4, fontSize: 16, bold: true }));
+    for (let i = 0; i < 6; i++) {
+      const y = 2.35 + i * 0.68;
+      await iconIn(s, 6.9, y, 0.5, items[i][0], i >= 3 ? X.tealSoft : X.bg, i >= 3 ? X.teal : X.navy, items[i][1]);
+      s.addText(items[i][1], tb({ x: 7.6, y: y + 0.08, w: 2.5, h: 0.35, fontSize: 15, bold: true }));
+      s.addText(items[i][2], tb({ x: 10.1, y: y + 0.1, w: 2.6, h: 0.35, fontSize: 13, color: C.accent6 }));
     }
-    s.addNotes("The core problem: no single bank document shows the all-in cost. A holdings statement does not show fees; fund costs are deducted inside the fund price and never appear as a debit; structured products and insurance wrappers add their own layers. Prospects therefore usually underestimate what they pay.");
+    s.addNotes("The three lower rows never appear as a debit: they are deducted inside the product price. That is why prospects usually underestimate what they pay. Figures are synthetic, from the demo engine.");
   }
-
-  // 3. Value proposition
   {
-    const s = content("Our offer: an evidence-based cost check, free for the prospect", "Why");
+    const s = content(`What ${NAME} does`, "Upload, verify, compare: a free cost check in one meeting", "Why");
     const cols = [
-      ["FaFileUpload", "1. The client hands over documents", "Statements, fee reports and contracts from one or more banks: PDF, scans or Excel."],
-      ["FaStopwatch", "2. A cost picture within minutes", "The engine reads the documents and builds a first draft of the annual all-in cost. An analyst checks it."],
-      ["FaBalanceScale", "3. A fair comparison with Safe Capital", "Same holdings, Safe Capital's fee plus the custodian bank's fees, switching costs included. On one page."],
+      ["LuFileUp", "Upload", "The client's statements, cost reports and contracts from any bank: PDF, scans, Excel."],
+      ["LuListChecks", "Verify", "Every cost is extracted, linked to its page, checked against other documents, and labelled proven, estimated or unknown."],
+      ["LuScale", "Compare", "Same holdings with Safe Capital and its custodian bank, switching costs included, on one page for the client."],
     ];
     for (let i = 0; i < 3; i++) {
       const x = 0.6 + i * 4.1;
-      card(s, x, 1.65, 3.8, 3.6, C.background2, "value card " + (i + 1));
-      await circleIcon(s, x + 0.35, 1.95, 0.9, cols[i][0], TEAL, "FFFFFF", "value " + (i + 1));
-      s.addText(cols[i][1], tb({ x: x + 0.35, y: 3.05, w: 3.1, h: 0.75, fontSize: 18, bold: true, color: C.text2 }));
-      s.addText(cols[i][2], tb({ x: x + 0.35, y: 3.85, w: 3.1, h: 1.3, fontSize: 14, color: C.text1 }));
+      card(s, x, 1.75, 3.8, 3.3, X.bg, "step card " + (i + 1));
+      await iconIn(s, x + 0.35, 2.05, 0.7, cols[i][0], X.white, X.teal, cols[i][1]);
+      s.addText(cols[i][1], tb({ x: x + 0.35, y: 2.95, w: 3.1, h: 0.45, fontSize: 22, bold: true, color: C.text2 }));
+      s.addText(cols[i][2], tb({ x: x + 0.35, y: 3.5, w: 3.1, h: 1.4, fontSize: 15 }));
     }
-    card(s, 0.6, 5.55, 12.1, 1.05, C.text2, "principle band");
-    s.addText([
-      { text: "Three rules we never break:  ", options: { bold: true, color: C.accent5 } },
-      { text: "every number links to its source page · a missing cost is never counted as zero · no saving is claimed unless the service is comparable", options: { color: C.background1 } },
-    ], tb({ x: 0.9, y: 5.62, w: 11.5, h: 0.9, fontSize: 16, valign: "middle" }));
-    s.addNotes("'Minutes' is the design target for the automatic first draft, not a measured result yet. The analyst review adds time depending on how complete the documents are. The three rules are what make the result defensible in front of a client.");
+    const rules = ["No source, no verified figure", "Missing is never zero", "No comparable service, no savings claim"];
+    for (let i = 0; i < 3; i++) {
+      const x = 0.6 + i * 4.1;
+      s.addImage({ data: await icon("LuShieldCheck", X.teal), x, y: 5.55, w: 0.4, h: 0.4, objectName: "rule icon " + (i + 1) });
+      s.addText(rules[i], tb({ x: x + 0.55, y: 5.55, w: 3.3, h: 0.4, fontSize: 16, bold: true, color: C.text2, valign: "middle" }));
+    }
+    s.addText("Target: a first draft within minutes of upload, then an analyst check. Speed will be measured in the pilot.", tb({ x: 0.6, y: 6.25, w: 12, h: 0.35, fontSize: 13, color: C.accent6 }));
+    s.addNotes("The three rules are what make the result defensible in front of a client and a compliance officer.");
   }
 
-  // 4. Five steps
+  // =====================================================================
+  // HOW IT WORKS
   pres.addSection({ title: "How it works" });
   {
-    const s = content("Five steps from a pile of documents to a client-ready report", "How it works");
-    const steps = [
-      ["FaFileUpload", "Upload", "Files go into a private, encrypted workspace for this prospect"],
-      ["FaSearch", "Read & check", "Positions, ISINs and fees are extracted, each tied to its page"],
-      ["FaBook", "Find product costs", "Official fund documents give each fund's ongoing cost"],
-      ["FaCalculator", "Calculate", "Annual cost per layer: proven, estimated, missing"],
-      ["FaBalanceScale", "Compare & report", "Safe Capital scenario, payback, one-page report"],
-    ];
-    const w = 2.3, gap = 0.15;
-    for (let i = 0; i < 5; i++) {
-      const x = 0.6 + i * (w + gap);
-      s.addShape(i === 0 ? pres.shapes.PENTAGON : pres.shapes.CHEVRON, { x, y: 1.75, w, h: 0.9, fill: { color: i % 2 ? C.accent1 : C.text2 }, line: { color: C.background1 }, objectName: "step arrow " + (i + 1) });
-      s.addText(steps[i][1], tb({ x: x + (i ? 0.55 : 0.25), y: 1.75, w: w - 0.75, h: 0.9, fontSize: 15, bold: true, color: C.background1, valign: "middle" }));
-      await circleIcon(s, x + w / 2 - 0.45, 3.0, 0.9, steps[i][0], "E3F2F0", TEAL, "step " + (i + 1));
-      s.addText(steps[i][2], tb({ x: x + 0.1, y: 4.05, w: w - 0.2, h: 1.2, fontSize: 14, align: "center" }));
-    }
-    card(s, 0.6, 5.5, 12.1, 1.1, "FBF1DE", "human band");
-    await circleIcon(s, 0.85, 5.68, 0.75, "FaUserCheck", AMBER, "FFFFFF", "human");
-    s.addText("A Safe Capital analyst checks flagged values after step 2 and approves the report after step 5. Nothing reaches the client without a person signing it off.", tb({ x: 1.85, y: 5.55, w: 10.6, h: 1.0, fontSize: 16, valign: "middle" }));
-    s.addNotes("Steps 2 to 4 are automatic. The software never sends anything to a client by itself; it prepares, a person decides.");
-  }
-
-  // 5. What the client brings
-  {
-    const s = content("What the client brings: three essentials, the rest makes it sharper", "How it works");
-    card(s, 0.6, 1.6, 5.8, 5.0, "E3F2F0", "essentials");
-    s.addText("Essential", tb({ x: 0.95, y: 1.85, w: 5, h: 0.5, fontSize: 20, bold: true, color: C.accent1 }));
-    const ess = [
-      ["FaListAlt", "Holdings / portfolio valuation", "per bank, recent date"],
-      ["FaReceipt", "Fees charged in the last 12 months", "fee statement or annual cost report"],
-      ["FaFileSignature", "Mandate or advisory contract", "the agreed rates and what they cover"],
-    ];
-    for (let i = 0; i < 3; i++) {
-      const y = 2.6 + i * 1.25;
-      await circleIcon(s, 0.95, y, 0.75, ess[i][0], TEAL, "FFFFFF", ess[i][1]);
-      s.addText(ess[i][1], tb({ x: 1.9, y: y, w: 4.3, h: 0.4, fontSize: 16, bold: true }));
-      s.addText(ess[i][2], tb({ x: 1.9, y: y + 0.4, w: 4.3, h: 0.4, fontSize: 14, color: C.accent6 }));
-    }
-    card(s, 6.8, 1.6, 5.9, 5.0, C.background2, "helpful");
-    s.addText("Helpful", tb({ x: 7.15, y: 1.85, w: 5, h: 0.5, fontSize: 20, bold: true, color: C.text2 }));
-    const help = [
-      "Custody and trading tariff",
-      "Transaction list (12 months)",
-      "FX confirmations",
-      "Rebate / retrocession disclosure",
-      "Structured product termsheets",
-      "Insurance policy, if funds sit in a wrapper",
-    ];
-    s.addText(help.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < help.length - 1 } })), tb({ x: 7.15, y: 2.5, w: 5.3, h: 2.9, fontSize: 16, paraSpaceAfter: 8 }));
-    s.addText("Accepted: PDF, scans or phone photos, Excel, CSV. If something is missing, the engine drafts the request for the client.", tb({ x: 7.15, y: 5.5, w: 5.3, h: 0.9, fontSize: 14, color: C.accent6 }));
-    s.addNotes("With only the three essentials we can already show bank-level costs and fund costs. The helpful documents turn estimates into proven figures, especially for trading, FX and rebates.");
-  }
-
-  // 6. Three layers
-  {
-    const s = content("Costs sit in three layers, and only the top one shows up as a debit", "How it works");
-    const layers = [
-      ["Bank & service layer", "Management or advisory fee, custody, brokerage, FX", "Visible: debited from the account", TEAL, "FFFFFF", 9.0],
-      ["Product layer", "Fund ongoing charges, fund trading costs, structured note margins", "Hidden: taken inside the product price", AMBER, "FFFFFF", 7.4],
-      ["Wrapper & one-off layer", "Insurance policy fees, entry or exit fees, transfer costs, stamp duty", "Occasional or contract-specific", NAVY, "FFFFFF", 5.8],
-    ];
-    for (let i = 0; i < 3; i++) {
-      const [t, d, v, col, fg, w] = layers[i];
-      const y = 1.7 + i * 1.6, x = 0.6 + (9.0 - w) / 2;
-      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: 1.35, rectRadius: 0.08, fill: { color: col }, line: { color: col }, objectName: t });
-      s.addText([{ text: t, options: { bold: true, fontSize: 18, breakLine: true } }, { text: d, options: { fontSize: 14 } }], tb({ x: x + 0.3, y, w: w - 0.6, h: 1.35, color: fg, valign: "middle", align: "center" }));
-      s.addText(v, tb({ x: 9.95, y: y + 0.2, w: 2.8, h: 1.0, fontSize: 15, bold: i === 1, color: i === 1 ? C.accent2 : C.text1, valign: "middle" }));
-    }
-    s.addText("The product layer is the one most clients never see, and often the largest after the management fee.", tb({ x: 0.6, y: 6.5, w: 12, h: 0.4, fontSize: 14, italic: true, color: C.accent6 }));
-    s.addNotes("This is the central idea for clients. Fund costs are not wrong or hidden on purpose, they are simply deducted inside the fund price, so they never appear on a bank statement. The engine makes them visible using the official product documents.");
-  }
-
-  // 7. Statement reading
-  {
-    const s = content("Every number keeps a link to the page it came from", "How it works");
-    const r = fitImage(s, IMG("statement.png"), { x: 0.6, y: 1.5, w: 7.3, h: 5.35 }, "Synthetic bank statement with highlighted values");
-    frame(s, r);
-    const pts = [
-      ["1", "Security recognised", "The ISIN identifies the exact fund and share class.", TEAL],
-      ["2", "Position value", "Used to turn a fund's cost percentage into francs.", TEAL],
-      ["3", "Fee actually billed", "Proven cost: date, period and amount kept with the page reference.", AMBER],
-    ];
-    for (let i = 0; i < 3; i++) {
-      const y = 1.7 + i * 1.45;
-      s.addShape(pres.shapes.OVAL, { x: 8.3, y, w: 0.6, h: 0.6, fill: { color: pts[i][3] }, line: { color: pts[i][3] }, objectName: "badge " + pts[i][0] });
-      s.addText(pts[i][0], tb({ x: 8.3, y, w: 0.6, h: 0.6, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle" }));
-      s.addText(pts[i][1], tb({ x: 9.1, y: y - 0.02, w: 3.6, h: 0.4, fontSize: 17, bold: true }));
-      s.addText(pts[i][2], tb({ x: 9.1, y: y + 0.4, w: 3.6, h: 0.8, fontSize: 14, color: C.accent6 }));
-    }
-    s.addText("Example is a synthetic facsimile. Real bank layouts differ by bank and language; each new layout is tested before use.", tb({ x: 8.3, y: 6.0, w: 4.4, h: 0.8, fontSize: 12, italic: true, color: C.accent6 }));
-    s.addNotes("Born-digital PDFs are read directly; scans and photos go through OCR (text recognition) and are flagged for a human check. Every extracted value remembers its file, page and position so anyone can click it and see the original.");
-  }
-
-  // 8. Upload screen
-  pres.addSection({ title: "The screens" });
-  {
-    const s = content("Step 1 · Upload: the checklist shows at once what is still missing", "The screens");
-    const r = fitImage(s, IMG("upload.png"), { x: 0.6, y: 1.45, w: 12.1, h: 5.4 }, "Upload screen mockup with document checklist");
-    frame(s, r);
-    s.addNotes("Mockup with synthetic data. Each file is recognised automatically (valuation, fee statement, contract, scan). The checklist on the right tells the analyst which documents to ask for before the meeting ends.");
-  }
-
-  // 9. Review screen
-  {
-    const s = content("Step 2 · Review: the analyst confirms values next to the original page", "The screens");
-    const r = fitImage(s, IMG("review.png"), { x: 0.6, y: 1.45, w: 12.1, h: 5.4 }, "Review screen mockup with source document and extracted facts");
-    frame(s, r);
-    s.addNotes("Left: the original document with the value highlighted. Right: what the engine extracted. Uncertain values (here, VAT not stated) are flagged and need one click to confirm, correct, or turn into a question for the client. Every correction is logged with who, when and why.");
-  }
-
-  // 10. KID
-  {
-    const s = content("Fund costs come from the official KID of the exact share class", "The screens");
-    const flow = [
-      ["FaBarcode", "ISIN on the statement", "ZZDEMO000011"],
-      ["FaLayerGroup", "Exact share class", "Global Equity Fund A, R-acc"],
-      ["FaBook", "Official KID / factsheet", "issuer's document, dated"],
-      ["FaPercent", "Ongoing cost", "1.08% per year"],
-    ];
-    for (let i = 0; i < 4; i++) {
-      const x = 0.6 + i * 3.1;
-      card(s, x, 1.65, 2.7, 2.1, C.background2, "kid step " + (i + 1));
-      await circleIcon(s, x + 0.95, 1.85, 0.8, flow[i][0], TEAL, "FFFFFF", flow[i][1]);
-      s.addText(flow[i][1], tb({ x: x + 0.15, y: 2.75, w: 2.4, h: 0.4, fontSize: 15, bold: true, align: "center" }));
-      s.addText(flow[i][2], tb({ x: x + 0.15, y: 3.15, w: 2.4, h: 0.45, fontSize: 13, color: C.accent6, align: "center" }));
-      if (i < 3) s.addShape(pres.shapes.RIGHT_ARROW, { x: x + 2.75, y: 2.5, w: 0.3, h: 0.4, fill: { color: "C5CCD8" }, line: { color: "C5CCD8" }, objectName: "kid arrow " + (i + 1) });
-    }
-    card(s, 0.6, 4.15, 7.4, 2.05, "FBF1DE", "worked example");
-    s.addText("Worked example (synthetic)", tb({ x: 0.9, y: 4.35, w: 6.8, h: 0.4, fontSize: 16, bold: true, color: C.accent2 }));
-    s.addText([
-      { text: "Ongoing charges 1.08%, of which management fee 0.75%", options: { bullet: true, breakLine: true } },
-      { text: "The 0.75% is already inside the 1.08%: counted once", options: { bullet: true, breakLine: true } },
-      { text: "CHF 800'000 × 1.08% = CHF 8'640 per year, marked estimated", options: { bullet: true, bold: true } },
-    ], tb({ x: 0.9, y: 4.85, w: 6.9, h: 1.6, fontSize: 15, paraSpaceAfter: 6 }));
-    s.addText([
-      { text: "Why the exact class matters", options: { bold: true, breakLine: true, color: C.text2 } },
-      { text: "The same fund can have several share classes with different costs. If the class can't be confirmed, the engine marks the cost as missing instead of guessing.", options: {} },
-    ], tb({ x: 8.4, y: 4.2, w: 4.3, h: 2.4, fontSize: 15 }));
-    s.addNotes("KID = Key Information Document, the official cost sheet funds must publish. Only the client's ISIN is looked up, never their name or amounts. The KID's example amounts are illustrations, not what the client actually paid, so we use the percentage applied to the client's real position value and label it 'estimated'.");
-  }
-
-  // 11. Double counting & missing
-  {
-    const s = content("Each cost is counted once, and a missing cost is never treated as zero", "The screens");
-    card(s, 0.6, 1.6, 5.9, 4.4, C.background2, "counted once");
-    await circleIcon(s, 0.9, 1.85, 0.75, "FaLink", TEAL, "FFFFFF", "counted once");
-    s.addText("Counted once", tb({ x: 1.85, y: 1.95, w: 4.4, h: 0.5, fontSize: 20, bold: true, color: C.text2 }));
-    const once = [
-      "A fund's management fee is part of its ongoing charges",
-      "An all-in fee may already include custody",
-      "A KID's total is the sum of its parts, not an extra",
-      "A rebate counts only if it was actually paid back",
-    ];
-    s.addText(once.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < once.length - 1 } })), tb({ x: 0.9, y: 2.85, w: 5.4, h: 3.5, fontSize: 16, paraSpaceAfter: 10 }));
-
-    card(s, 6.8, 1.6, 5.9, 4.4, "FCE8E6", "missing");
-    await circleIcon(s, 7.1, 1.85, 0.75, "FaExclamationTriangle", RED, "FFFFFF", "missing");
-    s.addText("Missing ≠ zero", tb({ x: 8.05, y: 1.95, w: 4.4, h: 0.5, fontSize: 20, bold: true, color: C.accent3 }));
-    s.addText("Gaps are shown in red, and the engine drafts the request:", tb({ x: 7.1, y: 2.85, w: 5.3, h: 0.5, fontSize: 15 }));
-    s.addShape(pres.shapes.RECTANGLE, { x: 7.1, y: 3.45, w: 5.3, h: 2.25, fill: { color: "FFFFFF" }, line: { color: "E8B4AE", width: 1 }, objectName: "request letter" });
-    s.addText([
-      { text: "Please ask Banca Beta for:", options: { bold: true, breakLine: true } },
-      { text: "Rebate (retrocession) disclosure 2026", options: { bullet: true, breakLine: true } },
-      { text: "FX confirmations, last 12 months", options: { bullet: true, breakLine: true } },
-      { text: "Why: without them, FX and rebates stay estimated, so the saving shown is a range, not a firm figure.", options: { italic: true, color: C.accent6 } },
-    ], tb({ x: 7.35, y: 3.6, w: 4.85, h: 2.0, fontSize: 14, paraSpaceAfter: 4 }));
-    s.addNotes("These two rules protect Safe Capital's credibility. Adding a fund's management fee on top of its ongoing charges would overstate the client's cost; treating an unknown FX margin as zero would understate it. Both would make the comparison unfair.");
-  }
-
-  // 12. Costs dashboard
-  {
-    const s = content("Step 3 · Costs: the full picture, split into proven and estimated", "The screens");
-    const r = fitImage(s, IMG("costs.png"), { x: 0.6, y: 1.45, w: 12.1, h: 5.4 }, "Cost dashboard mockup");
-    frame(s, r);
-    s.addNotes("Synthetic prospect with CHF 4 million across two banks. Known annual cost CHF 38'100 (0.95%). CHF 25'100 is proven by billed fees; CHF 13'000 is estimated from official fund documents and tariffs; two items remain unquantified and are shown, not hidden. Clicking any line opens the source page.");
-  }
-
-  // 13. Comparison chart
-  pres.addSection({ title: "The result" });
-  {
-    const s = content("Step 4 · Compare: same holdings first, a new portfolio kept apart", "The result");
-    s.addChart(pres.charts.BAR, [
-      { name: "Advisory, custodian bank & trading fees", labels: ["Today", "Safe Capital, same holdings", "Safe Capital, new portfolio"], values: [26300, 20740, 20740] },
-      { name: "Product costs (funds, notes)", labels: ["Today", "Safe Capital, same holdings", "Safe Capital, new portfolio"], values: [11800, 11800, 3000] },
-    ], {
-      x: 0.6, y: 1.55, w: 7.6, h: 5.2, barDir: "col", barGrouping: "stacked", barGapWidthPct: 60,
-      chartColors: [TEAL, AMBER], showValue: true, dataLabelPosition: "ctr", dataLabelColor: "FFFFFF", dataLabelFontSize: 12, dataLabelFormatCode: "#,##0",
-      dataLabelFontFace: "+mn-lt", catAxisLabelFontFace: "+mn-lt", valAxisLabelFontFace: "+mn-lt", legendFontFace: "+mn-lt", titleFontFace: "+mn-lt",
-      catAxisLabelColor: MUTED, valAxisLabelColor: MUTED, catAxisLabelFontSize: 12, valAxisLabelFontSize: 11, valAxisLabelFormatCode: "#,##0",
-      valGridLine: { color: "E2E6EC", size: 0.5 }, catGridLine: { style: "none" },
-      showLegend: true, legendPos: "b", legendFontSize: 12, legendColor: MUTED,
-      showTitle: true, title: "Annual cost, CHF (synthetic)", titleFontSize: 14, titleColor: MUTED,
+    const s = content("Workflow", "Who does what, from documents to report", "How it works");
+    const lanes = [["Client", X.bg], [NAME, X.tealSoft], ["Safe Capital analyst", X.amberSoft], ["Output", "E6ECF4"]];
+    const top = 1.6, lh = 1.2, lx = 0.6, lw = 1.7, gx = 2.45, cw = 1.73, bw = 1.5, bh = 0.72;
+    lanes.forEach(([n, fill], i) => {
+      s.addShape(pres.shapes.RECTANGLE, { x: lx, y: top + i * lh, w: 12.1, h: lh - 0.08, fill: { color: fill }, line: { color: fill }, objectName: "lane " + n });
+      s.addText(n, tb({ x: lx + 0.15, y: top + i * lh, w: lw - 0.2, h: lh - 0.08, fontSize: 14, bold: true, color: C.text2, valign: "middle" }));
     });
+    const bx = (col) => gx + col * cw + (cw - bw) / 2;
+    const by = (lane) => top + lane * lh + (lh - 0.08 - bh) / 2;
+    const box = (col, lane, text, strong) => {
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: bx(col), y: by(lane), w: bw, h: bh, rectRadius: 0.06, fill: { color: strong ? X.navy : X.white }, line: { color: strong ? X.navy : X.border, width: 0.75 }, objectName: "step " + text });
+      s.addText(text, tb({ x: bx(col) + 0.08, y: by(lane), w: bw - 0.16, h: bh, fontSize: 12, bold: true, color: strong ? C.background1 : C.text1, align: "center", valign: "middle" }));
+    };
+    box(0, 0, "Signs consent"); box(1, 0, "Hands over documents");
+    box(1, 1, "Classify and read every page", true); box(2, 1, "Reconcile documents", true); box(3, 1, "Find fund costs in official KIDs", true); box(4, 1, "Build cost ledger and scenarios", true); box(5, 1, "Draft the report", true);
+    box(2, 2, "Confirm flagged values"); box(4, 2, "Set Safe Capital and custodian fees (once)"); box(5, 2, "Approve and sign");
+    box(3, 3, "Request letter for missing documents"); box(5, 3, "One-page client report");
+    const midY = (lane) => by(lane) + bh / 2;
+    arrow(s, bx(0) + bw, midY(0), cw - bw, 0, "a1");
+    arrow(s, bx(1) + bw / 2, by(0) + bh, 0, by(1) - by(0) - bh, "a2");
+    for (let c = 1; c < 5; c++) arrow(s, bx(c) + bw, midY(1), cw - bw, 0, "a" + (c + 2));
+    arrow(s, bx(2) + bw / 2, by(1) + bh, 0, by(2) - by(1) - bh, "a7");
+    arrow(s, bx(3) + bw / 2, by(1) + bh, 0, by(3) - by(1) - bh, "a8");
+    arrowUp(s, bx(4) + bw / 2, by(1) + bh, by(2) - by(1) - bh, "a9");
+    arrow(s, bx(5) + bw / 2, by(1) + bh, 0, by(2) - by(1) - bh, "a10");
+    arrow(s, bx(5) + bw / 2, by(2) + bh, 0, by(3) - by(2) - bh, "a11");
+    s.addText("The client sends the missing documents; the analysis updates and the gaps close.", tb({ x: bx(3) - 1.25, y: top + 4 * lh + 0.02, w: 6, h: 0.35, fontSize: 12, italic: true, color: C.accent6 }));
+    s.addNotes("Dark boxes are automatic. Analyst steps are short: confirming values the engine is unsure of, setting Safe Capital's own tariff once, and signing the report. Nothing reaches a client without that signature.");
+  }
+  {
+    const s = content("Documents", "What the client brings, and what each document can prove", "How it works");
+    const head = ["Document", "What we read", "Proves", "Cannot prove", "Need"];
     const rows = [
-      ["Today", "CHF 38'100", "0.95%", C.text1],
-      ["Same holdings", "CHF 32'540", "0.81%", C.accent1],
-      ["New portfolio", "CHF 23'740", "0.59%", C.accent2],
+      ["Portfolio / asset statement", "ISIN, quantity, price, value, currency, date, total", "Holdings at a date", "Fees", "Essential"],
+      ["Annual cost & charges report", "Service costs, product costs, third-party payments", "Near-complete annual cost", "FX margins, if not listed", "Essential"],
+      ["Fee advice / cash statement", "Fee type, period, base, rate, amount, VAT", "Every billed debit", "Costs inside products", "Essential*"],
+      ["Mandate contract / tariff", "Rates, tiers, minimums, all-in scope, exclusions", "What was agreed", "What was billed", "Helpful"],
+      ["Trade & FX confirmations", "Commission, third-party fees, stamp duty, FX rate", "Explicit trading cost", "Contract terms", "Helpful"],
+      ["Fund KID (official)", "Share class, ongoing, transaction, entry/exit costs", "Product cost rates", "What the client paid", "We fetch"],
+      ["Retrocession statement", "Payments from product providers, refunded or kept", "Conflicts and refunds", "Client cost directly", "Ask bank"],
+      ["Insurance policy statement", "Policy value, wrapper charges, underlying funds", "Wrapper charges", "Underlying fund costs", "If wrapped"],
     ];
-    for (let i = 0; i < 3; i++) {
-      const y = 1.7 + i * 1.05;
-      s.addText(rows[i][0], tb({ x: 8.6, y, w: 2.0, h: 0.45, fontSize: 15, color: C.accent6 }));
-      s.addText(rows[i][1], tb({ x: 8.6, y: y + 0.38, w: 2.4, h: 0.5, fontSize: 22, bold: true, color: rows[i][3] }));
-      s.addText(rows[i][2], tb({ x: 11.2, y: y + 0.38, w: 1.5, h: 0.5, fontSize: 18, color: C.accent6, align: "right" }));
-    }
-    card(s, 8.6, 4.95, 4.1, 1.75, "FBF1DE", "caveat");
-    s.addText("Safe Capital columns include the custodian bank's fees: assets stay at a bank, Safe Capital manages them. The new-portfolio case changes products and risk, so it is not a like-for-like saving.", tb({ x: 8.8, y: 5.05, w: 3.75, h: 1.55, fontSize: 13, valign: "middle" }));
-    s.addNotes("Safe Capital is an external asset manager: the client's assets stay at a custodian bank, so every Safe Capital scenario adds Safe Capital's fee AND the custodian bank's custody, trading and FX fees. VAT on fees depends on the client's domicile. Same-holdings comparison: identical positions, Safe Capital's advisory fee plus the custodian's terms. This is the fair headline. The new-portfolio case (e.g. cheaper share classes or ETFs) can show a larger difference but needs a suitability review and must never be presented as a pure fee saving. Figures are synthetic.");
-  }
-
-  // 14. First year & payback
-  {
-    const s = content("Year one: switching costs are included, so the payback is honest", "The result");
-    const tbl = [
-      ["", "Same holdings", "New portfolio"],
-      ["Annual difference", "CHF 5'560", "CHF 14'360"],
-      ["One-off switching costs", "– CHF 8'000", "– CHF 8'000"],
-      ["Net result in year one", "– CHF 2'440", "+ CHF 6'360"],
-      ["Payback", "about 17 months", "about 7 months"],
-    ];
-    const hdr = { bold: true, color: C.background1, fill: { color: C.text2 }, fontSize: 15 };
-    s.addTable(tbl.map((r, ri) => r.map((c, ci) => ({
+    const hdr = { bold: true, color: C.accent6, fill: { color: X.mutedSurface }, fontSize: 11 };
+    const needKind = { Essential: [X.greenSoft, X.green], "Essential*": [X.greenSoft, X.green], Helpful: ["E6ECF4", X.navy], "We fetch": [X.tealSoft, X.teal], "Ask bank": [X.amberSoft, X.amber], "If wrapped": [X.mutedSurface, X.muted] };
+    s.addTable([head.map((h) => ({ text: h.toUpperCase(), options: hdr }))].concat(rows.map((r) => r.map((c, ci) => ({
       text: c,
-      options: ri === 0 ? Object.assign({ align: ci ? "right" : "left" }, hdr) : {
-        fontSize: 16, align: ci ? "right" : "left", bold: ri === 3 || ci === 0,
-        color: ri === 3 && ci === 1 ? C.accent3 : ri === 3 && ci === 2 ? C.accent1 : C.text1,
-        fill: { color: ri % 2 ? C.background1 : C.background2 },
-      },
-    }))), { x: 0.6, y: 1.7, w: 7.6, colW: [3.2, 2.2, 2.2], rowH: 0.65, border: { type: "solid", color: "E2E6EC", pt: 0.75 }, margin: [0, 0.15, 0, 0.15], valign: "middle" });
-    await circleIcon(s, 8.75, 1.75, 0.8, "FaHandshake", TEAL, "FFFFFF", "honest");
-    s.addText("Why show a negative year one?", tb({ x: 8.75, y: 2.75, w: 3.95, h: 0.5, fontSize: 18, bold: true, color: C.text2 }));
-    s.addText("Because a client will find out anyway. Showing the switching cost and the payback period up front makes the recommendation credible, and the saving from year two onward speaks for itself.", tb({ x: 8.75, y: 3.3, w: 3.95, h: 2.2, fontSize: 15 }));
-    s.addText("Switching costs (transfer, exit, taxes) come from the banks' quotes; here they are a synthetic placeholder. VAT on fees depends on the client's domicile and is applied per client.", tb({ x: 0.6, y: 5.25, w: 7.6, h: 0.8, fontSize: 13, italic: true, color: C.accent6 }));
-    s.addNotes("Payback = one-off switching cost ÷ annual difference × 12. Same holdings: 8'000 ÷ 5'560 × 12 ≈ 17 months. New portfolio: 8'000 ÷ 14'360 × 12 ≈ 7 months. All synthetic. Safe Capital's own margin on the prospect is computed on a separate internal screen and never appears in client material.");
+      options: ci === 0 ? { bold: true, fontSize: 13, color: C.text1 } : ci === 4 ? { bold: true, fontSize: 12, color: needKind[c][1], fill: { color: needKind[c][0] }, align: "center" } : { fontSize: 12, color: ci === 3 ? C.accent6 : C.text1 },
+    })))), { x: 0.6, y: 1.6, w: 12.1, colW: [2.6, 3.9, 2.25, 2.15, 1.2], rowH: 0.52, border: { type: "solid", color: X.border, pt: 0.5 }, margin: [0.04, 0.1, 0.04, 0.1], valign: "middle" });
+    s.addText("* either the cost report or the fee advices. Accepted formats: PDF, scans or phone photos (OCR), Excel, CSV. Italian, German, French and English.", tb({ x: 0.6, y: 6.45, w: 12.1, h: 0.35, fontSize: 12, color: C.accent6 }));
+    s.addNotes("Full taxonomy of 31 document types with IT/DE/EN names is in data/taxonomy/document_types.csv. In Switzerland the annual cost report is often only provided on request, so the engine drafts that request.");
   }
-
-  // 15. Client report
   {
-    const s = content("Step 5 · Report: one page for the client, the margin stays internal", "The result");
-    const r = fitImage(s, IMG("report.png"), { x: 0.6, y: 1.45, w: 7.9, h: 5.4 }, "Client report mockup");
-    frame(s, r);
-    const pts = [
-      ["FaCheckCircle", TEAL, "On the page", "Today vs Safe Capital, the breakdown, what is proven and what is estimated"],
-      ["FaExclamationTriangle", AMBER, "Also on the page", "What is still missing, in plain words"],
-      ["FaEyeSlash", RED, "Never on the page", "Safe Capital's internal margin and profitability view"],
-      ["FaSignature", NAVY, "Before it leaves", "An approver signs it off; the version is frozen"],
+    const s = content("Data", "Everything extracted becomes one of five kinds of data", "How it works");
+    const ents = [
+      ["LuLayers", "Positions", ["ISIN and share class", "Quantity, price, value", "Currency, valuation date", "Bank, account"]],
+      ["LuReceipt", "Fees charged", ["Fee type and period", "Base and rate", "Amount, VAT", "Debit date"]],
+      ["LuFileSignature", "Contract terms", ["Rates and tiers", "Minimums", "All-in scope", "Booking entity"]],
+      ["LuPieChart", "Product costs", ["Ongoing charges", "Transaction costs", "Entry / exit (max)", "KID date and class"]],
+      ["LuSearch", "Evidence", ["File and page", "Box on the page", "Original text", "Who confirmed it"]],
+    ];
+    for (let i = 0; i < 5; i++) {
+      const x = 0.6 + i * 2.46;
+      card(s, x, 1.65, 2.25, 3.9, i === 4 ? X.tealSoft : X.bg, ents[i][1]);
+      await iconIn(s, x + 0.25, 1.9, 0.6, ents[i][0], X.white, i === 4 ? X.teal : X.navy, ents[i][1]);
+      s.addText(ents[i][1], tb({ x: x + 0.25, y: 2.7, w: 1.9, h: 0.45, fontSize: 18, bold: true, color: C.text2 }));
+      s.addText(ents[i][2].map((t, j) => ({ text: t, options: { breakLine: j < 3 } })), tb({ x: x + 0.25, y: 3.25, w: 1.9, h: 2.1, fontSize: 13, paraSpaceAfter: 8, color: C.text1 }));
+    }
+    s.addText("Every position, fee, term and product cost carries its evidence. Each one also gets a status: observed, contractual, estimated, not a paid cost, or not determined. A number with no evidence never reaches the cost total.", tb({ x: 0.6, y: 5.85, w: 12.1, h: 0.8, fontSize: 15 }));
+    s.addNotes("This is the canonical data model in plain words. Bank-specific layouts all map onto these five kinds, which is what makes the tool generic for any bank.");
+  }
+  {
+    const s = content("Cost layers", "Ten cost layers, in four places a client may never look", "How it works");
+    const groups = [
+      ["Debited from the account", X.navy, ["Service: management, advisory, all-in", "Custody and account", "Trading: brokerage, third-party", "Financing: Lombard interest", "Taxes: VAT, stamp duty"]],
+      ["Inside product prices", X.teal, ["Funds and ETFs: ongoing and transaction costs", "Structured products: issuer and distribution margin"]],
+      ["Inside execution rates", X.l2, ["FX margins and bid/ask spreads"]],
+      ["Wrapper and one-off", X.amber, ["Insurance wrapper charges", "Switching: transfer, exit, sale costs"]],
     ];
     for (let i = 0; i < 4; i++) {
-      const y = 1.6 + i * 1.3;
-      await circleIcon(s, 8.85, y, 0.65, pts[i][0], pts[i][1], "FFFFFF", pts[i][2]);
-      s.addText(pts[i][2], tb({ x: 9.7, y: y - 0.02, w: 3.0, h: 0.35, fontSize: 15, bold: true }));
-      s.addText(pts[i][3], tb({ x: 9.7, y: y + 0.35, w: 3.0, h: 0.85, fontSize: 13, color: C.accent6 }));
+      const x = 0.6 + i * 3.08;
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.65, w: 2.88, h: 0.62, rectRadius: 0.06, fill: { color: groups[i][1] }, line: { color: groups[i][1] }, objectName: groups[i][0] });
+      s.addText(groups[i][0], tb({ x: x + 0.18, y: 1.65, w: 2.6, h: 0.62, fontSize: 15, bold: true, color: C.background1, valign: "middle" }));
+      groups[i][2].forEach((t, j) => {
+        card(s, x, 2.42 + j * 0.72, 2.88, 0.62, X.bg, t);
+        s.addText(t, tb({ x: x + 0.18, y: 2.42 + j * 0.72, w: 2.6, h: 0.62, fontSize: 13, valign: "middle" }));
+      });
     }
-    s.addNotes("The report is a PDF generated from approved numbers only. It states that it is not investment advice. The internal profitability screen uses separate permissions.");
+    card(s, 0.6, 6.05, 12.1, 0.7, X.amberSoft, "retro note");
+    s.addText([{ text: "Beside the total, never inside it: ", options: { bold: true } }, { text: "retrocessions paid by product providers to the bank. They are already part of fund costs; only a refund to the client lowers the cost." }], tb({ x: 0.85, y: 6.05, w: 11.7, h: 0.7, fontSize: 14, valign: "middle" }));
+    s.addNotes("The ten layers (L1 to L10) are defined in docs/research/FEE_TAXONOMY.md. Clients see the first column on statements; the second column is usually the surprise.");
   }
-
-  // 16. Where it runs
-  pres.addSection({ title: "Data & privacy" });
   {
-    const s = content("Where it runs: on Safe Capital's own infrastructure by default", "Data & privacy");
-    const opts = [
-      ["FaLaptop", "A · In the office", "One secured computer or server at Safe Capital. Simplest for a pilot: documents never leave the building.", "Recommended for the pilot", TEAL],
-      ["FaServer", "B · Swiss private hosting", "A dedicated server with a Swiss provider under a data-processing contract. For several users and offices.", "Option for production", NAVY],
-      ["FaCloud", "C · External AI services", "Only for hard-to-read pages, only with explicit approval, and only on redacted excerpts.", "Off by default", AMBER],
+    const s = content("Evidence", "Every cost carries a status, and only some are added up", "How it works");
+    const st = [
+      ["obs", "Observed", "Taken from a bank document", "Advisory fee, Bank Alpha", "CHF 25'600", "Counted"],
+      ["con", "Contractual", "Calculated from an agreed tariff", "Safe Capital fee, proposal", "CHF 25'500", "Counted"],
+      ["est", "Estimated", "Official rate × position value", "Global Equity Leaders, 1.08%", "CHF 9'720", "Counted"],
+      ["na", "Not a paid cost", "A maximum or an illustration", "Entry charge, up to 3%", "CHF 27'000", "Shown, not added"],
+      ["unk", "Not determined", "No document yet", "Bank Beta service fees", "?", "Never zero"],
+    ];
+    const hy = 1.65;
+    ["STATUS", "MEANING", "EXAMPLE (P-1042)", "AMOUNT", "IN THE TOTAL"].forEach((h, i) => s.addText(h, tb({ x: [0.6, 3.0, 6.3, 9.4, 11.0][i], y: hy, w: 2.8, h: 0.3, fontSize: 11, bold: true, color: C.accent6, charSpacing: 1 })));
+    for (let i = 0; i < 5; i++) {
+      const y = 2.1 + i * 0.86;
+      if (i) s.addShape(pres.shapes.LINE, { x: 0.6, y: y - 0.13, w: 12.1, h: 0, line: { color: X.border, width: 0.75 }, objectName: "rule " + i });
+      chip(s, 0.6, y + 0.12, st[i][1], st[i][0], 2.0);
+      s.addText(st[i][2], tb({ x: 3.0, y, w: 3.1, h: 0.55, fontSize: 15, valign: "middle" }));
+      s.addText(st[i][3], tb({ x: 6.3, y, w: 3.0, h: 0.55, fontSize: 15, valign: "middle", color: C.accent6 }));
+      s.addText(st[i][4], tb({ x: 9.4, y, w: 1.4, h: 0.55, fontSize: 17, bold: true, valign: "middle", color: st[i][0] === "unk" ? C.accent3 : st[i][0] === "na" ? C.accent6 : C.text1 }));
+      s.addText(st[i][5], tb({ x: 11.0, y, w: 1.7, h: 0.55, fontSize: 15, bold: true, valign: "middle", color: st[i][0] === "unk" ? C.accent3 : st[i][0] === "na" ? C.accent6 : C.accent4 }));
+    }
+    s.addText("The fund's management fee (0.75%) is part of its 1.08% ongoing charge. It is shown as detail and not added a second time.", tb({ x: 0.6, y: 6.45, w: 12.1, h: 0.35, fontSize: 13, color: C.accent6 }));
+    s.addNotes("Statuses follow the shared design system (icon plus label, never colour alone). The KID's illustrative amounts and maximum entry charges are visible for transparency but are not costs the client paid.");
+  }
+  {
+    const s = content("Reconciliation", "Before trusting a number, documents are checked against each other", "How it works");
+    const groups = [
+      ["LuCalculator", "Do the numbers add up?", [["pass", "Alpha positions = printed total, 3'200'000"], ["pass", "Beta positions = printed total, 1'100'000"], ["pass", "All holdings valued on 30.09.2026"]]],
+      ["LuFileSignature", "Is what was billed what was agreed?", [["pass", "Advisory fee = 3.2m × 0.80%"], ["pass", "Custody fee = 3.0m × 0.20%"], ["pass", "Quarterly debits × 4 = annual report, counted once"]]],
+      ["LuShieldCheck", "Is the source valid for this client?", [["fail", "Beta price list is from its Luxembourg entity: rejected"], ["pass", "Fund costs from KIDs within 2.6% of the bank's estimate"], ["info", "Retrocessions CHF 3'900: inside fund costs, not added"]]],
     ];
     for (let i = 0; i < 3; i++) {
       const x = 0.6 + i * 4.1;
-      card(s, x, 1.6, 3.8, 3.75, C.background2, opts[i][1]);
-      await circleIcon(s, x + 0.3, 1.85, 0.8, opts[i][0], opts[i][4], "FFFFFF", opts[i][1]);
-      s.addText(opts[i][1], tb({ x: x + 0.3, y: 2.8, w: 3.3, h: 0.45, fontSize: 18, bold: true, color: C.text2 }));
-      s.addText(opts[i][2], tb({ x: x + 0.3, y: 3.3, w: 3.3, h: 1.4, fontSize: 14 }));
-      s.addText(opts[i][3], tb({ x: x + 0.3, y: 4.8, w: 3.3, h: 0.4, fontSize: 14, bold: true, color: opts[i][4] }));
+      card(s, x, 1.65, 3.85, 4.6, X.bg, groups[i][1]);
+      await iconIn(s, x + 0.3, 1.9, 0.6, groups[i][0], X.white, X.navy, groups[i][1]);
+      s.addText(groups[i][1], tb({ x: x + 0.3, y: 2.65, w: 3.3, h: 0.75, fontSize: 18, bold: true, color: C.text2 }));
+      groups[i][2].forEach(([k, t], j) => {
+        const y = 3.55 + j * 0.85;
+        chip(s, x + 0.3, y, k === "pass" ? "Pass" : k === "fail" ? "Rejected" : "Note", k, 1.05);
+        s.addText(t, tb({ x: x + 1.5, y: y - 0.05, w: 2.2, h: 0.8, fontSize: 13 }));
+      });
     }
-    card(s, 0.6, 5.6, 12.1, 1.0, "E3F2F0", "what leaves");
-    s.addText([
-      { text: "The only thing that goes to the internet: ", options: { bold: true, color: C.accent1 } },
-      { text: "public fund codes (ISINs) to fetch official product documents. No names, no amounts, no statements.", options: {} },
-    ], tb({ x: 0.9, y: 5.6, w: 11.5, h: 1.0, fontSize: 16, valign: "middle" }));
-    s.addNotes("Hosting in Switzerland helps but does not by itself make the processing compliant; contracts, access control and retention matter as much. The final choice should be made with Safe Capital's compliance officer.");
+    s.addText("Mismatches stay visible for the analyst. They are never silently forced to agree.", tb({ x: 0.6, y: 6.45, w: 12.1, h: 0.35, fontSize: 13, color: C.accent6 }));
+    s.addNotes("These are the actual checks the demo engine ran on the synthetic P-1042 documents. A tariff from a different legal entity or country (here Luxembourg for a Swiss-booked account) is rejected automatically.");
   }
 
-  // 17. Privacy
+  // =====================================================================
+  // SCREENS
+  pres.addSection({ title: "The screens" });
+  const screen = (kicker, title, file, notes) => {
+    const s = content(kicker, title, "The screens");
+    fitImage(s, IMG(file), { x: 0.6, y: 1.55, w: 12.1, h: 5.3 }, title);
+    s.addNotes(notes);
+    return s;
+  };
+  screen("Screen · costs", "The headline always comes with its coverage", "v2_overview.png",
+    "Mockup in the shared design system, with the engine's synthetic P-1042 output. Known cost CHF 59'376 (1.38%), 64% observed in bank documents, 36% estimated from KIDs, five items not determined and shown as such. The bank-by-layer grid shows at a glance where evidence is missing.");
+  screen("Screen · drill-down", "Click any number: formula, checks and source page", "v2_drill.png",
+    "Every line opens a side panel with the amount, its status, the source page with the value highlighted, the formula and the cross-checks it passed. Overlaps (management fee inside ongoing charges) and maximums are shown but not added.");
+  screen("Screen · review", "Scans and uncertain values get a human check", "v2_review.png",
+    "The original page on the left, extracted values on the right. Values read by OCR from a scan are flagged; the analyst accepts, corrects or turns them into a question for the client. Keyboard shortcuts keep this fast.");
+  screen("Screen · checks", "Gaps turn into a ready-to-send request letter", "v2_checks.png",
+    "Reconciliation results and the documents still needed, ranked by impact. The request letter is drafted in the client's language (Italian here) and explains why each document matters.");
+
+  // =====================================================================
+  // RESULT
+  pres.addSection({ title: "The result" });
   {
-    const s = content("Client files stay confidential from upload to deletion", "Data & privacy");
+    const s = content("Compare", "Same holdings first, with every Safe Capital cost included", "The result");
+    const labels = ["Today (comparable)", "Safe Capital, same holdings", "Safe Capital, new funds"];
+    s.addChart(pres.charts.BAR, [
+      { name: "Management / advisory", labels, values: [25600, 25500, 25500] },
+      { name: "Custody, trading, FX", labels, values: [11390, 5140, 5140] },
+      { name: "VAT", labels, values: [486, 2389.5, 2389.5] },
+      { name: "Fund costs inside prices", labels, values: [21290, 21290, 13110] },
+    ], {
+      x: 0.6, y: 1.55, w: 7.4, h: 5.25, barDir: "col", barGrouping: "stacked", barGapWidthPct: 70,
+      chartColors: [X.navy, X.l2, X.l9, X.teal], showValue: false,
+      catAxisLabelFontFace: "+mn-lt", valAxisLabelFontFace: "+mn-lt", legendFontFace: "+mn-lt", titleFontFace: "+mn-lt",
+      catAxisLabelColor: X.muted, valAxisLabelColor: X.muted, catAxisLabelFontSize: 12, valAxisLabelFontSize: 11, valAxisLabelFormatCode: "#,##0",
+      valGridLine: { color: "E5E2DA", size: 0.5 }, catGridLine: { style: "none" }, valAxisMaxVal: 60000,
+      showLegend: true, legendPos: "b", legendFontSize: 12, legendColor: X.muted,
+      showTitle: true, title: "Annual cost, CHF (synthetic P-1042)", titleFontSize: 13, titleColor: X.muted,
+    });
+    const rows = [["Today, comparable", "CHF 58'766", "1.37%", C.text1], ["Safe Capital, same holdings", "CHF 54'320", "1.26%", C.accent1], ["Safe Capital, new funds", "CHF 46'140", "1.07%", C.accent6]];
+    rows.forEach((r, i) => {
+      const y = 1.6 + i * 0.85;
+      s.addText(r[0], tb({ x: 8.4, y, w: 3.0, h: 0.3, fontSize: 13, color: C.accent6 }));
+      s.addText(r[1], tb({ x: 8.4, y: y + 0.3, w: 2.8, h: 0.45, fontSize: 22, bold: true, color: r[3] }));
+      s.addText(r[2], tb({ x: 11.3, y: y + 0.33, w: 1.4, h: 0.4, fontSize: 16, color: C.accent6, align: "right" }));
+    });
+    card(s, 8.4, 4.25, 4.3, 0.85, X.tealSoft, "saving");
+    s.addText([{ text: "at least CHF 4'447 per year", options: { bold: true, color: C.accent1, fontSize: 18, breakLine: true } }, { text: "same holdings, like for like", options: { fontSize: 12, color: C.accent6 } }], tb({ x: 8.6, y: 4.3, w: 4.0, h: 0.75, valign: "middle" }));
+    s.addText([
+      { text: "\"At least\": Bank Beta's own fees are still unknown, so today's real cost is higher.", options: { bullet: true, breakLine: true } },
+      { text: "Swiss stamp duty (CHF 610) is left out on both sides: it is due at any Swiss bank.", options: { bullet: true, breakLine: true } },
+      { text: "New funds change risk and products: shown apart, never as a fee saving.", options: { bullet: true } },
+    ], tb({ x: 8.4, y: 5.25, w: 4.3, h: 1.6, fontSize: 12, color: C.text1, paraSpaceAfter: 4 }));
+    s.addNotes("Safe Capital is an external asset manager: client assets stay at a custodian bank, so the proposal adds Safe Capital's fee (tiered 0.70% / 0.50%) and the partner custodian's custody, trading and FX fees. VAT at 8.1% applies because the synthetic client is domiciled in Switzerland; it depends on domicile. All figures come from the demo engine and are synthetic.");
+  }
+  {
+    const s = content("Year one", "Switching costs are counted, and paid back within months here", "The result");
+    const tbl = [
+      ["", "Same holdings", "New funds"],
+      ["Annual difference, at least", "CHF 4'446.50", "CHF 12'626.50"],
+      ["One-off switching costs", "– CHF 1'500.00", "– CHF 4'000.00"],
+      ["Net in year one", "CHF 2'946.50", "CHF 8'626.50"],
+      ["Payback", "4.0 months", "3.8 months"],
+      ["Like for like?", "Yes", "No: products change"],
+    ];
+    const hdr = { bold: true, color: C.background1, fill: { color: X.navy }, fontSize: 14 };
+    s.addTable(tbl.map((r, ri) => r.map((c, ci) => ({
+      text: c,
+      options: ri === 0 ? Object.assign({ align: ci ? "right" : "left" }, hdr) : { fontSize: 16, align: ci ? "right" : "left", bold: ri === 3 || ri === 4 || ci === 0, color: ri === 5 && ci === 2 ? C.accent2 : ri === 3 && ci ? C.accent1 : C.text1, fill: { color: ri % 2 ? X.white : X.bg } },
+    }))), { x: 0.6, y: 1.65, w: 7.6, colW: [3.0, 2.3, 2.3], rowH: 0.62, border: { type: "solid", color: X.border, pt: 0.5 }, margin: [0, 0.15, 0, 0.15], valign: "middle" });
+    await iconIn(s, 8.8, 1.7, 0.7, "LuTimer", X.tealSoft, X.teal, "payback");
+    s.addText("Payback = switching cost ÷ annual difference × 12", tb({ x: 8.8, y: 2.6, w: 3.9, h: 0.7, fontSize: 16, bold: true, color: C.text2 }));
+    s.addText("Switching costs come from the banks' transfer fees and the positions sold. In this synthetic case they are small; with real prospects exit fees and taxes can change the picture, and the tool shows that honestly.", tb({ x: 8.8, y: 3.4, w: 3.9, h: 2.2, fontSize: 14 }));
+    s.addText("Safe Capital's own margin on the prospect is calculated on a separate internal screen and never appears in client material.", tb({ x: 0.6, y: 6.0, w: 7.6, h: 0.6, fontSize: 13, color: C.accent6 }));
+    s.addNotes("Engine output for P-1042: same holdings 1'500 transfer fees (Alpha 500, Beta estimate 1'000), payback 4.0 months; new funds 4'000 switching, payback 3.8 months. The internal view reports 'insufficient evidence' for an acquisition decision until Bank Beta's fees are known.");
+  }
+  {
+    const s = content("Client report", "One page the client can read, approved before it leaves", "The result");
+    const r = fitImage(s, IMG("v2_report.png"), { x: 0.6, y: 1.5, w: 6.4, h: 5.35 }, "Client report mockup");
+    const pts = [
+      ["LuCheckCircle2", X.green, X.greenSoft, "On the page", "Today vs Safe Capital, line by line, observed vs estimated"],
+      ["LuAlertTriangle", X.amber, X.amberSoft, "Also on the page", "What is still missing, and the stamp duty exclusion, in plain words"],
+      ["LuEyeOff", X.red, X.redSoft, "Never on the page", "Safe Capital's internal margin and analyst notes"],
+      ["LuPenLine", X.navy, "E6ECF4", "Before it leaves", "An approver signs it off; the version is frozen and logged"],
+    ];
+    for (let i = 0; i < 4; i++) {
+      const y = 1.65 + i * 1.25;
+      await iconIn(s, 7.5, y, 0.6, pts[i][0], pts[i][2], pts[i][1], pts[i][3]);
+      s.addText(pts[i][3], tb({ x: 8.3, y: y, w: 4.4, h: 0.35, fontSize: 16, bold: true }));
+      s.addText(pts[i][4], tb({ x: 8.3, y: y + 0.38, w: 4.4, h: 0.7, fontSize: 14, color: C.accent6 }));
+    }
+    s.addNotes("PDF export from approved numbers only, in the client's language. States that it is not investment advice.");
+  }
+
+  // =====================================================================
+  // DATA & PRIVACY
+  pres.addSection({ title: "Data & privacy" });
+  {
+    const s = content("Hosting", "It runs on Safe Capital's own infrastructure by default", "Data & privacy");
+    const opts = [
+      ["LuLaptop", "A · In the office", "One secured machine at Safe Capital. Documents never leave the building.", "Recommended for the pilot", X.teal],
+      ["LuServer", "B · Swiss private hosting", "Dedicated server at a Swiss provider, under a data-processing contract. For several users.", "Option for production", X.navy],
+      ["LuCloud", "C · External AI services", "Only for hard pages, only with explicit approval, only on redacted excerpts.", "Off by default", X.amber],
+    ];
+    for (let i = 0; i < 3; i++) {
+      const x = 0.6 + i * 4.1;
+      card(s, x, 1.65, 3.85, 3.6, X.bg, opts[i][1]);
+      await iconIn(s, x + 0.3, 1.95, 0.7, opts[i][0], X.white, opts[i][4], opts[i][1]);
+      s.addText(opts[i][1], tb({ x: x + 0.3, y: 2.85, w: 3.3, h: 0.45, fontSize: 19, bold: true, color: C.text2 }));
+      s.addText(opts[i][2], tb({ x: x + 0.3, y: 3.35, w: 3.3, h: 1.2, fontSize: 14 }));
+      s.addText(opts[i][3], tb({ x: x + 0.3, y: 4.7, w: 3.3, h: 0.35, fontSize: 14, bold: true, color: opts[i][4] }));
+    }
+    card(s, 0.6, 5.55, 12.1, 0.95, X.tealSoft, "egress");
+    s.addText([{ text: "The only thing that goes online: ", options: { bold: true, color: C.accent1 } }, { text: "public fund codes (ISINs) to fetch official product documents. No names, no amounts, no statements." }], tb({ x: 0.9, y: 5.55, w: 11.6, h: 0.95, fontSize: 16, valign: "middle" }));
+    s.addNotes("Swiss hosting helps but does not by itself make processing compliant; contracts, access control and retention matter as much. Final choice with Safe Capital's compliance officer.");
+  }
+  {
+    const s = content("Privacy", "Client files stay confidential from upload to deletion", "Data & privacy");
     const tiles = [
-      ["FaFileSignature", "Client consent", "The client signs a short authorisation before any upload"],
-      ["FaFilter", "Only what is needed", "Names can be blacked out; costs need no identity"],
-      ["FaLock", "Encrypted", "In storage and in transit; separate space per prospect"],
-      ["FaUserShield", "Named access", "Personal logins, two-factor, every view logged"],
-      ["FaRobot", "No public AI on raw files", "Unless Safe Capital explicitly approves a provider"],
-      ["FaTrashAlt", "Deleted on schedule", "Retention period agreed up front, then erased"],
+      ["LuFileSignature", "Client consent", "A short signed authorisation before any upload"],
+      ["LuFilter", "Only what is needed", "Names can be blacked out; costs need no identity"],
+      ["LuLock", "Encrypted", "At rest and in transit; one space per prospect"],
+      ["LuUserCheck", "Named access", "Personal logins, two-factor, every view logged"],
+      ["LuBot", "No public AI on raw files", "Unless Safe Capital approves a provider"],
+      ["LuTrash2", "Deleted on schedule", "Retention agreed up front, then erased"],
     ];
     for (let i = 0; i < 6; i++) {
       const col = i % 3, row = Math.floor(i / 3);
-      const x = 0.6 + col * 4.1, y = 1.7 + row * 1.9;
-      card(s, x, y, 3.8, 1.6, C.background2, tiles[i][1]);
-      await circleIcon(s, x + 0.25, y + 0.3, 0.7, tiles[i][0], TEAL, "FFFFFF", tiles[i][1]);
-      s.addText(tiles[i][1], tb({ x: x + 1.1, y: y + 0.3, w: 2.55, h: 0.45, fontSize: 16, bold: true }));
-      s.addText(tiles[i][2], tb({ x: x + 1.1, y: y + 0.78, w: 2.55, h: 1.0, fontSize: 13, color: C.accent6 }));
+      const x = 0.6 + col * 4.1, y = 1.7 + row * 1.95;
+      card(s, x, y, 3.85, 1.7, X.bg, tiles[i][1]);
+      await iconIn(s, x + 0.3, y + 0.3, 0.6, tiles[i][0], X.white, X.teal, tiles[i][1]);
+      s.addText(tiles[i][1], tb({ x: x + 1.1, y: y + 0.3, w: 2.6, h: 0.4, fontSize: 16, bold: true }));
+      s.addText(tiles[i][2], tb({ x: x + 1.1, y: y + 0.75, w: 2.6, h: 0.8, fontSize: 13, color: C.accent6 }));
     }
-    s.addText("Swiss Federal Act on Data Protection (revised, in force since 1 September 2023) applies. Bank-client confidentiality and outsourcing rules must be checked by Safe Capital's counsel; this slide is not legal advice.", tb({ x: 0.6, y: 5.55, w: 12.1, h: 0.7, fontSize: 13, italic: true, color: C.accent6 }));
-    s.addNotes("Pseudonymised data can still be personal data. A data-protection impact assessment may be needed; that decision belongs to Safe Capital with its counsel.");
+    s.addText("Swiss Federal Act on Data Protection (revised, in force since 1 September 2023) applies. Bank-client confidentiality and outsourcing rules must be checked by Safe Capital's counsel; this is not legal advice.", tb({ x: 0.6, y: 5.75, w: 12.1, h: 0.7, fontSize: 13, color: C.accent6 }));
+    s.addNotes("Pseudonymised data can still be personal data. A data-protection impact assessment may be needed; that decision belongs to Safe Capital and its counsel.");
   }
 
-  // 18. Human vs machine
+  // =====================================================================
+  // NEXT STEPS
   pres.addSection({ title: "Next steps" });
   {
-    const s = content("The engine reads and calculates; people make the judgements", "Next steps");
-    card(s, 0.6, 1.6, 5.9, 4.3, "E3F2F0", "automatic");
-    await circleIcon(s, 0.9, 1.85, 0.75, "FaCogs", TEAL, "FFFFFF", "automatic");
-    s.addText("Automatic", tb({ x: 1.85, y: 1.95, w: 4, h: 0.5, fontSize: 20, bold: true, color: C.accent1 }));
-    const auto = ["Recognise each document and bank", "Extract positions, ISINs and fees", "Fetch official fund cost documents", "Calculate costs in CHF and %", "Flag gaps and draft the client request", "Produce the report draft"];
-    s.addText(auto.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < auto.length - 1 } })), tb({ x: 0.9, y: 2.8, w: 5.4, h: 3.6, fontSize: 16, paraSpaceAfter: 8 }));
-    card(s, 6.8, 1.6, 5.9, 4.3, "FBF1DE", "human");
-    await circleIcon(s, 7.1, 1.85, 0.75, "FaUserCheck", AMBER, "FFFFFF", "human");
-    s.addText("A person at Safe Capital", tb({ x: 8.05, y: 1.95, w: 4.4, h: 0.5, fontSize: 20, bold: true, color: C.accent2 }));
-    const hum = ["Enter Safe Capital's and the custodian's fees (once)", "Confirm values the engine flags", "Decide if a comparison is like-for-like", "Approve and sign the client report", "Present it and talk to the client"];
-    s.addText(hum.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < hum.length - 1 } })), tb({ x: 7.1, y: 2.8, w: 5.4, h: 3.6, fontSize: 16, paraSpaceAfter: 8 }));
-    s.addNotes("Manual configuration is mostly one-time: Safe Capital's tariff, custodian terms and the report template. Per prospect, the human effort depends on document quality.");
-  }
-
-  // 19. Phases
-  {
-    const s = content("Delivery in phases, with a real pilot case before any production use", "Next steps");
-    const ph = [
-      ["Now", "Demo", "Working concept on synthetic documents; this deck"],
-      ["Phase 1", "Pilot", "1–3 anonymised real prospects; measure accuracy and time"],
-      ["Phase 2", "Harden", "More bank layouts, security review, user logins"],
-      ["Phase 3", "Production", "Live at Safe Capital after compliance sign-off"],
+    const s = content("People and machine", "The engine reads and calculates; people decide", "Next steps");
+    const cols = [
+      [`Automatic, by ${NAME}`, X.tealSoft, X.teal, "LuSettings", ["Recognise each document, bank and language", "Extract positions, ISINs and fees with their page", "Fetch official fund cost documents", "Run the reconciliation checks", "Build the ledger and both scenarios", "Draft the request letter and the report"]],
+      ["A person at Safe Capital", X.amberSoft, X.amber, "LuUserCheck", ["Enter Safe Capital's and the custodian's fees, once", "Confirm values the engine flags", "Decide whether a comparison is like for like", "Approve and sign the client report", "Present it and talk to the client"]],
     ];
-    s.addShape(pres.shapes.LINE, { x: 1.3, y: 2.55, w: 9.3, h: 0, line: { color: "C5CCD8", width: 3 }, objectName: "timeline" });
+    for (let i = 0; i < 2; i++) {
+      const x = 0.6 + i * 6.15;
+      card(s, x, 1.65, 5.95, 3.9, cols[i][1], cols[i][0]);
+      await iconIn(s, x + 0.35, 1.95, 0.6, cols[i][3], X.white, cols[i][2], cols[i][0]);
+      s.addText(cols[i][0], tb({ x: x + 1.15, y: 2.0, w: 4.5, h: 0.5, fontSize: 20, bold: true, color: cols[i][2] }));
+      s.addText(cols[i][4].map((t, j) => ({ text: t, options: { bullet: true, breakLine: j < cols[i][4].length - 1 } })), tb({ x: x + 0.35, y: 2.85, w: 5.3, h: 3.4, fontSize: 16, paraSpaceAfter: 10 }));
+    }
+    s.addNotes("Manual configuration is mostly one-time: Safe Capital's tariff, the custodian's terms and the report template. Per prospect, the human effort depends on document quality.");
+  }
+  {
+    const s = content("Plan", "Delivery in phases, with a real pilot before production", "Next steps");
+    const ph = [["Now", "Demo", "Working engine on synthetic documents; this deck"], ["Phase 1", "Pilot", "1–3 anonymised real prospects; measure accuracy and time"], ["Phase 2", "Harden", "More bank layouts, security review, user logins"], ["Phase 3", "Production", "Live at Safe Capital after compliance sign-off"]];
+    s.addShape(pres.shapes.LINE, { x: 0.95, y: 2.3, w: 9.3, h: 0, line: { color: X.border, width: 2 }, objectName: "timeline" });
     for (let i = 0; i < 4; i++) {
       const x = 0.6 + i * 3.1;
-      s.addShape(pres.shapes.OVAL, { x: x + 0.35, y: 2.2, w: 0.7, h: 0.7, fill: { color: i === 0 ? TEAL : NAVY }, line: { color: "FFFFFF", width: 2 }, objectName: "milestone " + (i + 1) });
-      s.addText(ph[i][0], tb({ x, y: 1.6, w: 2.8, h: 0.4, fontSize: 14, bold: true, color: i === 0 ? C.accent1 : C.accent6 }));
-      card(s, x, 3.2, 2.8, 2.0, C.background2, "phase " + (i + 1));
-      s.addText(ph[i][1], tb({ x: x + 0.25, y: 3.4, w: 2.3, h: 0.5, fontSize: 20, bold: true, color: C.text2 }));
-      s.addText(ph[i][2], tb({ x: x + 0.25, y: 4.0, w: 2.3, h: 1.6, fontSize: 15 }));
+      s.addShape(pres.shapes.OVAL, { x: x + 0.15, y: 2.1, w: 0.4, h: 0.4, fill: { color: i === 0 ? X.teal : X.navy }, line: { color: X.white, width: 2 }, objectName: "milestone " + (i + 1) });
+      s.addText(ph[i][0].toUpperCase(), tb({ x, y: 1.6, w: 2.8, h: 0.3, fontSize: 11, bold: true, charSpacing: 1, color: i === 0 ? C.accent1 : C.accent6 }));
+      card(s, x, 2.85, 2.85, 2.2, X.bg, "phase " + (i + 1));
+      s.addText(ph[i][1], tb({ x: x + 0.3, y: 3.1, w: 2.3, h: 0.5, fontSize: 22, bold: true, color: C.text2 }));
+      s.addText(ph[i][2], tb({ x: x + 0.3, y: 3.7, w: 2.3, h: 1.2, fontSize: 15 }));
     }
-    s.addText("Durations are set after the pilot, once we know how many bank formats Safe Capital's prospects bring.", tb({ x: 0.6, y: 5.6, w: 12.1, h: 0.5, fontSize: 13, italic: true, color: C.accent6 }));
-    s.addNotes("We deliberately do not promise dates before seeing real documents: the number of different bank layouts drives the effort.");
+    s.addText("Durations are set after the pilot, once we know how many bank layouts Safe Capital's prospects bring.", tb({ x: 0.6, y: 5.45, w: 12.1, h: 0.4, fontSize: 13, color: C.accent6 }));
+    s.addNotes("No dates before seeing real documents: the number of bank layouts drives the effort.");
   }
-
-  // 20. Decisions
   {
-    const s = content("Six decisions we need from Safe Capital to start the pilot", "Next steps");
+    const s = content("Decisions", "Six decisions to start the pilot", "Next steps");
     const dec = [
       ["One anonymised real case", "holdings, 12 months of fees, the contract"],
-      ["Safe Capital's pricing", "advisory fee, custodian partner and their tariffs"],
-      ["Comparison policy", "same holdings only, or also a new-portfolio case"],
-      ["Where it runs and who sees it", "office machine or Swiss hosting; named users"],
-      ["Client consent and retention", "wording of the authorisation; how long we keep files"],
-      ["Legal entity on client material", "which Safe Capital entity and licence to cite"],
+      ["Safe Capital's pricing", "advisory fee, partner custodian and its tariff"],
+      ["Comparison policy", "same holdings only, or also a new-funds case"],
+      ["Where it runs, who sees it", "office machine or Swiss hosting; named users"],
+      ["Consent and retention", "authorisation wording; how long files are kept"],
+      ["Name and legal entity", `confirm "${NAME}", the entity and licence to cite`],
     ];
     for (let i = 0; i < 6; i++) {
       const col = i % 2, row = Math.floor(i / 2);
-      const x = 0.6 + col * 6.15, y = 1.65 + row * 1.6;
-      card(s, x, y, 5.95, 1.35, C.background2, "decision " + (i + 1));
-      s.addShape(pres.shapes.OVAL, { x: x + 0.25, y: y + 0.3, w: 0.75, h: 0.75, fill: { color: NAVY }, line: { color: NAVY }, objectName: "decision number " + (i + 1) });
-      s.addText(String(i + 1), tb({ x: x + 0.25, y: y + 0.3, w: 0.75, h: 0.75, fontSize: 20, bold: true, color: C.background1, align: "center", valign: "middle" }));
-      s.addText(dec[i][0], tb({ x: x + 1.2, y: y + 0.22, w: 4.55, h: 0.45, fontSize: 17, bold: true, color: C.text2 }));
-      s.addText(dec[i][1], tb({ x: x + 1.2, y: y + 0.68, w: 4.55, h: 0.5, fontSize: 14, color: C.accent6 }));
+      const x = 0.6 + col * 6.15, y = 1.65 + row * 1.55;
+      card(s, x, y, 5.95, 1.3, X.bg, "decision " + (i + 1));
+      s.addText(String(i + 1).padStart(2, "0"), tb({ x: x + 0.3, y, w: 0.8, h: 1.3, fontSize: 28, bold: true, color: C.accent1, valign: "middle" }));
+      s.addText(dec[i][0], tb({ x: x + 1.2, y: y + 0.25, w: 4.5, h: 0.42, fontSize: 18, bold: true, color: C.text2 }));
+      s.addText(dec[i][1], tb({ x: x + 1.2, y: y + 0.7, w: 4.5, h: 0.4, fontSize: 14, color: C.accent6 }));
     }
-    s.addNotes("Decision 6: the public commercial register lists Safe Capital Management SA and Safe Capital Holding SA in Lugano. Safe Capital's website states FINMA authorisation with OSIF supervision, but this has not yet been checked in the FINMA register; Safe Capital should confirm exactly what to cite before anything goes to a client.");
+    s.addNotes("Decision 6: Safe Capital Management SA (CHE-381.156.096, Lugano) is in the commercial register. Its website states FINMA authorisation with OSIF supervision; this has not yet been checked in the FINMA register, so nothing in client material should state it until confirmed. The product name also needs a trademark search.");
+  }
+  {
+    const s = pres.addSlide({ masterName: "Dark", sectionTitle: "Next steps" });
+    s.addText("Next: one real case", { placeholder: "title" });
+    s.addText("No source, no verified figure · Missing is never zero · No comparable service, no savings claim", { placeholder: "body" });
+    s.addNotes("Ask: one anonymised prospect file and Safe Capital's fee schedule. With those, every synthetic figure here becomes a real, source-linked one.");
   }
 
-  // 21. Close
+  // =====================================================================
+  // DEEP DIVE
+  pres.addSection({ title: "Deep dive" });
   {
-    const s = pres.addSlide({ masterName: "Dark title", sectionTitle: "Next steps" });
-    s.addText("Next step: run one anonymised real case", { placeholder: "title" });
-    s.addText("No source, no verified figure · Missing is never zero · No comparable service, no savings claim", { placeholder: "body" });
-    await circleIcon(s, 11.4, 0.8, 1.2, "FaFlagCheckered", TEAL, "FFFFFF", "close");
-    s.addNotes("Ask: one anonymised prospect file and Safe Capital's fee schedule. With those we can run the pilot and replace every synthetic figure in this deck with a real, source-linked one.");
+    const s = content("Deep dive · cost layers", "The ten layers in detail", "Deep dive");
+    const rows = [
+      ["L1", "Service", "Management, advisory, all-in, EAM fee", "Mandate, fee advice, cost report", "Debit"],
+      ["L2", "Custody & account", "Safekeeping (tiered, minimums), account fees", "Tariff, fee advice", "Debit"],
+      ["L3", "Explicit trading", "Brokerage, ticket, third-party, FX commission", "Trade confirmations", "In net amount"],
+      ["L4", "Funds & ETFs", "Ongoing, fund transaction, performance, entry/exit", "KID, factsheet", "Inside NAV"],
+      ["L5", "Structured products", "Issuer margin, distribution fee", "KID, termsheet", "Inside price"],
+      ["L6", "Implicit execution", "FX margin, bid/ask spread", "FX confirmations vs reference", "Inside rate"],
+      ["L7", "Insurance wrapper", "Policy, admin, risk charges", "Policy statement, insurance KID", "Partly"],
+      ["L8", "Financing", "Lombard interest, commitment fee", "Credit agreement, interest advice", "Debit"],
+      ["L9", "Taxes & duties", "VAT on fees (by domicile), stamp duty", "Fee advice, confirmations", "Debit"],
+      ["L10", "One-off & switching", "Transfer per position, exit, sale costs", "Tariff, transfer quote", "Once"],
+    ];
+    const hdr = { bold: true, color: C.accent6, fill: { color: X.mutedSurface }, fontSize: 11 };
+    s.addTable([["", "LAYER", "WHAT", "EVIDENCE", "VISIBLE AS"].map((h) => ({ text: h, options: hdr }))].concat(rows.map((r) => r.map((c, ci) => ({ text: c, options: { fontSize: 12, bold: ci <= 1, color: ci === 0 ? C.accent1 : C.text1 } })))),
+      { x: 0.6, y: 1.55, w: 12.1, colW: [0.6, 2.2, 4.4, 3.3, 1.6], rowH: 0.45, border: { type: "solid", color: X.border, pt: 0.5 }, margin: [0.03, 0.1, 0.03, 0.1], valign: "middle" });
+    s.addNotes("Source: docs/research/FEE_TAXONOMY.md and data/taxonomy/fee_taxonomy.csv (fee codes, overlap rules, default evidence status).");
+  }
+  {
+    const s = content("Deep dive · pipeline", "From file to report: seven steps, each one traceable", "Deep dive");
+    const st = [
+      ["Intake", "hash, file type, size limits, quarantine, duplicates"],
+      ["Classify", "bank, document type, period, language"],
+      ["Extract", "text and tables with page boxes; OCR for scans"],
+      ["Normalise", "Swiss/EU number formats, currencies, rates"],
+      ["Reconcile", "totals, dates, tariffs, debits vs reports"],
+      ["Ledger", "fee atoms, overlaps, statuses, Decimal arithmetic"],
+      ["Scenarios", "current, same holdings, new funds, payback"],
+    ];
+    const w = 1.66, gap = 0.08;
+    for (let i = 0; i < 7; i++) {
+      const x = 0.6 + i * (w + gap);
+      s.addShape(i ? pres.shapes.CHEVRON : pres.shapes.PENTAGON, { x, y: 1.75, w, h: 0.8, fill: { color: i % 2 ? X.teal : X.navy }, line: { color: X.white }, objectName: "pipe " + st[i][0] });
+      s.addText(st[i][0], tb({ x: x + (i ? 0.42 : 0.15), y: 1.75, w: w - 0.62, h: 0.8, fontSize: 13, bold: true, color: C.background1, valign: "middle" }));
+      s.addText(st[i][1], tb({ x: x + 0.05, y: 2.75, w: w - 0.15, h: 1.3, fontSize: 12, color: C.text1 }));
+    }
+    card(s, 0.6, 4.45, 5.95, 2.0, X.bg, "guardrails");
+    s.addText([{ text: "Guardrails", options: { bold: true, fontSize: 16, color: C.text2, breakLine: true } },
+      { text: "AI output is a suggestion until code checks it against the page text", options: { bullet: true, breakLine: true } },
+      { text: "No arithmetic by AI: a deterministic Decimal engine does the sums", options: { bullet: true, breakLine: true } },
+      { text: "Document text is data, never instructions", options: { bullet: true } }], tb({ x: 0.85, y: 4.6, w: 5.5, h: 1.8, fontSize: 13, paraSpaceAfter: 4 }));
+    card(s, 6.75, 4.45, 5.95, 2.0, X.bg, "audit");
+    s.addText([{ text: "Audit trail", options: { bold: true, fontSize: 16, color: C.text2, breakLine: true } },
+      { text: "Every value keeps file, page, box and original text", options: { bullet: true, breakLine: true } },
+      { text: "Every correction keeps who, when, why, before and after", options: { bullet: true, breakLine: true } },
+      { text: "Approved reports are frozen versions", options: { bullet: true } }], tb({ x: 7.0, y: 4.6, w: 5.5, h: 1.8, fontSize: 13, paraSpaceAfter: 4 }));
+    s.addNotes("This mirrors the demo engine's modules (extraction, engine/ledger, engine/scenarios, analysis).");
+  }
+  {
+    const s = content("Deep dive · tools", "A local, open-source extraction stack", "Deep dive");
+    const rows = [
+      ["Born-digital PDF", "pdfplumber, Docling", "Words with coordinates, tables, reading order", "MIT"],
+      ["Scans and photos", "OCRmyPDF + Tesseract", "Adds a text layer; Italian, German, French, English", "MPL-2.0 / Apache-2.0"],
+      ["Excel and CSV", "openpyxl", "Sheet and cell as evidence", "MIT"],
+      ["Page images", "pypdfium2, PDF.js", "Render pages and highlight boxes in the viewer", "Apache-2.0 / BSD"],
+      ["Hard scans (later)", "PaddleOCR (local)", "Benchmark on real documents before adopting", "Apache-2.0"],
+      ["Avoided", "PyMuPDF, cloud OCR", "AGPL licence; client data would leave the office", "—"],
+    ];
+    const hdr = { bold: true, color: C.accent6, fill: { color: X.mutedSurface }, fontSize: 11 };
+    s.addTable([["INPUT", "TOOL", "WHAT IT DOES", "LICENCE"].map((h) => ({ text: h, options: hdr }))].concat(rows.map((r, ri) => r.map((c, ci) => ({ text: c, options: { fontSize: 13, bold: ci === 0, color: ri === 5 ? C.accent3 : C.text1 } })))),
+      { x: 0.6, y: 1.6, w: 12.1, colW: [2.4, 2.8, 4.6, 2.3], rowH: 0.6, border: { type: "solid", color: X.border, pt: 0.5 }, margin: [0.04, 0.12, 0.04, 0.12], valign: "middle" });
+    s.addText("Accuracy is measured per field on a gold set of real anonymised documents in the pilot, not taken from vendor benchmarks.", tb({ x: 0.6, y: 6.1, w: 12.1, h: 0.4, fontSize: 13, color: C.accent6 }));
+    s.addNotes("Source: docs/research/EXTRACTION_TOOLING.md. Versions are pinned in the backend.");
+  }
+  {
+    const s = content("Deep dive · glossary", "Words used in this deck", "Deep dive");
+    const g = [
+      ["KID", "Key Information Document: the official cost sheet a fund must publish for each share class."],
+      ["Ongoing charges (TER/OCF)", "Yearly running costs of a fund, taken from its price. Includes the management fee."],
+      ["Retrocession", "Payment from a product provider to the bank or manager. Belongs to the client unless validly waived."],
+      ["Custodian bank", "The bank that holds the assets. With an external manager, the client pays both."],
+      ["EAM", "External asset manager, like Safe Capital: manages assets held at a custodian bank."],
+      ["bps", "Basis points: 100 bps = 1% per year."],
+      ["Like for like", "Same holdings, same service scope, so only fees differ."],
+      ["Stamp duty", "Swiss federal tax on securities trades, due at any Swiss bank."],
+    ];
+    for (let i = 0; i < 8; i++) {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = 0.6 + col * 6.15, y = 1.6 + row * 1.25;
+      s.addText(g[i][0], tb({ x, y, w: 5.9, h: 0.38, fontSize: 16, bold: true, color: C.accent1 }));
+      s.addText(g[i][1], tb({ x, y: y + 0.4, w: 5.9, h: 0.75, fontSize: 14 }));
+    }
+    s.addNotes("Retrocession ownership follows Swiss case law; marked 'to verify' in the research register until checked against the primary source.");
   }
 
   await pres.writeFile({ fileName: OUT });
-  if (SKILL_THEME) {
-    const { applyTheme } = require(SKILL_THEME);
+  if (process.env.APPLY_THEME_JS) {
+    const { applyTheme } = require(process.env.APPLY_THEME_JS);
     await applyTheme(OUT, THEME);
   }
   console.log("wrote", OUT);

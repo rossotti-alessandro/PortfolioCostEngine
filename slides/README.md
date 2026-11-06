@@ -1,56 +1,69 @@
-# Executive deck: Portfolio Cost Engine for Safe Capital
+# Executive deck: FeeLens for Safe Capital
 
-Audience: Massimo (Safe Capital, Lugano), non-technical. 21 slides, English.
+Audience: Massimo (Safe Capital, Lugano), non-technical. 26 slides, English: 22 main slides and a 4-slide deep-dive appendix.
+FeeLens is the product's working name, chosen by Ale on 6 Nov 2026. It still needs a trademark check.
 
-- `PortfolioCostEngine_Executive_Deck.pptx`: editable deck with speaker notes
-- `PortfolioCostEngine_Executive_Deck.pdf`: same deck as PDF
-- `source/build_deck.js`: generator (pptxgenjs); edit this, not the PPTX, then rebuild
-- `source/mockups/screens.html`: HTML mockups of the app screens and the synthetic bank statement
-- `source/img/*.png`: screenshots of those mockups used in the deck
+- `FeeLens_Executive_Deck.pptx`: editable deck, with speaker notes and sections
+- `FeeLens_Executive_Deck.pdf`: the same deck as a PDF
+- `source/build_deck.js`: the generator (pptxgenjs). Edit this, not the PPTX, then rebuild. `PRODUCT_NAME=... node build_deck.js` renames everything.
+- `source/mockups/app_v2.html`: app screen mockups in the shared design system (`docs/design/DESIGN_SYSTEM.md`). `?name=` sets the brand.
+- `source/mockups/docs/`: page renders of the app's synthetic bank PDFs, used inside the mockups
+- `source/img/v2_*.png`: screenshots of the mockups used in the deck. The v1 files `screens.html` and `img/*.png` without the v2 prefix are kept for reference.
 
 ## Storyline
 
-1. Why: the problem, the offer (slides 1–3)
-2. How it works: five steps, what the client brings, the three cost layers, reading documents (4–7)
-3. The screens: upload, review, fund costs via KID, no double counting / missing ≠ zero, cost dashboard (8–12)
-4. The result: comparison, year-one payback, client report (13–15)
-5. Data & privacy: where it runs, confidentiality controls (16–17)
-6. Next steps: human vs automatic, phases, six decisions, close (18–21)
+1. Why: the problem (38'086 shown vs 59'376 real), what FeeLens does and its three rules (slides 1–3)
+2. How it works (4–9):
+   - swimlane workflow (client / FeeLens / analyst / output)
+   - documents table: what we read, what it proves, what it cannot prove
+   - five kinds of data
+   - ten cost layers in four places
+   - evidence statuses
+   - reconciliation checks
+3. The screens (10–13): costs overview with coverage, drill-down to the source page, review of scans, checks and request letter
+4. The result (14–16): stacked comparison, year one and payback, client report
+5. Data & privacy (17–18): hosting options, confidentiality controls
+6. Next steps (19–22): people vs machine, phases, six decisions, close
+7. Deep dive (23–26): the ten layers in detail, the pipeline and guardrails, the extraction stack and licences, a glossary
 
 ## Every figure is synthetic
 
-Numbers come from the handoff kit's `data/synthetic_cost_inputs.json` (AUM CHF 4.0m):
+The numbers are the output of the demo engine (branch `claude/project-thread-steqtm`, `python3 -m pce.demo.offline data/synthetic/prospect_p1042`). The prospect is P-1042: CHF 4.3m, with Bank Alpha 3.2m and Bank Beta 1.1m, over the period 01.10.2025–30.09.2026.
 
-| Line | Today | Same holdings | New portfolio |
+| CHF per year | Today (comparable) | Safe Capital, same holdings | Safe Capital, new funds |
 |---|---|---|---|
-| Management / advisory | 17'100 | 15'200 | 15'200 |
-| Custody | 5'700 | 3'040 | 3'040 |
-| Brokerage | 2'300 | 1'800 | 1'800 |
-| FX | 1'200 | 700 | 700 |
-| Structured products | 1'600 | 1'600 | 0 |
-| Fund products (in NAV) | 10'200 | 10'200 | 3'000 |
-| **Total** | **38'100 (0.95%)** | **32'540 (0.81%)** | **23'740 (0.59%)** |
+| Management / advisory | 25'600 | 25'500 (EAM, 70/50 bps tiers) | 25'500 |
+| Custody, trading, FX | 11'390 | 5'140 (partner custodian) | 5'140 |
+| VAT | 486 | 2'389.50 (8.1%, CH domicile) | 2'389.50 |
+| Fund costs inside prices | 21'290 | 21'290 | 13'110 |
+| **Total** | **58'766** | **54'319.50** | **46'139.50** |
 
-Switching cost CHF 8'000 (synthetic). Payback = 8'000 / annual difference × 12: about 17 months (same holdings), about 7 months (new portfolio).
-The fund cost split (8'640 + 490 + 1'070 = 10'200) and the KID example (OCF 1.08% including AMF 0.75%) are invented for the demo, as are Banca Alfa / Banca Beta, PROSPECT-001 and the `ZZDEMO…` identifiers (deliberately not valid ISINs).
+- Known current cost, including stamp duty of 610: 59'376 (138 bps). Of this, 64% is observed and 36% is estimated from KIDs.
+- Five items are not determined and are never counted as zero.
+- Stamp duty is excluded from both sides of the comparison.
+- The saving is "at least" 4'446.50 for the same holdings and 12'626.50 for the new funds.
+- Switching costs are 1'500 and 4'000. The payback is 4.0 and 3.8 months.
+- Open question with the app thread: the current-side VAT (486) looks low compared with the proposal's VAT. The deck will follow the engine if that changes.
 
 ## Facts the deck relies on, and what is not verified
 
-- Swiss revised FADP in force since 1 September 2023 (slide 17). Not legal advice; counsel must review.
-- Safe Capital is an external asset manager: client assets stay at a custodian bank, so every Safe Capital scenario includes the custodian bank's fees. VAT on fees depends on the client's domicile.
-- Commercial register (secondary copy of Zefix, checked 6 Nov 2026): Safe Capital Management SA (CHE-381.156.096) and Safe Capital Holding SA (CHE-291.799.912), Via Serafino Balestra 5, Lugano, both active. **FINMA licence and supervisory organisation not verified** (the website states FINMA authorisation with OSIF supervision; not yet checked in the FINMA register), so the deck asks Safe Capital to confirm what to cite (decision 6) instead of stating it.
-- "Ready in minutes" is the design target for the automatic first draft, not a measured result.
-- Screens are mockups, not the running app. When the app lands, replace `source/img/*.png` with real screenshots and check every figure against the live engine.
+- **Data protection.** The Swiss revised FADP has been in force since 1 September 2023. This is not legal advice; counsel must review it.
+- **Safe Capital's model.** Safe Capital is an external asset manager. Every Safe Capital scenario therefore includes the custodian bank's fees. VAT depends on the client's domicile.
+- **Commercial register.** Checked on 6 Nov 2026 in a secondary copy of Zefix:
+  - Safe Capital Management SA (CHE-381.156.096), Lugano, active.
+  - Safe Capital Holding SA (CHE-291.799.912), Lugano, active.
+- **FINMA licence: not verified.** The website states FINMA authorisation with OSIF supervision. Decision 6 asks Safe Capital to confirm what to cite.
+- **"Minutes" is a design target**, not a measured result.
+- **Screens are mockups** fed with the engine's output. Replace them with real app screenshots when the UI lands.
 
 ## Rebuild
 
 ```bash
 cd slides/source
-npm install                      # pinned versions in package.json
-node build_deck.js               # writes ../PortfolioCostEngine_Executive_Deck.pptx
-# optional: APPLY_THEME_JS=<path to pptx skill>/scripts/apply_theme.js NODE_PATH=$PWD/node_modules node build_deck.js
-#           writes the theme colours into the file so PowerPoint's colour pickers match
-soffice --headless --convert-to pdf --outdir .. ../PortfolioCostEngine_Executive_Deck.pptx
+npm install                                  # pinned versions in package.json
+node build_deck.js                           # writes ../FeeLens_Executive_Deck.pptx
+# optional theme colours: APPLY_THEME_JS=<pptx skill>/scripts/apply_theme.js NODE_PATH=$PWD/node_modules node build_deck.js
+soffice --headless --convert-to pdf --outdir .. ../FeeLens_Executive_Deck.pptx
 ```
 
-To re-shoot mockups after editing `screens.html`, screenshot the elements `#statement #upload #review #costs #report` at device scale 2 with Playwright.
+To re-shoot the mockups, open `mockups/app_v2.html?name=FeeLens` with Playwright at device scale 2. Screenshot the elements `#overview #drill #review #checks #report` to `img/v2_<id>.png`.
