@@ -1,15 +1,15 @@
 ---
 id: SC-8.8
 title: Prospect CRM pipeline and conversion funnel
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Add prospect CRM and conversion funnel"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-ms8qbh"
 pr: ""
 created_date: "2026-11-06 15:35"
-updated_date: "2026-11-06 15:24"
+updated_date: "2026-11-06 15:38"
 labels:
   - ui
   - api
@@ -20,6 +20,8 @@ paths_owned:
   - "backend/src/pce/crm/**"
   - "backend/tests/test_crm*.py"
   - "frontend/src/pages/crm/**"
+  - "frontend/tests/e2e/crm.spec.ts"
+  - "frontend/vitest.config.ts"
 spec_ref: docs/design/DESIGN_SYSTEM.md
 rule_refs:
   - ".claude/rules/frontend.md"
@@ -61,15 +63,29 @@ Funnel metrics are computed in one pass over stage events; fine for thousands of
 
 ## Acceptance Criteria
 
-- [ ] #1 Create, edit and move a contact between stages; every move is recorded with user and time
-- [ ] #2 Funnel endpoint returns per-stage reached counts, step conversion, overall win rate, lost reasons, median days in stage
-- [ ] #3 Tenant isolation: another tenant sees no contacts and gets 404 on ids
-- [ ] #4 CRM payloads never contain internal margin fields
-- [ ] #5 Pipeline, contact and funnel pages render the synthetic seed; E2E test covers create → move → won → funnel updates
+- [x] #1 Create, edit and move a contact between stages; every move is recorded with user and time
+- [x] #2 Funnel endpoint returns per-stage reached counts, step conversion, overall win rate, lost reasons, median days in stage
+- [x] #3 Tenant isolation: another tenant sees no contacts and gets 404 on ids
+- [x] #4 CRM payloads never contain internal margin fields
+- [x] #5 Pipeline, contact and funnel pages render the synthetic seed; E2E test covers create → move → won → funnel updates
 
 ## Implementation Notes
 
+- Shared touch points agreed with the demo thread (2026-11-06): `backend/src/pce/api.py` (import + `app.include_router(crm_router)`),
+  `frontend/src/main.tsx` (`...crmRoutes`), `frontend/src/components/Shell.tsx` (one nav entry "Clients & pipeline").
+- `frontend/vitest.config.ts` added so vitest skips `tests/e2e/**` (Playwright specs share the `*.spec.ts` pattern).
+  A `test` block in `vite.config.ts` does not type-check with vitest 2.1 + vite 6, hence the separate file.
+- `@playwright/test` is added to `frontend/package.json` by the demo thread (its E2E suite); `crm.spec.ts` was run
+  locally against 1.63.0 with backend on :8000 and Vite on :5173.
+
 ## Outcome
+
+- Backend `pce.crm`: contacts, append-only stage events, activities, link/create cost review, funnel, synthetic seed (41 contacts).
+- Funnel: reached per stage (furthest stage, lost included), step conversion, drop-off, win rate, lead-to-client,
+  median days per stage and to win, lost reasons by stage, conversion by source, open AUM per stage (unknown counted, not 0).
+- UI: board (drag or menu to move), contacts list (prospects / clients / lost), contact page (stage tracker, history,
+  activities, next action, cost review link), funnel page (chart + table twin, filters by cohort, owner, source).
+- Tests: 12 backend (`tests/test_crm.py`), 2 vitest, 4 Playwright E2E (`tests/e2e/crm.spec.ts`), all passing. Gate passed.
 
 ## Issues Encountered
 

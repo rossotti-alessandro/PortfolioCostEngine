@@ -2,7 +2,7 @@ import { ROLE_LABEL, type Role, api, getRole, setRole } from "@/lib/api";
 import { PRODUCT } from "@/lib/brand";
 import { chf, cn } from "@/lib/format";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Workflow } from "lucide-react";
+import { BookOpen, Check, ChevronRight, FolderOpen, Lock, ShieldCheck, Users, Workflow } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, useMatch, useParams } from "react-router-dom";
 import { Badge } from "./ui";
@@ -117,6 +117,9 @@ export function AppShell() {
         <nav aria-label="Main" className="mt-6 space-y-0.5">
           <NavLink to="/prospects" end className={navCls}>
             <FolderOpen className="h-4 w-4" /> Prospects
+          </NavLink>
+          <NavLink to="/crm" className={navCls}>
+            <Users className="h-4 w-4" /> Clients & pipeline
           </NavLink>
           <NavLink to="/catalogue" className={navCls}>
             <BookOpen className="h-4 w-4" /> Data catalogue
