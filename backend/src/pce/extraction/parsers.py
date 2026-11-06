@@ -20,6 +20,8 @@ from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact
 from .vocab import (
     AMOUNT,
     DOC_TYPE_KEYWORDS,
+    FEE_SECTION,
+    FX_RATE,
     JURISDICTION_HINTS,
     LANG_HINTS,
     PERCENT,
@@ -57,7 +59,74 @@ def _amount_cells(line: Line) -> list[tuple[int, Decimal]]:
     return out
 
 
+def _fx_facts(pages: list[PageInfo]) -> list[Fact]:
+    """Exchange rates printed on the document ("FX rate USD/CHF ...: 0.8000"): the only rates the
+    engine uses to convert, so every converted amount traces back to a rate on a page."""
+    facts: list[Fact] = []
+    for page in pages:
+        for ln in page.lines:
+            m = FX_RATE.search(ln.text)
+            if not m:
+                continue
+            base, quote = m.group(1).upper(), m.group(2).upper()
+            try:
+                rate = parse_amount(m.group(3).rstrip(".,"))
+            except ValueError:
+                continue
+            facts.append(
+                Fact(
+                    key=f"fx:{base}{quote}",
+                    kind="meta",
+                    field="fx_rate",
+                    label=f"{base}/{quote}",
+                    value=str(rate),
+                    extra={"base": base, "quote": quote},
+                    evidence=_ev(ln, page),
+                )
+            )
+    return facts
+
+
+def _isin_at(line: Line) -> tuple[int, str, str] | None:
+    """(cell index, ISIN, text before the ISIN in that cell). The ISIN may share a cell with the
+    name when the columns sit close together."""
+    for i, c in enumerate(line.cells):
+        for m in ISIN_RE.finditer(c.text.upper()):
+            if is_valid_isin(m.group(0)):
+                return i, m.group(0), c.text[: m.start()].strip()
+    return None
+
+
+def _fee_fact(label: str, value: Decimal, ln: Line, page: PageInfo, prof: DocumentProfile) -> Fact | None:
+    code = map_fee_label(label)
+    if not code:
+        return None
+    return Fact(
+        key=f"fee:{code}",
+        kind="fee_observed",
+        field="annual_amount",
+        label=label,
+        value=str(value),
+        currency=prof.currency or "CHF",
+        fee_code=code,
+        measurement="observed",
+        extra={"period_start": prof.period_start, "period_end": prof.period_end},
+        evidence=_ev(ln, page),
+    )
+
+
 # ---------------------------------------------------------------- classification
+_AS_OF = re.compile(
+    r"valuation|valuta|bewertung|évaluation|as of|stichtag|valid from|production|gültig ab|"
+    r"valido dal|erstellt|realizzazione",
+    re.I,
+)
+_LEGAL_ENTITY = re.compile(
+    r"\b[A-Z][\w&.\-]*(?: [A-Z(][\w&.()\-]*){0,6} "
+    r"(?:Limited|Ltd\.?|S\.A\.|SA|AG|GmbH|plc|S\.p\.A\.|SGR S\.p\.A\.|LLC)(?!\w)"
+)
+
+
 def classify(pages: list[PageInfo]) -> DocumentProfile:
     first = " ".join(ln.text for ln in pages[0].lines) if pages else ""
     alltext = " ".join(ln.text for p in pages for ln in p.lines)
@@ -81,6 +150,10 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
         if ln.confidence >= 0.6 and letters >= 0.6 * len(t.replace(" ", "")) and len(t) > 3:
             institution = t
             break
+    if pages and not (institution and _LEGAL_ENTITY.search(institution)):
+        # A KID or price list often opens with its title; the legal entity is named in the text.
+        m = _LEGAL_ENTITY.search(first)
+        institution = m.group(0) if m else institution
     header = " ".join(ln.text for ln in pages[0].lines[:12]) if pages else ""
     jurisdiction = None
     for code, pat in JURISDICTION_HINTS:
@@ -91,17 +164,16 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
     if not LANG_HINTS[lang].search(alltext):
         lang = "en"
     as_of = period_start = period_end = None
-    for ln in (ln for p in pages for ln in p.lines):
-        t = ln.text
+    seq = [ln.text for p in pages for ln in p.lines]
+    for i, t in enumerate(seq):
         ds = find_dates(t)
+        if not ds and _AS_OF.search(t) and i + 1 < len(seq):
+            ds = find_dates(seq[i + 1])  # "Dieses Dokument wurde erstellt / am 03 September 2026."
         if not ds:
             continue
         if re.search(r"period|periodo|zeitraum|période", t, re.I) and len(ds) >= 2 and not period_start:
             period_start, period_end = ds[0], ds[1]
-        elif (
-            re.search(r"valuation|valuta|bewertung|évaluation|as of|stichtag|valid from|production", t, re.I)
-            and not as_of
-        ):
+        elif _AS_OF.search(t) and not as_of:
             as_of = ds[0]
     currency = None
     m = re.search(
@@ -127,23 +199,33 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
 
 # ---------------------------------------------------------------- PDF parsers
 def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
-    facts: list[Fact] = []
+    facts: list[Fact] = _fx_facts(pages)
     ccy = prof.currency or "CHF"
-    in_table = False
+    in_table = in_fees = False
     for page in pages:
         for ln in page.lines:
             low = ln.text.lower()
+            if FEE_SECTION.search(ln.text) and len(ln.cells) == 1:
+                in_fees, in_table = True, False  # activity statements also list the fees charged
+                continue
+            if in_fees:
+                amounts = _amount_cells(ln)
+                if amounts and len(ln.cells) >= 2 and not re.search(r"^total", ln.cells[0].text, re.I):
+                    ff = _fee_fact(ln.cells[0].text, amounts[-1][1], ln, page, prof)
+                    if ff:
+                        facts.append(ff)
+                continue
             if "isin" in low and ("value" in low or "valore" in low or "wert" in low):
                 in_table = True
                 m = re.search(r"(?:value|valore|wert)\s+(CHF|EUR|USD)", ln.text, re.I)
                 if m:
                     ccy = m.group(1).upper()
                 continue
-            isin_idx = next((i for i, c in enumerate(ln.cells) if is_valid_isin(c.text.strip())), None)
+            hit = _isin_at(ln)
             amounts = _amount_cells(ln)
-            if isin_idx is not None and amounts:
-                isin = ln.cells[isin_idx].text.strip()
-                name = " ".join(c.text for c in ln.cells[:isin_idx]).strip()
+            if hit is not None and amounts:
+                isin_idx, isin, prefix = hit
+                name = " ".join([*(c.text for c in ln.cells[:isin_idx]), prefix]).strip()
                 nums = [a for a in amounts if a[0] > isin_idx]
                 qty = nums[0][1] if len(nums) >= 3 else None
                 price = nums[1][1] if len(nums) >= 3 else None
@@ -197,7 +279,7 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
 
 
 def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
-    facts: list[Fact] = []
+    facts: list[Fact] = _fx_facts(pages)
     section = "service"
     for page in pages:
         for ln in page.lines:
@@ -209,7 +291,7 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
                 or "produktkosten" in low
             ):
                 section = "product"
-            elif "inducement" in low or ("retrocession" in low and len(ln.cells) == 1):
+            elif re.search(r"inducement|incentiv", low) or ("retrocession" in low and len(ln.cells) == 1):
                 section = "inducements"
             amounts = _amount_cells(ln)
             if not amounts or len(ln.cells) < 2:
@@ -245,21 +327,12 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
                     )
                 )
                 continue
-            if section == "product":
-                facts.append(
-                    Fact(
-                        key="reported:product_costs",
-                        kind="reported",
-                        field="reported_product_costs",
-                        label=label,
-                        value=str(value),
-                        currency=prof.currency or "CHF",
-                        measurement="estimated",
-                        evidence=_ev(ln, page),
-                    )
+            if (
+                re.search(
+                    r"retrocession|retrozession|rétrocession|retrocessioni|inducement|incentiv", label, re.I
                 )
-                continue
-            if re.search(r"retrocession|retrozession|rétrocession|retrocessioni|inducement", label, re.I):
+                or section == "inducements"
+            ):
                 facts.append(
                     Fact(
                         key="reported:retrocessions",
@@ -274,22 +347,23 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
                     )
                 )
                 continue
-            code = map_fee_label(label)
-            if code:
+            if section == "product":
                 facts.append(
                     Fact(
-                        key=f"fee:{code}",
-                        kind="fee_observed",
-                        field="annual_amount",
+                        key="reported:product_costs",
+                        kind="reported",
+                        field="reported_product_costs",
                         label=label,
                         value=str(value),
                         currency=prof.currency or "CHF",
-                        fee_code=code,
-                        measurement="observed",
-                        extra={"period_start": prof.period_start, "period_end": prof.period_end},
+                        measurement="estimated",
                         evidence=_ev(ln, page),
                     )
                 )
+                continue
+            ff = _fee_fact(label, value, ln, page, prof)
+            if ff:
+                facts.append(ff)
     return facts
 
 
@@ -330,74 +404,191 @@ def parse_cash_statement(pages: list[PageInfo], prof: DocumentProfile) -> list[F
 
 _RULE_PATTERNS = [
     (re.compile(r"advisory|consulenza|beratung", re.I), "ADVISORY_FEE", "aum"),
-    (re.compile(r"management fee|mandate fee|gestione", re.I), "MGMT_DISCRETIONARY", "aum"),
+    (
+        re.compile(r"management fee|mandate fee|gestione|vermögensverwaltung|asset management", re.I),
+        "MGMT_DISCRETIONARY",
+        "aum",
+    ),
     (re.compile(r"custody|custodia|depot|garde", re.I), "CUSTODY_FEE", "custody_eligible"),
-    (re.compile(r"brokerage|courtage|intermediazione", re.I), "BROKERAGE", "trade_notional"),
+    (re.compile(r"brokerage|courtage|intermediazione|transaction fee", re.I), "BROKERAGE", "trade_notional"),
+    (
+        re.compile(r"foreign exchange|devisen|cambi\b|opérations de change", re.I),
+        "FX_COMMISSION",
+        "fx_notional",
+    ),
     (
         re.compile(r"transfer of securities|trasferimento|übertrag|transfert", re.I),
         "TRANSFER_OUT",
         "per_position",
     ),
 ]
+_BAND_FIRST = re.compile(r"^(?:up to|bis|fino a|für die ersten|first|jusqu'à)\b", re.I)
+_BAND_OPEN = re.compile(r"^(?:\+\s*)?(?:over|above|über|oltre|au-delà|für beträge über)\b", re.I)
+_NUM = r"\d{1,3}(?:[ '’.,]\d{3})*(?:[.,]\d+)?"
+_BAND_RANGE = re.compile(rf"{_NUM}\s*(?:m|mio|k)?\s*[–-]\s*({_NUM})\s*(m|mio|k)?\b", re.I)
+_BAND_NUM = re.compile(rf"({_NUM})\s*(m|mio|k)?\b", re.I)
+_MAX_RATE_PCT = Decimal("5")  # above this a "rate" is a discount, a surcharge or a misread
+_CCY_AMOUNT = re.compile(r"\b(CHF|EUR|USD|GBP)\s*(\d[\d'’.,]*)")
+_ENTITY = re.compile(
+    r"issued by ([A-Z][\w&.\- ]{2,80}?(?:S\.A\.|SA|AG|plc|Ltd|S\.p\.A\.|Genossenschaft))", re.I
+)
+_BANKISH = re.compile(r"\bbank|banca|banque|raiffeisen|kantonalbank|sparkasse", re.I)
+
+
+def _band_upper(label: str) -> tuple[bool, Decimal | None]:
+    """(is a band row, upper bound in units; None = open-ended top band)."""
+
+    def num(raw: str, unit: str | None) -> Decimal:
+        v = parse_amount(raw.rstrip(".,"))
+        return v * {"m": 1_000_000, "mio": 1_000_000, "k": 1_000}.get((unit or "").lower(), 1)
+
+    t = label.strip()
+    if _BAND_OPEN.search(t):
+        return True, None
+    if _BAND_FIRST.search(t) and (m := _BAND_NUM.search(t)):
+        return True, num(m.group(1), m.group(2))
+    if m := _BAND_RANGE.search(t):
+        return True, num(m.group(1), m.group(2))
+    return False, None
+
+
+def _rule_for(label: str) -> tuple[str | None, str | None]:
+    for pat, c, b in _RULE_PATTERNS:
+        if pat.search(label):
+            return c, b
+    return None, None
 
 
 def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
+    """Price lists: rates, bands, minimums and the issuing legal entity. A row without its own fee
+    label inherits the section heading above it (e.g. "Depotgebühren" → "Grundgebühr pro Jahr").
+    When a section offers several prices (columns or packages) only the first is used as the rate;
+    the others are kept as alternatives for the analyst, never silently chosen."""
     facts: list[Fact] = []
-    last_code = None
-    entity = None
+    seen: set[str] = set()
+    section = section_base = last_code = None
+    entity_fact: Fact | None = None
+    alltext = " ".join(ln.text for p in pages for ln in p.lines)
+    booked = re.search(r"booked in (\w+)", alltext, re.I)
+
+    def add(f: Fact) -> None:
+        if f.key in seen:
+            f.key = f"{f.key}:alt{sum(k.startswith(f.key) for k in seen)}"
+            f.field = "rate_alternative" if f.field == "rate_pct" else f.field
+        seen.add(f.key)
+        facts.append(f)
+
     for page in pages:
         for ln in page.lines:
             label = ln.cells[0].text if ln.cells else ""
-            if re.search(r"issuing entity|entità|herausgeber|émetteur", label, re.I) and len(ln.cells) > 1:
-                entity = ln.cells[1].text
-                juris = next((c for c, p in JURISDICTION_HINTS if p.search(entity)), None)
-                facts.append(
-                    Fact(
-                        key="meta:issuing_entity",
-                        kind="meta",
-                        field="issuing_entity",
-                        label=label,
-                        value=None,
-                        extra={"entity": entity, "jurisdiction": juris},
-                        evidence=_ev(ln, page),
-                    )
+            if entity_fact is None and (m := _ENTITY.search(ln.text)):
+                ent = m.group(1).strip()
+                juris = next((c for c, p in JURISDICTION_HINTS if p.search(ent)), None)
+                if not juris and booked:
+                    juris = next((c for c, p in JURISDICTION_HINTS if p.search(booked.group(1))), None)
+                entity_fact = Fact(
+                    key="meta:issuing_entity",
+                    kind="meta",
+                    field="issuing_entity",
+                    label="Issuing entity",
+                    value=None,
+                    extra={"entity": ent, "jurisdiction": juris or prof.jurisdiction},
+                    evidence=_ev(ln, page),
                 )
+                add(entity_fact)
+            if re.search(r"issuing entity|entità|herausgeber|émetteur", label, re.I) and len(ln.cells) > 1:
+                ent = ln.cells[1].text
+                juris = next((c for c, p in JURISDICTION_HINTS if p.search(ent)), None)
+                facts[:] = [f for f in facts if f.key != "meta:issuing_entity"]
+                seen.discard("meta:issuing_entity")
+                entity_fact = Fact(
+                    key="meta:issuing_entity",
+                    kind="meta",
+                    field="issuing_entity",
+                    label=label,
+                    value=None,
+                    extra={"entity": ent, "jurisdiction": juris},
+                    evidence=_ev(ln, page),
+                )
+                add(entity_fact)
                 continue
-            pm = PERCENT.search(ln.text)
+            pm = PERCENT.search(" ".join(c.text for c in ln.cells[1:])) if len(ln.cells) > 1 else None
+            if len(ln.cells) == 1 and not PERCENT.search(label) and len(label) < 60:
+                heading = (label.isupper() or not re.search(r"[()‘’'\".,:;•]|^\W", label)) and not (
+                    "|" in label or label[:1].islower()  # running page headers and wrapped sentences
+                )
+                hcode, hbase = _rule_for(label) if heading else (None, None)
+                if hcode:  # a fee heading opens a section; sub-headings ("Standard model") keep it
+                    section, section_base, last_code = hcode, hbase, hcode
+                continue
+            code, base = _rule_for(label)
             is_min = re.search(r"minimum|minimo|mindest", label, re.I)
-            code = base = None
-            for pat, c, b in _RULE_PATTERNS:
-                if pat.search(label):
-                    code, base = c, b
-                    break
-            if is_min and last_code and len(ln.cells) > 1:
+            if is_min and (last_code or section) and len(ln.cells) > 1:
+                target = last_code or section
                 amt = _amount_cells(ln)
-                if amt:
+                cm = _CCY_AMOUNT.search(" ".join(c.text for c in ln.cells[1:]))
+                value = amt[0][1] if amt else (parse_amount(cm.group(2).rstrip(".,")) if cm else None)
+                if value is not None:
                     per = (
                         "quarter"
                         if re.search(r"quarter|trimestr|quartal", label, re.I)
                         else "trade"
                         if re.search(r"per trade|per ordine|pro auftrag|par ordre", label, re.I)
+                        or target == "BROKERAGE"
                         else "year"
                     )
-                    ccy = next((c for c in CURRENCIES if c in ln.text), prof.currency)
-                    facts.append(
+                    ccy = cm.group(1) if cm else next((c for c in CURRENCIES if c in ln.text), prof.currency)
+                    add(
                         Fact(
-                            key=f"rule:{last_code}:minimum",
+                            key=f"rule:{target}:minimum",
                             kind="fee_rule",
                             field="minimum",
                             label=label,
-                            value=str(amt[-1][1]),
+                            value=str(value),
                             currency=ccy,
-                            fee_code=last_code,
+                            fee_code=target,
                             measurement="contractual",
                             extra={"per": per},
                             evidence=_ev(ln, page),
                         )
                     )
                 continue
-            if code and pm:
-                facts.append(
+            is_band, upper = _band_upper(label)
+            all_pct = [str(parse_percent(x)) for x in PERCENT.findall(" ".join(c.text for c in ln.cells[1:]))]
+            if pm and parse_percent(pm.group(0)) > _MAX_RATE_PCT:
+                continue
+            if is_band and pm and section:
+                add(
+                    Fact(
+                        key=f"rule:{section}:tier:{upper if upper is not None else 'open'}",
+                        kind="fee_rule",
+                        field="tier_rate_pct",
+                        label=label,
+                        value=str(parse_percent(pm.group(0))),
+                        fee_code=section,
+                        measurement="contractual",
+                        extra={
+                            "up_to": str(upper) if upper is not None else None,
+                            "base": section_base,
+                            "columns": len(all_pct),
+                            "all_columns_pct": all_pct,
+                        },
+                        evidence=_ev(ln, page, [ln.cells[0], ln.cells[1]]),
+                    )
+                )
+                last_code = section
+                continue
+            if (
+                not code
+                and not label[:1].islower()
+                and pm
+                and len(label) < 60
+                and re.search(r"fee|gebühr|commission|p\.a\.|pro jahr", label, re.I)
+            ):
+                code = section
+            base = base or section_base
+            if code and code != "TRANSFER_OUT" and pm:
+                add(
                     Fact(
                         key=f"rule:{code}:rate",
                         kind="fee_rule",
@@ -411,6 +602,8 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                             "cash_excluded": bool(
                                 re.search(r"cash excluded|esclusa liquidità|ohne liquidität", label, re.I)
                             ),
+                            "columns": len(all_pct),
+                            "all_columns_pct": all_pct,
                         },
                         evidence=_ev(ln, page),
                     )
@@ -420,7 +613,7 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 amt = _amount_cells(ln)
                 if amt:
                     ccy = next((c for c in CURRENCIES if c in ln.text), prof.currency)
-                    facts.append(
+                    add(
                         Fact(
                             key="rule:TRANSFER_OUT:per_position",
                             kind="fee_rule",
@@ -433,10 +626,27 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                             evidence=_ev(ln, page),
                         )
                     )
-    if entity is None:
+    if entity_fact is None and prof.institution and _BANKISH.search(prof.institution) and pages:
+        first = next((ln for ln in pages[0].lines if prof.institution in ln.text), None)
+        if first:
+            add(
+                Fact(
+                    key="meta:issuing_entity",
+                    kind="meta",
+                    field="issuing_entity",
+                    label="Issuing entity (document header)",
+                    value=None,
+                    extra={"entity": prof.institution, "jurisdiction": prof.jurisdiction, "inferred": True},
+                    evidence=_ev(first, pages[0]),
+                )
+            )
+            entity_fact = facts[-1]
+    if entity_fact is None:
         prof.warnings.append(
             "Issuing legal entity not found: the tariff's jurisdiction must be confirmed manually."
         )
+    if any(f.field == "rate_alternative" or (f.extra or {}).get("columns", 1) > 1 for f in facts):
+        prof.warnings.append("Several price columns or packages: confirm which one applies to this client.")
     return facts
 
 
@@ -459,7 +669,8 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
         ),
         (
             re.compile(
-                r"management fees and other administrative|ongoing charges|spese correnti|laufende kosten",
+                r"management fees and other administrative|ongoing charges|spese correnti|laufende kosten|"
+                r"verwaltungsgebühren und|frais de gestion et autres",
                 re.I,
             ),
             "FUND_ONGOING",
@@ -471,7 +682,9 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             "estimated",
         ),
         (
-            re.compile(r"performance fee|commissioni di performance|erfolgsgebühr", re.I),
+            re.compile(
+                r"performance fee|commissioni di performance|erfolgsgebühr|commissions liées aux", re.I
+            ),
             "FUND_PERFORMANCE",
             "estimated",
         ),
@@ -481,8 +694,16 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     for page in pages:
         for ln in page.lines:
             label = ln.cells[0].text if ln.cells else ""
-            if re.search(r"total costs if you exit after 1 year", label, re.I):
-                amt = _amount_cells(ln)
+            if re.search(
+                r"total costs if you exit after 1 year|^gesamtkosten$|^costi totali$|^coûts totaux$",
+                label,
+                re.I,
+            ):
+                amt = _amount_cells(ln) or [
+                    (1, parse_amount(m.group(1)))
+                    for m in [re.match(r"([\d'’.,]+)\s*(?:USD|EUR|CHF|GBP)$", ln.cells[1].text.strip())]
+                    if m and len(ln.cells) > 1
+                ]
                 if amt:
                     facts.append(
                         Fact(
@@ -720,6 +941,11 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
     prof = classify(pages)
     parser = PARSERS.get(prof.doc_type)
     facts = parser(pages, prof) if parser else []
+    ent = next(
+        (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None
+    )
+    if ent:  # the stated legal entity beats a title line picked up as the header
+        prof.institution = ent["entity"]
     if prof.doc_type == DocType.UNKNOWN:
         prof.warnings.append("Could not classify this document; choose its type manually.")
     if "tesseract-ocr" in prof.engines:

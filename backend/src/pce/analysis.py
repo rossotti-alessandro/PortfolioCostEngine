@@ -16,7 +16,7 @@ from typing import Any
 from .extraction.vocab import FEE_LABEL_NAMES
 from .finance.isin import is_synthetic
 from .finance.ledger import AtomRole, FeeAtom, Incidence, Layer, LedgerSummary, Measurement, aggregate
-from .finance.money import ZERO, D, bps_of
+from .finance.money import ZERO, D, bps_of, money
 from .finance.scenarios import (
     LAYER_BY_CODE,
     HoldingInput,
@@ -27,7 +27,8 @@ from .finance.scenarios import (
 )
 from .finance.tariff import FeeRule, Tariff, TierMethod
 
-ENGINE_VERSION = "pce-engine-0.1"
+ENGINE_VERSION = "pce-engine-0.2"
+BASE_CCY = "CHF"
 TAX_CODES = {"VAT_ON_FEES", "STAMP_DUTY_CH"}
 EXCLUDED_FROM_COMPARISON = {
     "STAMP_DUTY_CH": "Swiss stamp duty is a tax that applies at any Swiss bank; "
@@ -39,7 +40,7 @@ SERVICE_CORE = [
     ("BROKERAGE", "Brokerage", Layer.TRADING),
 ]
 SERVICE_CODES = {"ADVISORY_FEE", "MGMT_DISCRETIONARY", "ALL_IN_FEE", "EAM_FEE", "PLATFORM_FIXED"}
-LEGAL_SUFFIX = re.compile(r"\b(SA|AG|S\.A\.|Ltd|plc|LLC|Europe|GmbH|S\.p\.A\.)\b\.?", re.I)
+LEGAL_SUFFIX = re.compile(r"(?<!\w)(SA|AG|S\.A\.|Ltd|plc|LLC|Europe|GmbH|S\.p\.A\.)(?!\w)\.?", re.I)
 
 
 def inst_key(name: str | None) -> str:
@@ -57,6 +58,8 @@ def infer_asset_class(name: str, given: str | None) -> tuple[str, bool]:
         return "ETF", True
     if re.search(r"convertible|certificate|note|tracker|barrier|zertifikat|certificato", n):
         return "STRUCTURED", True
+    if re.search(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b", n) and "fund" not in n:
+        return "BOND", True
     if re.search(r"fund|fonds|fondo|sicav", n):
         return "FUND", True
     if re.search(r"account|cash|liquid|conto|konto|compte", n):
@@ -160,6 +163,30 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     checks: list[Check] = []
     requests: list[MissingRequest] = []
 
+    # ------------------------------------------------------------ exchange rates (only those printed
+    # on the client's own documents, so every converted amount traces back to a page)
+    fx: dict[str, dict[str, tuple[Decimal, int]]] = defaultdict(dict)
+    for d in documents:
+        ik = inst_key((d.get("profile") or {}).get("institution"))
+        for f in by_doc[d["id"]]:
+            m = re.search(r"([A-Z]{3})\s*/\s*([A-Z]{3})", (f.get("label") or "").upper())
+            if f["field"] == "fx_rate" and f["value"] and m and m.group(2) == BASE_CCY:
+                fx[ik][m.group(1)] = (D(f["value"]), f["id"])
+    missing_fx: dict[tuple[str, str], Decimal] = defaultdict(lambda: ZERO)
+    used_fx: set[tuple[str, str]] = set()
+
+    def to_base(amount: Decimal, ccy: str | None, ik: str) -> tuple[Decimal | None, str, tuple[str, ...]]:
+        """Amount in CHF, the conversion note and the rate's fact id; None if no rate was printed."""
+        if not ccy or ccy == BASE_CCY:
+            return amount, "", ()
+        hit = fx.get(ik, {}).get(ccy)
+        if hit is None:
+            missing_fx[(ik, ccy)] += amount
+            return None, "", ()
+        rate, fid = hit
+        used_fx.add((ik, ccy))
+        return money(amount * rate), f"{ccy} {amount:,.2f} × {rate} {ccy}/{BASE_CCY}", (str(fid),)
+
     # ------------------------------------------------------------ institutions & positions
     holdings: list[dict] = []
     institutions: dict[str, dict] = {}
@@ -186,7 +213,11 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 total_fact = f
             if f["kind"] != "position" or f["value"] is None:
                 continue
-            val = D(f["value"])
+            orig = D(f["value"])
+            pos_sum += orig  # reconciled in the statement's own currency
+            val, fx_note, _ = to_base(orig, f.get("currency"), ik)
+            if val is None:
+                continue
             ac, inferred = infer_asset_class(f["label"], (f.get("extra") or {}).get("asset_class"))
             holdings.append(
                 {
@@ -198,11 +229,12 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     "asset_class": ac,
                     "asset_class_inferred": inferred,
                     "value": val,
-                    "currency": f.get("currency") or "CHF",
+                    "currency": f.get("currency") or BASE_CCY,
+                    "value_ccy": orig,
+                    "fx_note": fx_note,
                     "synthetic_isin": bool(f.get("isin") and is_synthetic(f["isin"])),
                 }
             )
-            pos_sum += val
             inst["assets"] += val
         if total_fact:
             tot = D(total_fact["value"])
@@ -213,6 +245,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     f"{ik}: positions add up to the statement total",
                     "pass" if ok else "fail",
                     f"Sum of positions {pos_sum:,.2f} vs printed total {tot:,.2f}"
+                    + (f" {total_fact.get('currency')}" if total_fact.get("currency") else "")
                     + (
                         ""
                         if ok
@@ -286,7 +319,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     for d in documents:
         prof = d.get("profile") or {}
         ik = inst_key(prof.get("institution"))
-        if d["doc_type"] == "cost_report":
+        if d["doc_type"] == "cost_report" or any(f["kind"] == "fee_observed" for f in by_doc[d["id"]]):
             inst = institutions.setdefault(
                 ik,
                 {
@@ -298,7 +331,8 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     "assets": ZERO,
                 },
             )
-            inst["documents"].append(d["id"])
+            if d["id"] not in inst["documents"]:
+                inst["documents"].append(d["id"])
             ps, pe = prof.get("period_start"), prof.get("period_end")
             days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1 if ps and pe else None
             if days and not 360 <= days <= 366:
@@ -313,8 +347,10 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             for f in by_doc[d["id"]]:
                 if f["kind"] != "fee_observed" or f["value"] is None:
                     continue
-                amt = D(f["value"])
-                formula = f"reported for {ps} – {pe}"
+                amt, fx_note, fx_ids = to_base(D(f["value"]), f.get("currency"), ik)
+                if amt is None:
+                    continue
+                formula = f"reported for {ps} – {pe}" + (f"; {fx_note}" if fx_note else "")
                 if days and not 360 <= days <= 366:
                     amt = amt * Decimal(365) / Decimal(days)
                     formula += f", annualised × 365/{days}"
@@ -330,7 +366,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         amt,
                         Measurement.OBSERVED,
                         Incidence.TAX if code in TAX_CODES else Incidence.BILLED,
-                        evidence_ids=(str(f["id"]),),
+                        evidence_ids=(str(f["id"]), *fx_ids),
                         formula=formula,
                     )
                 )
@@ -344,10 +380,13 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 continue
             code = f["fee_code"]
             n = (f.get("extra") or {}).get("periods_per_year")
-            annual = D(f["value"]) * (n or 1)
+            debit, _note, _ids = to_base(D(f["value"]), f.get("currency"), ik)
+            if debit is None:
+                continue
+            annual = debit * (n or 1)
             target = f"cur:{ik}:{code}"
             aid = f"debit:{f['id']}"
-            formula = f"{D(f['value']):,.2f} debited" + (
+            formula = f"{debit:,.2f} debited" + (
                 f" × {n} periods per year" if n else " (period unknown, not annualised)"
             )
             if any(a.atom_id == target for a in atoms):
@@ -727,7 +766,9 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 ),
                 ZERO,
             )
-            theirs = D(rep["value"])
+            theirs, _note, _ids = to_base(D(rep["value"]), rep.get("currency"), ik)
+            if theirs is None:
+                continue
             diff = ours - theirs
             pct = (diff / theirs * 100).quantize(Decimal("0.1")) if theirs else None
             st = "pass" if pct is not None and abs(pct) <= 5 else "warn"
@@ -742,13 +783,14 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 )
             )
         retro = next((f for f in by_doc[d["id"]] if f["field"] == "retrocessions_received"), None)
-        if retro:
+        retro_chf = to_base(D(retro["value"]), retro.get("currency"), ik)[0] if retro else None
+        if retro and retro_chf is not None:
             checks.append(
                 Check(
                     f"retro:{ik}",
                     f"{ik}: retrocessions received",
                     "info",
-                    f"{ik} reports CHF {D(retro['value']):,.2f} of retrocessions paid out of product costs. "
+                    f"{ik} reports CHF {retro_chf:,.2f} of retrocessions paid out of product costs. "
                     "Not an extra client cost; under Swiss law they generally belong to the client unless "
                     "validly waived (to verify with counsel).",
                     [retro["id"]],
@@ -763,6 +805,45 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 "Cash debits match the annual cost report",
                 "pass",
                 "Quarterly debits × 4 equal the annual amounts; counted once.",
+            )
+        )
+
+    # currency conversion: say which printed rate was used, and never convert with a guessed rate
+    for ik, inst_rates in fx.items():
+        for ccy, (rate, fid) in inst_rates.items():
+            if (ik, ccy) not in used_fx:
+                continue
+            checks.append(
+                Check(
+                    f"fx:{ik}:{ccy}",
+                    f"{ik}: {ccy} amounts converted at the printed rate",
+                    "info",
+                    f"{ccy}/{BASE_CCY} {rate} as printed on the document. Fees for the year are converted "
+                    "at this valuation-date rate (an approximation for a whole period).",
+                    [fid],
+                )
+            )
+    for (ik, ccy), amt in missing_fx.items():
+        checks.append(
+            Check(
+                f"fx_missing:{ik}:{ccy}",
+                f"{ik}: no {ccy}/{BASE_CCY} rate on the documents",
+                "fail",
+                f"{ccy} {amt:,.2f} could not be converted and is left out of every total. "
+                "No external rate is fetched.",
+            )
+        )
+        requests.append(
+            MissingRequest(
+                f"fx:{ik}:{ccy}",
+                1,
+                ik,
+                f"{ik}: {ccy}/{BASE_CCY} exchange rate at the valuation date",
+                f"Statement page showing the {ccy}/{BASE_CCY} rate used for the valuation",
+                "Amounts in a foreign currency are not converted with a guessed rate.",
+                ["assets", "costs"],
+                ZERO,
+                "portfolio_statement",
             )
         )
 
