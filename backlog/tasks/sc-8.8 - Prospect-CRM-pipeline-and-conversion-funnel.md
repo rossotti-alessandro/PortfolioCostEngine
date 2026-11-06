@@ -1,15 +1,15 @@
 ---
 id: SC-8.8
 title: Prospect CRM pipeline and conversion funnel
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Add prospect CRM and conversion funnel"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-ms8qbh"
 pr: ""
 created_date: "2026-11-06 15:35"
-updated_date: "2026-11-06 15:35"
+updated_date: "2026-11-06 15:24"
 labels:
   - ui
   - api
