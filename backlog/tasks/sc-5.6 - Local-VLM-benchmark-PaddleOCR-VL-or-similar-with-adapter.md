@@ -7,9 +7,9 @@ owner: "Benchmark local OCR and layout models"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-rfm5yy"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/10"
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-07 00:50"
+updated_date: "2026-11-07 00:30"
 labels:
   - extraction
   - qa
