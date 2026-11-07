@@ -70,7 +70,7 @@ def parse_tables(text: str) -> list[dict]:
 
 def strip_markup(text: str) -> str:
     t = re.sub(r"</t[dh]>", " | ", text, flags=re.I)
-    t = re.sub(r"</tr>", "\n", t, flags=re.I)
+    t = re.sub(r"</tr>|<nl>", "\n", t, flags=re.I)  # <nl> ends a row in OTSL (PaddleOCR-VL, granite)
     t = re.sub(r"<[^>]+>", " ", t)
     return html.unescape(t)
 

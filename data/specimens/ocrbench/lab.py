@@ -11,6 +11,7 @@ Usage: python data/specimens/ocrbench/lab.py   (after run.py and score.py)
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -67,16 +68,40 @@ def main() -> None:
                 "fees": [[x["label"][:120], x["value"][:60], r1(x.get("b"))] for x in r.get("fees", [])],
                 "text": (r.get("text") or "")[:6000],
                 "sec": r.get("seconds"),
+                "load": bool(r.get("includes_load")),
                 "err": r.get("error"),
             }
-    engines = scores["engines"]
-    for k, e in engines.items():
-        e.update(meta_extra.get(k, {}))
-    data = {"pages": out_pages, "engines": engines, "outputs": outputs, "models": meta_extra}
-    (LAB / "data.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    shutil.copy(HERE / "lab_template.html", LAB / "index.html")
+    for key in ("engines", "engines_core"):
+        for k, e in scores[key].items():
+            e.update(meta_extra.get(k, {}))
+    data = {"pages": out_pages, "engines": scores["engines_core"], "engines_core": scores["engines_core"],
+            "engines_all": scores["engines"], "n_core": len(json.loads((HERE / "vlm_core.json").read_text())["pages"]),
+            "outputs": outputs, "models": meta_extra}
+    # Some engines emit U+FFFD for glyphs they could not decode; show those as "?".
+    blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("\ufffd", "?")
+    (LAB / "data.json").write_text(blob, encoding="utf-8")
+    html = (HERE / "lab_template.html").read_text(encoding="utf-8")
+    html = html.replace("<!--PIPELINE-->", pipeline_html(scores["engines_core"]))
+    (LAB / "index.html").write_text(html, encoding="utf-8")
     size = sum(f.stat().st_size for f in LAB.rglob("*") if f.is_file())
     print(f"lab -> {LAB} ({size / 1e6:.1f} MB, {len(out_pages)} pages, {len(outputs)} engines)")
+
+
+def pipeline_html(engines: dict) -> str:
+    """Fill pipeline.html: {{metric:engine}} from the same-pages scores, {{c:key}} from consensus.json."""
+    con = json.loads((OCR / "consensus.json").read_text(encoding="utf-8"))
+    con["accepted_pct"] = f"{con['accepted_correct'] / con['accepted']:.0%}" if con["accepted"] else "–"
+
+    def fill(m: re.Match) -> str:
+        key, name = m.group(1), m.group(2)
+        if key == "c":
+            return str(con.get(name, "–"))
+        v = engines.get(name, {}).get(key)
+        if v is None:
+            return "–"
+        return f"{v:.0%}" if isinstance(v, float) and key not in ("sec_per_page", "text_f1") else str(v)
+
+    return re.sub(r"\{\{(\w+):(\w+)\}\}", fill, (HERE / "pipeline.html").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

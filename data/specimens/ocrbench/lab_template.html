@@ -103,8 +103,10 @@ select { font: inherit; font-size: .88rem; padding: 5px 8px; border-radius: 6px;
 .step p { margin: 4px 0 0; color: var(--ink-2); max-width: 80ch }
 .prose p { max-width: 75ch }
 svg text { fill: var(--ink-2); font-family: var(--body) }
-@media (max-width: 900px) { .bench { grid-template-columns: 1fr } .doclist { max-height: 260px } .panes { grid-template-columns: 1fr } }
+@media (max-width: 900px) { .bench { grid-template-columns: minmax(0, 1fr) } .doclist { max-height: 260px } .panes { grid-template-columns: minmax(0, 1fr) } }
 @media (prefers-reduced-motion: no-preference) { .bar { transition: width .3s } }
+[hidden] { display: none !important }
+.controls label { max-width: 100%; min-width: 0 } @media (max-width: 500px) { .controls select { width: 100% } } .controls select { max-width: 100%; min-width: 0; width: auto } .controls label { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap } #pmeta { overflow-wrap: anywhere }
 </style>
 
 <div class="wrap">
@@ -123,6 +125,9 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
     <div class="panel">
       <h2>Ranking</h2>
       <p class="muted" style="margin-top:0">Main score: <b>fee figure read with its label on the same row</b>, the input a fee parser needs. Click a column to sort. All runs on 4 CPU cores, no GPU.</p>
+      <div class="controls"><label for="scope">Pages <select id="scope">
+        <option value="engines_core">Same pages for every engine (fair)</option>
+        <option value="engines_all">Every page each engine ran</option></select></label></div>
       <div class="scroll"><table id="rank"></table></div>
       <details><summary>What each column means</summary>
         <ul>
@@ -150,7 +155,7 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
   <section class="view" id="v-documents" hidden>
     <div class="bench">
       <div class="panel doclist" id="doclist" role="listbox" aria-label="Benchmark pages"></div>
-      <div class="panel" style="display:grid;gap:12px;min-width:0">
+      <div class="panel" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0">
         <div class="pagehead"><div><h2 id="ptitle" style="margin:0"></h2><div class="muted" id="pmeta"></div></div></div>
         <div class="controls">
           <label for="engA">Left <select id="engA"></select></label>
@@ -196,8 +201,8 @@ const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let D, cur = null;
 
-const FAM = {baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
-const TEXT_FAMS = new Set(["baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
+const FAM = {hybrid: "Pipeline", baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
+const TEXT_FAMS = new Set(["hybrid", "baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
 
 fetch("data.json").then(r => r.json()).then(d => { D = d; boot(); }).catch(e => {
   $("#lede").textContent = "Could not load data.json: " + e;
@@ -212,9 +217,11 @@ function boot() {
   $("#tiles").innerHTML = [
     [D.pages.length, `pages: ${real} real, ${sims} simulated scans`],
     [nItems, "fee figures checked by hand"],
-    [E.length, "engines run locally"],
+    [E.filter(e => e.family !== "hybrid").length, "models run locally"],
     [best ? pct(best.pair_recall) : "–", best ? `best row accuracy: ${best.name || best.engine}` : ""],
   ].map(([n, l]) => `<div class="tile"><div class="n">${n}</div><div class="l">${esc(l)}</div></div>`).join("");
+  $("#scope").options[0].textContent = `Same ${D.n_core} pages for every engine (fair)`;
+  $("#scope").addEventListener("change", e => { D.engines = D[e.target.value]; rankTable("pair_recall"); scatter(); cards(); });
   rankTable("pair_recall");
   scatter();
   byFamily();
@@ -365,7 +372,7 @@ function pane(sel, k) {
     if (t.b) { const b = [t.b[0] - 3, t.b[1] - 3, t.b[2] + 3, t.b[3] + 3]; g += rect(b, col, 2.5, "4 2", `${t.label}: ${t.value}`); }
   });
   const hits = s.gt ? `${s.pair}/${s.gt} fees on their row` : (p.gt.length ? "" : `${s.false_pos ?? 0} false fees`);
-  $(sel).innerHTML = `<div class="cap"><b>${esc(e.name || k)}</b><span class="muted mono">${o ? (o.sec ?? "–") + " s" : "not run"} · ${hits}</span></div>
+  $(sel).innerHTML = `<div class="cap"><b>${esc(e.name || k)}</b><span class="muted mono">${o ? (o.sec ?? "–") + " s" + (o.load ? " incl. model load" : "") : "not run"} · ${hits}</span></div>
     <div class="stage"><svg viewBox="0 0 ${p.w} ${p.h}" role="img" aria-label="${esc(k)} output over page"><image href="img/${p.id}.jpg" x="0" y="0" width="${p.w}" height="${p.h}"/>${g}</svg></div>`;
 }
 
