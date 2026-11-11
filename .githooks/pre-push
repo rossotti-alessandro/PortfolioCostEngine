@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Repo pre-push hook: runs the fast gate when code changed. The full gate (scripts/local-gate.sh) is
+# required before a PR. Pushes that only touch backlog/, docs/ or *.md skip the gate (claims, progress).
+# Bypass: HOOKS_ENFORCE=0 git push ...  (never on a PR branch you are about to mark ready)
+# shellcheck source=_lib.sh
+. "$(dirname "$0")/_lib.sh"
+cd "$REPO_ROOT" || exit 0
+
+ZERO='0000000000000000000000000000000000000000'
+CHANGED=""
+while read -r _local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in refs/heads/claims/*|refs/heads/backlog-ids/*) continue ;; esac
+  [ "$local_sha" = "$ZERO" ] && continue
+  if [ "$remote_sha" = "$ZERO" ]; then range="origin/main..$local_sha"; else range="$remote_sha..$local_sha"; fi
+  CHANGED="$CHANGED"$'\n'"$(git diff --name-only "$range" 2>/dev/null || echo FORCE-GATE)"
+done
+CODE="$(grep -v '^$' <<<"$CHANGED" | grep -vE '^(backlog|docs)/|\.md$' || true)"
+if [ -z "$CODE" ]; then
+  hook_info "backlog/docs-only push: gate skipped"
+  exit 0
+fi
+LOG="$(mktemp)"
+hook_info "running ./scripts/local-gate.sh --fast ..."
+if ./scripts/local-gate.sh --fast >"$LOG" 2>&1; then
+  hook_ok "fast gate passed"
+else
+  tail -30 "$LOG" >&2
+  fail "fast gate failed (full log: $LOG)"
+fi
+finish

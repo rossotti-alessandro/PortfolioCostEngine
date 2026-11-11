@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Repo pre-commit hook: fast, staged-only checks. Runs under every tool (Claude Code, Codex, Cursor, git).
+#   1. Secret scan on staged lines (ALWAYS blocks)
+#   2. No client documents or local databases committed (ALWAYS blocks)
+#   3. ruff format + ruff check --fix on staged Python (re-staged)
+# Bypass non-security checks: HOOKS_ENFORCE=0 git commit ...
+# shellcheck source=_lib.sh
+. "$(dirname "$0")/_lib.sh"
+cd "$REPO_ROOT" || exit 0
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACM)"
+[ -z "$STAGED" ] && exit 0
+
+# --- 1. Secrets ---------------------------------------------------------------
+SECRET_HITS="$(
+  git diff --cached -U0 --diff-filter=ACM -- . ':(exclude).githooks/*' ':(exclude)scripts/local-gate.sh' \
+    | grep -E '^\+' | grep -Ev '^\+\+\+' \
+    | grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|BEGIN[A-Z ]*PRIVATE KEY|eyJhbGciOiJ' \
+    || true
+)"
+if [ -n "$SECRET_HITS" ]; then
+  hard_fail "possible secret in staged changes:"
+  printf '%s\n' "$SECRET_HITS" | sed 's/^/    /' >&2
+fi
+
+# --- 2. Client data -----------------------------------------------------------
+# Real prospect documents never enter git. Synthetic fixtures live under data/synthetic/ or tests/ and
+# must say SYNTHETIC in the file name or first page (docs/adr/0004).
+BAD="$(printf '%s\n' "$STAGED" | grep -E '\.(sqlite3?|db)$|^(var|uploads)/' || true)"
+DOCS="$(printf '%s\n' "$STAGED" | grep -iE '\.(pdf|xlsx|xls|csv|png|jpe?g|tiff?)$' \
+  | grep -vE '^(data/(synthetic|taxonomy|reference)|backend/tests|frontend/(src|public|tests)|docs|slides)/' || true)"
+if [ -n "$BAD$DOCS" ]; then
+  hard_fail "document or database outside the allowed fixture folders (client data must never be committed):"
+  printf '%s\n' "$BAD" "$DOCS" | grep -v '^$' | sed 's/^/    /' >&2
+fi
+
+# --- 3. Python format/lint ----------------------------------------------------
+PY="$(printf '%s\n' "$STAGED" | grep -E '^backend/.*\.py$' || true)"
+if [ -n "$PY" ] && command -v uv >/dev/null 2>&1; then
+  REL="$(printf '%s\n' "$PY" | sed 's#^backend/##')"
+  # shellcheck disable=SC2086
+  (cd backend && uv run -q ruff format $REL >/dev/null && uv run -q ruff check --fix $REL) || fail "ruff found problems in staged Python"
+  printf '%s\n' "$PY" | xargs git add
+fi
+
+finish
