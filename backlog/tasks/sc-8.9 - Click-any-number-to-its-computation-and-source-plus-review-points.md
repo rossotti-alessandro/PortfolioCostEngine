@@ -1,15 +1,15 @@
 ---
 id: SC-8.9
 title: Click any number to its computation and source, plus review points
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Trace numbers back to source documents"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-6txgxv"
 pr: ""
 created_date: "2026-11-11 19:20"
-updated_date: "2026-11-11 19:20"
+updated_date: "2026-11-11 19:09"
 labels:
   - ui
   - api
