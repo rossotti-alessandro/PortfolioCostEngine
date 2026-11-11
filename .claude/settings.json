@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(node scripts/backlog-board.mjs:*)",
+      "Bash(node scripts/claims-status.mjs:*)",
+      "Bash(node scripts/backlog-lint.mjs:*)",
+      "Bash(./scripts/local-gate.sh:*)"
+    ],
+    "deny": [
+      "Bash(git stash:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(git push --no-verify:*)",
+      "Read(./.env)",
+      "Read(./backend/.env)",
+      "Read(./var/**)"
+    ]
+  }
+}

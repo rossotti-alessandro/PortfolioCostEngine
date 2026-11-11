@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Repo commit-msg hook — enforces Conventional Commits across every tool.
+# Format: <type>(<scope>)!: <subject>
+#   type  = feat|fix|refactor|test|chore|docs|perf|deps|ci|build|style|revert
+#   scope = optional, lowercase/digits/hyphen
+#   !     = optional (breaking change)
+#
+# Bypass: HOOKS_ENFORCE=0 git commit ...
+# shellcheck source=_lib.sh
+. "$(dirname "$0")/_lib.sh"
+
+MSG_FILE="$1"
+# First non-empty, non-comment line is the subject.
+SUBJECT="$(grep -vE '^\s*#' "$MSG_FILE" | grep -vE '^\s*$' | head -n 1)"
+
+# Allow merge/revert/fixup commits — git generates these.
+case "$SUBJECT" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+PATTERN='^(feat|fix|refactor|test|chore|docs|perf|deps|ci|build|style|revert)(\([a-z0-9-]+\))?!?: .+'
+if ! printf '%s' "$SUBJECT" | grep -qE "$PATTERN"; then
+  fail "commit subject is not a Conventional Commit"
+  {
+    printf '       got:      %s\n' "${SUBJECT:-（empty）}"
+    printf '       expected: <type>(<scope>)!: <subject>\n'
+    printf '       types:    feat fix refactor test chore docs perf deps ci build style revert\n'
+    printf '       example:  fix(finance): count AMF inside OCF only once\n'
+  } >&2
+fi
+
+if [ "${#SUBJECT}" -gt 72 ]; then
+  fail "commit subject exceeds 72 chars (${#SUBJECT}) — tighten it"
+fi
+
+finish

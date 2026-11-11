@@ -1,0 +1,22 @@
+# Render Blueprint: one free Docker web service. SYNTHETIC demo data only (seeded at start).
+services:
+  - type: web
+    name: feelens-demo
+    runtime: docker
+    plan: free
+    branch: claude/project-thread-steqtm
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: PCE_AUTOSEED
+        value: "1"
+      - key: PCE_ALLOW_EXTERNAL_AI
+        value: "false"
+      # Sign-in (docs/app/SECURITY.md). Render generates the secrets once; read the password in the
+      # dashboard (Environment tab). Never commit a value here.
+      - key: PCE_SECRET_KEY
+        generateValue: true
+      - key: PCE_ADMIN_USERNAME
+        value: ale
+      - key: PCE_ADMIN_PASSWORD
+        generateValue: true

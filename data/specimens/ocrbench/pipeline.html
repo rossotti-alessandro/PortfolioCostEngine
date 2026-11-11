@@ -1,0 +1,37 @@
+<!-- Pipeline tab of the OCR Lab. lab.py fills {{metric:engine}} from the same-pages scores and {{c:key}} from consensus.json. -->
+<h2>What we learned</h2>
+<p><b>Reading the numbers is solved. Pairing each number with its label is the hard part.</b> The text layer and RapidOCR read
+{{value_recall:hybrid_route}} of the fee figures on the {{pages:hybrid_route}} shared pages. But no engine puts more than
+{{pair_recall:hybrid_vlm}} of them on the same row as their label. Most misses are figures whose label sits in a column or row
+heading, such as "Service costs → One-off → 0.00%". A bigger OCR model does not fix that. Table structure and a classification step do.</p>
+<p><b>No single model wins.</b> The cheap path (text layer, or OCR on scans, plus a layout model for tables) reaches
+{{pair_recall:hybrid_route}} at {{sec_per_page:hybrid_route}} s per page. The best vision model, PaddleOCR-VL, reaches
+{{pair_recall:paddleocr_vl}} at {{sec_per_page:paddleocr_vl}} s per page on this CPU. Combining the two gives
+{{pair_recall:hybrid_vlm}}. Most of that gain comes from scanned pages.</p>
+
+<h2>Recommended pipeline</h2>
+<div class="flow">
+  <div class="step"><div class="no">1</div><div><b>Text layer first</b> (pdfplumber, already in FeeLens)
+    <p>Born-digital pages have exact text and exact word boxes for free, in {{sec_per_page:pdfplumber}} s per page. Every figure keeps its page and box as evidence.</p></div></div>
+  <div class="step"><div class="no">2</div><div><b>Layout model for tables</b> (PP-DocLayoutV3, or Heron, which is already inside Docling)
+    <p>Finds {{table_roi_recall:ppdoclayout3}} of fee tables in about {{sec_per_page:ppdoclayout3}} s per page. Words inside a table region are rebuilt into rows. DocLayout-YOLO is about as good but AGPL, so we do not use it.</p></div></div>
+  <div class="step"><div class="no">3</div><div><b>OCR only where there is no text</b> (RapidOCR; Tesseract stays as fallback)
+    <p>RapidOCR read {{value_recall:rapidocr}} of the figures with line boxes in {{sec_per_page:rapidocr}} s per page. That beats Tesseract ({{pair_recall:tesseract}} on the same rows) and docTR, which is slower.</p></div></div>
+  <div class="step"><div class="no">4</div><div><b>Vision model as a second reader on scans and fee tables</b> (PaddleOCR-VL 1.6)
+    <p>It runs on the page regions that matter, not on every page. On 4 CPU cores it takes about a minute per page, so it fits a background job. A GPU would make it near real time. granite-docling (258M) is the light alternative; it gives boxes but scores lower.</p></div></div>
+  <div class="step"><div class="no">5</div><div><b>Consensus, then review</b>
+    <p>A figure that both readers agree on is accepted: {{c:accepted}} figures, of which {{c:accepted_pct}} are true fees. Everything else goes to the review queue ({{c:review}} figures). A fee is never invented, and a figure is never set to zero because it is missing.</p></div></div>
+  <div class="step"><div class="no">6</div><div><b>Classification step</b> (rules first, then a local language model or the analyst)
+    <p>Deciding which numbers are fees, and which fee type each one is, is the weakest link. The shared extractor that understands tables finds {{extract2_recall:hybrid_route}} of fees, but only {{extract2_precision:hybrid_route}} of what it keeps is a fee. This is where the next effort should go: a classifier per document type that uses row and column headings, run locally.</p></div></div>
+</div>
+
+<h2>What we would not use</h2>
+<ul>
+  <li><b>Asking a small general model for the fees directly</b> (Qwen3-VL-2B): {{pair_recall:qwen3vl}} of fees paired with their label, {{sec_per_page:qwen3vl}} s per page, and loose boxes. Its {{extract_precision:qwen3vl}} precision is not enough for a figure we must source.</li>
+  <li><b>Fixed questions to a document QA model</b> (LayoutLM): it found {{extract_recall:layoutlm_docqa}} of fees. Fee pages hold too many figures for one answer per question.</li>
+  <li><b>GOT-OCR 2.0 and Florence-2</b>: they lose text on dense pages ({{value_recall:got_ocr}} and {{value_recall:florence2}} of figures read).</li>
+  <li><b>LightOnOCR-2 and GLM-OCR</b>: they read text well ({{value_recall:lighton_ocr}}, {{value_recall:glm_ocr}}) but give no boxes, so a figure could not be shown on the page as evidence. They are also slower than PaddleOCR-VL here.</li>
+</ul>
+
+<h2>Limits</h2>
+<p>There are 38 pages with 514 hand-checked figures, and the vision models ran on {{pages:paddleocr_vl}} of those pages ({{gt_items:paddleocr_vl}} figures). That is enough to rank the engines, not to quote an exact accuracy. All engines ran on a CPU with no GPU, and the speeds are for that machine. The documents are public; no client document was used. The simulated scans are marked as simulated in the Documents view.</p>
