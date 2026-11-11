@@ -47,9 +47,13 @@ NOT_FEE = re.compile(
     r"zur[üu]ckerhalten|what you get|rimborso al netto|net of costs|nach abzug der kosten|"
     r"apr[èe]s d[ée]duction|"
     r"possibile rimborso|isin\b|valor(?:en)?nummer|volatilit|drawdown|sharpe|value at risk|\bvar\b|"
-    r"wertentwicklung|realis|realiz|gain|loss|gewinn|verlust|plus-value|moins-value|dividend",
+    r"wertentwicklung|realis|realiz|gain|loss|gewinn|verlust|plus-value|moins-value|dividend|"
+    r"fx rate|exchange rate|tasso di cambio|wechselkurs|taux de change|"
+    r"(?:close|closing|market|last|unit) price|prezzo di (?:mercato|chiusura)|schlusskurs|cours de cl[ôo]ture",
     re.I,
 )
+# A security's ISIN in the label: the row is a position (its price or value), not a fee.
+ISIN_CODE = re.compile(r"\b[A-Z]{2}[A-Z0-9]{9}\d\b")
 INVESTED = re.compile(
     r"invest|anlage(?:betrag|beispiel)|placement|investiss|premio|pr[äa]mie|versamento|einmalanlage|"
     r"montant minimum|mindestanlage|importo minimo di sottoscrizione|conferimento|giacenza|"
@@ -344,7 +348,11 @@ def find_fees(
                 top = min([v.bbox[1], *(c.bbox[1] for c in label_cells)])
                 heading = _heading_above(lines, i, vals_by_line, top)
                 context = " ".join(x for x in (label, header, heading) if x)
-                if not FEE_WORDS.search(context) or NOT_FEE.search(f"{label} {header}"):
+                if (
+                    not FEE_WORDS.search(context)
+                    or NOT_FEE.search(f"{label} {header}")
+                    or ISIN_CODE.search(label)
+                ):
                     continue
                 in_table = region is not None or len(ln.cells) >= 2
                 full = " › ".join(x for x in (heading, " | ".join(y for y in (label, header) if y)) if x)

@@ -1,15 +1,15 @@
 ---
 id: SC-5.8
 title: Extraction strategy - routed, table-aware, verified fee extraction
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Define document extraction strategy"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-8zmug5"
 pr: ""
 created_date: "2026-11-11 19:15"
-updated_date: "2026-11-11 19:10"
+updated_date: "2026-11-11 21:30"
 labels:
   - extraction
 dependencies: []
@@ -67,14 +67,28 @@ absent from the public corpus (positions, cash), so statement accuracy stays mea
 
 ## Acceptance Criteria
 
-- [ ] #1 Scorer reports precision, recall, F1, wrong-value share, bbox hit, needs_review share and s/page per strategy
-- [ ] #2 At least four strategies measured on the same pages, results in the strategy doc
-- [ ] #3 Every fact the new path emits has page + bbox, and doubtful facts carry review reasons
-- [ ] #4 Existing backend tests stay green; local gate passes
+- [x] #1 Scorer reports precision, recall, F1, wrong-value share, bbox hit, needs_review share and s/page per strategy
+- [x] #2 At least four strategies measured on the same pages, results in the strategy doc
+- [x] #3 Every fact the new path emits has page + bbox, and doubtful facts carry review reasons
+- [x] #4 Existing backend tests stay green; local gate passes
 
 ## Implementation Notes
 
+- New: `extraction/numbers.py` (one Decimal reader for printed numbers), `extraction/finder.py`
+  (geometry-only label linking: row label, column header, section path), `extraction/verify.py`
+  (Tesseract re-read of each value crop + plausibility and arithmetic checks).
+- `models.py`: additive `Evidence.label_bbox`, `row_bbox`, `region`; `Fact.review`. Review is mirrored
+  in `fact.extra["review"]`, so no db or API schema change.
+- `parsers.extract()` cross-checks parser facts with the finder; finder-only values are kind
+  `fee_mention` and never enter totals.
+- Strategy scorer and runner: `data/specimens/strategies/` (needs `var/ocrbench` outputs, not in git).
+
 ## Outcome
+
+Finder on the text layer: recall 92% vs 4% for the old type parsers, 0.25 s/page; with verification 22%
+of values flagged for review and 8.0% accepted wrong values (about a third real after audit). App
+`extract()`: P77 R90. No RAG, no LLM in the number path. Full table and answers:
+`docs/research/EXTRACTION_STRATEGY.md`. Next: RapidOCR as scan reader (new story, dependency change).
 
 ## Issues Encountered
 
@@ -82,3 +96,5 @@ absent from the public corpus (positions, cash), so statement accuracy stays mea
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-8zmug5 | a9ef227 | 2026-11-11 | layout-aware fee finder with value verification |
+| claude/project-thread-8zmug5 | 5e0e9f5 | 2026-11-11 | cross-check parsers with finder, strategy doc |

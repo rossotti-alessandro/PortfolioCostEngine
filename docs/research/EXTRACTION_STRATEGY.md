@@ -123,7 +123,8 @@ for documents where geometry alone mixes two side-by-side tables.
 - Per document: the type parser (statement, cost report, tariff, KID, termsheet) still runs, because
   it knows semantics the finder does not (positions, ISINs, fee codes, inclusion rules).
 - Every page: the finder runs too, and the two are **cross-checked** at the same spot. Agreement adds
-  a passed check and the finder's fuller label; disagreement keeps both readings, both flagged.
+  a passed check (the parser keeps its own label; the finder's is stored as context, because
+  swapping labels made parser misreads look confident); disagreement keeps both readings, both flagged.
 - An agent (local model, ADR 0004) can help later with triage, not values: suggesting the fee code for
   a `fee_mention` label, grouping review items, drafting the bank request letter for what is missing.
 
@@ -159,7 +160,7 @@ PDF bytes
  ├─ finder.find_fees: every rate/amount + label path + value/label/row boxes        [new]
  ├─ verify.second_reading: Tesseract re-reads each value crop from the rendered page [new]
  ├─ verify.verify: review status + reasons + checks on every finder value          [new]
- └─ cross-check: parser fact at the same spot gets the review (and the fuller label);
+ └─ cross-check: parser fact at the same spot gets the review (finder label as context);
                  finder-only values → kind "fee_mention" (not in totals)            [new]
 ```
 

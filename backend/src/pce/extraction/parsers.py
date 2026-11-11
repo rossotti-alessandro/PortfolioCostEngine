@@ -1134,6 +1134,11 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
     extra: list[Fact] = []
     for g in found:
         twin = next((f for f in parsed if f.kind in REVIEWED_KINDS and _same_spot(f, g)), None)
+        if twin is None and any(
+            _same_spot(f, g) and f.value is not None and Decimal(f.value) == Decimal(g.value or "0")
+            for f in parsed
+        ):
+            continue  # a parser already holds this exact value at this spot (a total, a rate): no twin
         if twin is None:
             g.extra["review"] = g.review.model_dump() if g.review else None
             extra.append(g)
@@ -1155,11 +1160,9 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
             extra.append(g)
         twin.review = review
         twin.extra["review"] = review.model_dump()
-        words = set(re.findall(r"\w{3,}", twin.label.lower()))
-        if same and words <= set(re.findall(r"\w{3,}", g.label.lower())) and len(g.label) > len(twin.label):
-            # same value, and the finder's label holds every word of the parser's plus the wrapped rest
-            twin.extra["parser_label"] = twin.label
-            twin.label = g.label
+        # The parser's label stays: replacing it with the finder's label turned 9 parser misreads into
+        # confident wrong values on the accuracy protocol (ocrbench, 2026-11-11). Shown as context only.
+        twin.extra["finder_label"] = g.label
         for k in ("label_bbox", "row_bbox", "region"):
             if getattr(twin.evidence, k) is None:
                 setattr(twin.evidence, k, getattr(g.evidence, k))

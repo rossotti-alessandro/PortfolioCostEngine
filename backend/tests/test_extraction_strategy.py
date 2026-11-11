@@ -37,7 +37,9 @@ def test_printed_numbers_to_decimal(printed, value, unit, currency):
     assert (n.value, n.unit, n.currency) == (Decimal(value), unit, currency)
 
 
-@pytest.mark.parametrize("text", ["31.12.2025", "CH0454664001", "valid from 3a"])
+@pytest.mark.parametrize(
+    "text", ["31.12.2025", "2026-09-30", "USD/CHF 2026-09-30", "CH0454664001", "valid from 3a"]
+)
 def test_dates_isins_and_glued_digits_are_not_numbers(text):
     assert find_numbers(text) == []
 
@@ -101,6 +103,8 @@ def test_finder_joins_a_wrapped_label_beside_the_value():
         [("Example investment", 50), ("CHF 10'000", 400)],
         [("Custody fee, see page", 50), ("2026", 400)],
         [("Custody fee: on request", 50)],
+        [("World Index ETF CHF ZZWLDIDX0014", 50), ("Price", 300), ("CHF 50.00", 400)],
+        [("FX rate USD/CHF", 50), ("Total fees", 300), ("0.8000", 400)],
     ],
 )
 def test_finder_skips_scenarios_invested_amounts_years_and_missing_values(row):

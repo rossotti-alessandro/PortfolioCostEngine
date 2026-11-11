@@ -79,16 +79,19 @@ def find_numbers(text: str) -> list[PrintedNumber]:
     """Every number printed in ``text`` with its unit and currency. Dates, ISIN digits and
     numbers glued to letters (``2a``, ``A1``) are not returned."""
     out: list[PrintedNumber] = []
+    iso = [x.span() for x in re.finditer(r"\b\d{4}-\d\d-\d\d\b", text or "")]
     for m in TOKEN.finditer(text or ""):
         start, end = m.start(), m.end()
         before = text[max(0, start - 1) : start]
         after = text[end : end + 1]
+        if any(a <= m.start("num") < b for a, b in iso):
+            continue  # part of an ISO date 2026-09-30
         if before and (before.isalnum() or before in "./") and not m.group("pre"):
             continue  # inside a word, an ISIN, a date or a fraction
         if after and after.isalpha() and not m.group("post"):
             continue  # 3a, 10x, 2nd
         if re.match(r"[./]\d", text[end : end + 2]):
-            continue  # first part of a date 31.12.2025 or 31/12
+            continue  # first part of a date: 31.12.2025, 31/12, 2026-09-30
         post = (m.group("post") or "").strip()
         unit = (
             "%"
