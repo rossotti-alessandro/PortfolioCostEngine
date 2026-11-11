@@ -29,14 +29,17 @@ _WORD = re.compile(r"[a-z]{3,}")
 def numbers(text: str | None) -> list[Decimal]:
     """Every number printed in ``text`` as Decimal (no floats anywhere)."""
     out = []
-    for raw in _NUM.findall(text or ""):
-        s = re.sub(r"['’\u00a0\u202f]", "", raw)
+    text = text or ""
+    for m in _NUM.finditer(text):
+        s = re.sub(r"['’\u00a0\u202f]", "", m.group())
+        rate = text[m.end() : m.end() + 2].lstrip().startswith(("%", "‰"))
+        head, sep, tail = s.lstrip("-").rpartition("," if "," in s else ".")
         if "," in s and "." in s:  # the last separator is the decimal one
             dec = "," if s.rfind(",") > s.rfind(".") else "."
             s = s.replace("." if dec == "," else ",", "").replace(",", ".")
-        elif s.count(",") == 1 and len(s.split(",")[1]) != 3:
-            s = s.replace(",", ".")
-        elif s.count(".") > 1 or s.count(",") >= 1:  # 1.250.000 / 1,250 / 1,250,000
+        elif sep and s.count(sep) == 1 and (len(tail) != 3 or rate or head in ("0", "")):
+            s = s.replace(",", ".")  # 1,08 / 0,500 % / 0.125: one separator is a decimal point
+        elif sep:  # 1.250 / 1,250 / 1.250.000: thousands
             s = s.replace(",", "").replace(".", "")
         try:
             out.append(Decimal(s))
@@ -49,6 +52,16 @@ def to_decimal(value: str | None) -> Decimal | None:
     """The first number of a value string ('1,08 %' -> 1.08, 'Up to €300' -> 300), or None."""
     ns = numbers(value)
     return ns[0] if ns else None
+
+
+def fact_value(value: str | None) -> Decimal | None:
+    """A fact's value is already canonical ("1250.00", "0.500"); printed forms fall back to ``to_decimal``."""
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except InvalidOperation:
+        return to_decimal(str(value))
 
 
 def same_value(a: Decimal | None, b: Decimal | None) -> bool:
@@ -80,6 +93,14 @@ def label_match(gold: GoldItem, fact: dict) -> bool:
     want = words(gold.label)
     have = words(f"{fact.get('label', '')} {(fact.get('evidence') or {}).get('snippet', '')}")
     return bool(want) and len(want & have) * 2 >= len(want)
+
+
+def unit_ok(gold: GoldItem, fact: dict) -> bool:
+    """A rate is only compared with a rate, an amount with an amount (a KID prints both on one row)."""
+    if gold.key or gold.value is None:
+        return True
+    gold_rate = bool(re.search(r"%|‰|\bbps?\b", gold.value, re.I))
+    return gold_rate == ("pct" in (fact.get("field") or ""))
 
 
 def _page_ok(gold: GoldItem, fact: dict) -> bool:
@@ -189,13 +210,15 @@ def score(gold: list[GoldItem], facts: list[dict], exhaustive: bool = True) -> S
     """
     s = Scores(gold=len(gold), predicted=len(facts), exhaustive=exhaustive)
     free = list(range(len(facts)))
-    values = [to_decimal(f.get("value")) for f in facts]
+    values = [fact_value(f.get("value")) for f in facts]
     for g in gold:
         want = to_decimal(g.value) if g.value is not None else None
         s.gold_valued += want is not None
         if want is not None and any(v == want and _page_ok(g, f) for v, f in zip(values, facts, strict=True)):
             s.value_found += 1
-        cands = [i for i in free if _page_ok(g, facts[i]) and label_match(g, facts[i])]
+        cands = [
+            i for i in free if _page_ok(g, facts[i]) and unit_ok(g, facts[i]) and label_match(g, facts[i])
+        ]
         if not cands:
             s.missed += 1
             s.outcomes.append(Outcome(g, None, "missed"))

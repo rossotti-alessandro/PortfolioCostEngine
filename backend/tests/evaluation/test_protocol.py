@@ -39,9 +39,10 @@ def test_space_is_not_a_thousands_separator():
     assert numbers("4'500 200.00") == [Dec("4500"), Dec("200.00")]
 
 
-def _fact(key, value, label="", page=1, bbox=None, fee_code=None):
+def _fact(key, value, label="", page=1, bbox=None, fee_code=None, field="rate_pct"):
     return {
         "key": key,
+        "field": field,
         "value": value,
         "label": label,
         "fee_code": fee_code,

@@ -15,9 +15,9 @@ from decimal import Decimal
 import openpyxl
 import pdfplumber
 
-from .metrics import numbers, to_decimal
+from .metrics import fact_value, numbers
 
-PAD = 2.0  # points: the box may sit a hair inside the glyphs
+PAD = 2.0  # points, horizontal only: vertical padding pulls in the next line's glyphs on tight layouts
 
 
 def _horizontal(o: dict) -> bool:
@@ -40,7 +40,7 @@ def _pdf_texts(data: bytes, wanted: set[tuple[int, tuple[float, ...]]]) -> dict:
                 out[(page_no, box)] = None  # no text layer: unverifiable
                 continue
             x0, y0, x1, y1 = box
-            crop = (max(0, x0 - PAD), max(0, y0 - PAD), min(page.width, x1 + PAD), min(page.height, y1 + PAD))
+            crop = (max(0, x0 - PAD), max(0, y0), min(page.width, x1 + PAD), min(page.height, y1))
             out[(page_no, box)] = page.crop(crop).extract_text() or ""
     return out
 
@@ -60,7 +60,7 @@ def check(filename: str, data: bytes, facts: list[dict]) -> Counter:
     Facts without a value (unknown) have nothing to locate and are skipped.
     """
     res: Counter = Counter()
-    valued = [(f, to_decimal(f.get("value"))) for f in facts if f.get("value") not in (None, "")]
+    valued = [(f, fact_value(f.get("value"))) for f in facts if f.get("value") not in (None, "")]
     if filename.lower().endswith((".xlsx", ".xlsm")):
         for f, v in valued:
             ev = f.get("evidence") or {}
