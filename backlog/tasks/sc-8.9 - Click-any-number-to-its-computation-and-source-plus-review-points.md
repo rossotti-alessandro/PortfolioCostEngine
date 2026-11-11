@@ -7,9 +7,9 @@ owner: "Trace numbers back to source documents"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-6txgxv"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/13"
 created_date: "2026-11-11 19:20"
-updated_date: "2026-11-11 19:20"
+updated_date: "2026-11-11 19:22"
 labels:
   - ui
   - api
