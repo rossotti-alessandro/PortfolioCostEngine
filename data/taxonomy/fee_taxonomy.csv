@@ -1,0 +1,45 @@
+layer,fee_code,label_en,label_it,basis,recurrence,economic_incidence,default_status,parent_or_overlap,in_default_comparison,primary_evidence
+L1,MGMT_DISCRETIONARY,Discretionary mandate fee,Commissione di gestione patrimoniale,pct_pa_tiered,recurring,billed,OBSERVED,may be parent of custody/brokerage if all-in,yes,fee advice; ex-post cost report; mandate contract
+L1,ADVISORY_FEE,Advisory mandate fee,Commissione di consulenza,pct_pa_or_flat,recurring,billed,OBSERVED,replaces MGMT_DISCRETIONARY,yes,fee advice; advisory contract
+L1,ALL_IN_FEE,All-in fee,Commissione forfettaria all-in,pct_pa,recurring,billed,OBSERVED,parent of CUSTODY_FEE BROKERAGE TICKET_FEE within stated scope,yes,mandate contract exclusion list; fee advice
+L1,PERFORMANCE_FEE_MANDATE,Mandate performance fee,Commissione di performance (mandato),pct_of_gain,conditional,billed,OBSERVED,none,yes_if_observed,fee advice
+L1,PLATFORM_FIXED,Fixed service/package fee,Canone fisso / pacchetto,flat_per_period,recurring,billed,OBSERVED,may bundle ACCOUNT_FEE,yes,fee advice; tariff
+L1,EAM_FEE,External asset manager fee,Commissione gestore esterno,pct_pa,recurring,billed,OBSERVED,none,yes,EAM agreement; bank debit
+L2,CUSTODY_FEE,Custody / safekeeping fee,Diritti di custodia,pct_pa_tiered_min_per_period,recurring,billed,OBSERVED,child of ALL_IN_FEE if bundled,yes,fee advice; tariff
+L2,CUSTODY_SURCHARGE,Custody surcharge (foreign/metals/alternatives/valueless),Supplemento custodia,pct_or_flat_per_position,recurring,billed,CONTRACTUAL,often excluded from all-in,yes,tariff
+L2,ACCOUNT_FEE,Account maintenance fee,Spese tenuta conto,flat,recurring,billed,OBSERVED,may be in PLATFORM_FIXED,yes,cash statement
+L2,PAYMENT_FEE,Payment fees,Spese pagamenti,per_payment,recurring,billed,OBSERVED,none,no,cash statement
+L2,REPORTING_FEE,Tax statement / extra reporting fee,Spese rendiconto fiscale,flat,recurring,billed,OBSERVED,none,yes,cash statement; tariff
+L3,BROKERAGE,Brokerage commission,Courtage / commissione di borsa,pct_notional_min,per_trade,billed,OBSERVED,child of ALL_IN_FEE if bundled,yes,trade confirmation
+L3,TICKET_FEE,Ticket fee per trade,Ticket fee,flat_per_trade,per_trade,billed,OBSERVED,alternative to BROKERAGE,yes,trade confirmation
+L3,THIRD_PARTY_TRADING,Exchange / foreign broker / settlement fees,Spese di terzi,per_trade,per_trade,billed,OBSERVED,usually excluded from all-in,yes,trade confirmation
+L3,FUND_SUBSCRIPTION_BANK,Bank fee on fund subscription,Commissione bancaria sottoscrizione fondi,pct_amount,per_trade,billed,OBSERVED,distinct from FUND_ENTRY_CHARGE,yes,trade confirmation
+L3,FX_COMMISSION,Explicit FX commission,Commissione di cambio esplicita,pct_fx_notional,per_trade,billed,OBSERVED,distinct from FX_MARGIN,yes,FX confirmation
+L4,FUND_ONGOING,Fund ongoing costs (TER/OCF),Costi correnti del fondo (TER),pct_pa_avg_value,recurring,embedded_nav,ESTIMATED,contains FUND_MGMT_FEE,yes,exact share-class KID; factsheet
+L4,FUND_MGMT_FEE,Fund management fee component,Commissione di gestione del fondo,pct_pa,recurring,embedded_nav,ESTIMATED,child of FUND_ONGOING (never add),no,KID; prospectus
+L4,FUND_TRANSACTION,Fund portfolio transaction costs,Costi di transazione del fondo,pct_pa,recurring,embedded_nav,ESTIMATED,not in TER/OCF,yes,PRIIPs KID
+L4,FUND_PERFORMANCE,Fund performance fee,Commissione di performance del fondo,pct_pa_incidental,conditional,embedded_nav,ESTIMATED,not in TER/OCF,yes,PRIIPs KID; annual report
+L4,FUND_ENTRY_CHARGE,Fund entry charge (max),Commissione di sottoscrizione (max),pct_one_off,one_off,cash_or_nav,ILLUSTRATIVE,max not actual,no,KID; confirmation for actual
+L4,FUND_EXIT_CHARGE,Fund exit charge (max),Commissione di rimborso (max),pct_one_off,one_off,cash_or_nav,ILLUSTRATIVE,max not actual,switching_only,KID
+L5,SP_ENTRY_COST,Structured product entry cost (price minus fair value),Costo di ingresso prodotto strutturato,pct_one_off,one_off,embedded_price,ESTIMATED,includes issuer margin and distribution fee,yes_amortised,issuer KID; issuer cost data (SSPA)
+L5,SP_ONGOING,Structured product running fee,Costo ricorrente prodotto strutturato,pct_pa,recurring,embedded_price,ESTIMATED,none,yes,termsheet; issuer cost data
+L5,SP_EXIT_COST,Structured product exit cost before maturity,Costo di uscita anticipata,pct_one_off,conditional,embedded_price,ESTIMATED,usually zero at maturity,switching_only,issuer KID
+L6,FX_MARGIN,FX margin vs reference rate,Margine di cambio implicito,pct_fx_notional,per_trade,implicit_rate,UNKNOWN,distinct from FX_COMMISSION,yes_if_estimated,timestamped FX confirmation + reference rate
+L6,BID_ASK_SPREAD,Market bid/ask spread,Spread denaro/lettera,pct_notional,per_trade,implicit_price,ESTIMATED,market cost not provider revenue,no,quotes at trade time
+L7,WRAPPER_ADMIN,Insurance wrapper admin charge,Costo amministrativo polizza,pct_pa_policy_value,recurring,policy_value,OBSERVED,adds to underlying fund costs,yes,policy statement; insurance KID
+L7,WRAPPER_RISK,Insurance risk / guarantee cost,Costo copertura rischio,pct_pa_or_premium,recurring,policy_value,CONTRACTUAL,none,yes,policy contract
+L7,WRAPPER_ENTRY,Insurance entry loading,Caricamento iniziale polizza,pct_one_off,one_off,policy_value,CONTRACTUAL,none,no,policy contract
+L7,WRAPPER_SURRENDER,Insurance surrender penalty,Penale di riscatto,pct_by_policy_year,one_off,policy_value,CONTRACTUAL,none,switching_only,policy contract
+L8,LOMBARD_INTEREST,Lombard loan interest,Interessi credito lombard,pct_pa_drawn,recurring,billed,OBSERVED,separate block,no,interest advice
+L8,COMMITMENT_FEE,Commitment fee,Commissione di impegno,pct_pa_undrawn,recurring,billed,CONTRACTUAL,separate block,no,credit agreement
+L9,VAT_ON_FEES,Swiss VAT on fees,IVA sulle commissioni,pct_of_fee,recurring,billed,OBSERVED,depends on client domicile,yes,fee advice
+L9,STAMP_DUTY_CH,Swiss securities transfer stamp duty,Tassa di bollo federale,pct_notional_per_party,per_trade,billed,OBSERVED,tax not provider revenue,no_cancels_out,trade confirmation
+L9,FTT_FOREIGN,Foreign transaction tax,Tassa sulle transazioni estera,pct_notional,per_trade,billed,OBSERVED,tax,no_cancels_out,trade confirmation
+L9,WHT_UNRECLAIMED,Unreclaimed withholding tax,Ritenuta non recuperata,pct_income,recurring,tax,UNKNOWN,tax matter,no,tax statement
+L10,TRANSFER_OUT,Transfer-out fee per position,Spese di trasferimento titoli,flat_per_position,one_off,billed,CONTRACTUAL,none,switching_only,tariff; transfer quote
+L10,LIQUIDATION_COST,Cost of selling non-transferable positions,Costo di liquidazione,pct_notional,one_off,billed_and_implicit,ESTIMATED,none,switching_only,trade plan
+L10,EARLY_TERMINATION,Early termination penalty,Penale di recesso anticipato,contract,one_off,billed,CONTRACTUAL,none,switching_only,contract
+L10,CLOSING_FEE,Account closing fee,Spese di chiusura,flat,one_off,billed,CONTRACTUAL,none,switching_only,tariff
+CREDIT,RETRO_REFUNDED,Retrocession refunded to client,Retrocessioni riversate al cliente,amount,recurring,credit,OBSERVED,reduces net cost only when credited,yes,cash statement; ex-post report
+CREDIT,FEE_REBATE,Fee rebate credited,Rimborso commissioni,amount,recurring,credit,OBSERVED,reduces net cost only when credited,yes,cash statement
+SIDE,RETRO_RECEIVED,Retrocession received by provider (not a client cost),Retrocessioni percepite dal fornitore,pct_or_amount,recurring,info,UNKNOWN,already inside L4/L5; never add,no,inducement disclosure; FinSA Art. 26 statement on request

@@ -1,0 +1,7 @@
+services:
+  feelens:
+    build: .
+    ports: ["8000:8000"]
+    volumes: ["feelens-data:/app/var"]
+volumes:
+  feelens-data:
