@@ -1,15 +1,15 @@
 ---
 id: SC-5.7
 title: Expand the document model lab (more models, pages, layout elements)
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Expand the document model lab"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-rfm5yy"
 pr: ""
 created_date: "2026-11-11 19:10"
-updated_date: "2026-11-11 19:10"
+updated_date: "2026-11-11 19:08"
 labels:
   - extraction
   - qa
