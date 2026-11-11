@@ -43,12 +43,20 @@ benchmark they add little for born-digital pages and cost 4 to 200 times more ti
 | Finder on Tesseract lines | 65% | 74% | 0.69 | 15.5% | 0% | 15.5% | 3.9 |
 | Finder + verify (RapidOCR full page as 2nd reader) | 78% | 92% | 0.84 | 18.9% | 19% | 8.2% | 6.1 |
 | **Finder + verify (Tesseract on value crops)** | 78% | 92% | 0.84 | 18.9% | 22% | **8.0%** | **1.5** |
-| **App `extract()` after SC-5.8** (parsers + finder, cross-checked, verified) | 77% | 90% | 0.83 | 19.0% | 26% | 8.5% | 4.6 * |
+| **App `extract()` after SC-5.8** (parsers + finder, cross-checked, verified) | 75% | 82% | 0.78 | 20.0% | 28% | 8.2% | 4.1 * |
 | VLM tables anchored to text boxes: Docling | 76% | 61% | 0.67 | 13.9% | 2% | 13.8% | 4.7 |
 | VLM tables anchored to text boxes: PaddleOCR-VL (23 core pages only) | 86% | 66% | 0.75 | 8.0% | 1% | 8.1% | 57 |
 
 \* whole-document extraction time divided by its pages; the app refuses files over 200 pages (one
-benchmark prospectus), which is the gap between the finder alone (92%) and the app path (90%).
+benchmark prospectus. The app path also keeps the parser's label when both linkers read the same value
+and skips finder-only total rows on pages a parser already read (their components are there); both
+were needed to keep the accuracy protocol's synthetic precision gate green and its wrong-value count on
+the real pages at main's level. Together they explain the gap between the finder alone (92%) and the
+app path (82%).
+
+Accuracy protocol (`python -m pce.evaluation`, ledger kinds only, so `fee_mention` is out of scope on
+ocrbench): identical to main on ocrbench (recall 4.3%, precision 43.1%, 5 wrong values) and 100% on
+both synthetic portfolios, all gates PASS.
 
 For comparison, the SC-5.6 benchmark's best model linked 69% of fees to the right row (PaddleOCR-VL
 hybrid, 53 s/page) and the cheap hybrid 62% (1 s/page). The finder reaches 92% at 0.25 s/page because

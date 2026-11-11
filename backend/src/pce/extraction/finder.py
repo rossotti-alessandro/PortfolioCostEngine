@@ -49,7 +49,8 @@ NOT_FEE = re.compile(
     r"possibile rimborso|isin\b|valor(?:en)?nummer|volatilit|drawdown|sharpe|value at risk|\bvar\b|"
     r"wertentwicklung|realis|realiz|gain|loss|gewinn|verlust|plus-value|moins-value|dividend|"
     r"fx rate|exchange rate|tasso di cambio|wechselkurs|taux de change|"
-    r"(?:close|closing|market|last|unit) price|prezzo di (?:mercato|chiusura)|schlusskurs|cours de cl[ôo]ture",
+    r"(?:close|closing|market|last|unit) price|prezzo di (?:mercato|chiusura)|"
+    r"schlusskurs|cours de cl[ôo]ture",
     re.I,
 )
 # A security's ISIN in the label: the row is a position (its price or value), not a fee.

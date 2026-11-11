@@ -87,7 +87,7 @@ absent from the public corpus (positions, cash), so statement accuracy stays mea
 
 Finder on the text layer: recall 92% vs 4% for the old type parsers, 0.25 s/page; with verification 22%
 of values flagged for review and 8.0% accepted wrong values (about a third real after audit). App
-`extract()`: P77 R90. No RAG, no LLM in the number path. Full table and answers:
+`extract()`: P75 R82 (ledger facts unchanged vs main on the accuracy protocol, gates PASS). No RAG, no LLM in the number path. Full table and answers:
 `docs/research/EXTRACTION_STRATEGY.md`. Next: RapidOCR as scan reader (new story, dependency change).
 
 ## Issues Encountered

@@ -1139,6 +1139,12 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
             for f in parsed
         ):
             continue  # a parser already holds this exact value at this spot (a total, a rate): no twin
+        if (
+            twin is None
+            and verify.TOTAL_WORDS.search(g.label.split("|")[0].split("›")[-1])
+            and any(f.kind in REVIEWED_KINDS and f.evidence.page == g.evidence.page for f in parsed)
+        ):
+            continue  # a total row beside parser-read components is their sum: one more line double counts
         if twin is None:
             g.extra["review"] = g.review.model_dump() if g.review else None
             extra.append(g)
