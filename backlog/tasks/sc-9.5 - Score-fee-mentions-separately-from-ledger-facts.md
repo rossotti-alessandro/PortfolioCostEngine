@@ -1,15 +1,15 @@
 ---
 id: SC-9.5
 title: Score fee mentions separately from ledger facts
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Build end-to-end accuracy protocol"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-uk1c1t"
 pr: ""
 created_date: "2026-11-11 22:20"
-updated_date: "2026-11-11 22:20"
+updated_date: "2026-11-11 22:17"
 labels:
   - qa
 dependencies: []
