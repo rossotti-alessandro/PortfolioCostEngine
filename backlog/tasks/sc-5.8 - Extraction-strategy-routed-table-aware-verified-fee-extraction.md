@@ -92,9 +92,17 @@ of values flagged for review and 8.0% accepted wrong values (about a third real 
 
 ## Issues Encountered
 
+- The accuracy protocol (SC-9.1) caught three regressions the strategy scorer did not: finder values
+  duplicating parser facts of other kinds, security prices on statements, and copying the finder label
+  onto parser facts (9 parser misreads became confident wrong values). All fixed before the PR.
+- Known parser misreads stay (insurance KIDs read 0.0/1.00, Vontobel tier minimums): flagged
+  `linkers_disagree` where the finder reads otherwise; a parser-fix story is the follow-up.
+
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
-| claude/project-thread-8zmug5 | a9ef227 | 2026-11-11 | layout-aware fee finder with value verification |
-| claude/project-thread-8zmug5 | 5e0e9f5 | 2026-11-11 | cross-check parsers with finder, strategy doc |
+| claude/project-thread-8zmug5 | df9e263 | 2026-11-11 | layout-aware fee finder with value verification |
+| claude/project-thread-8zmug5 | 4dedfaf | 2026-11-11 | cross-check parsers with finder, strategy doc |
+| claude/project-thread-8zmug5 | 96358d6 | 2026-11-11 | drop finder twins, skip positions, keep parser label |
+| claude/project-thread-8zmug5 | ce2a331 | 2026-11-11 | skip finder-only totals on parser-read pages |
