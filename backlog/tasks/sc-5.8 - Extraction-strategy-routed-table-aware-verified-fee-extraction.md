@@ -7,9 +7,9 @@ owner: "Define document extraction strategy"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-8zmug5"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/15"
 created_date: "2026-11-11 19:15"
-updated_date: "2026-11-11 21:30"
+updated_date: "2026-11-11 22:14"
 labels:
   - extraction
 dependencies: []
