@@ -1,11 +1,11 @@
 ---
 id: SC-9.5
 title: Score fee mentions separately from ledger facts
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Build end-to-end accuracy protocol"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-uk1c1t"
 pr: ""
 created_date: "2026-11-11 22:20"
@@ -55,12 +55,18 @@ After merge, SC-5.8 may drop its finder-only workaround.
 
 ## Acceptance Criteria
 
-- [ ] #1 Adding fee_mention facts never changes precision, wrong values or portfolio results (tested)
-- [ ] #2 The report shows mention recall per corpus
+- [x] #1 Adding fee_mention facts never changes precision, wrong values or portfolio results (tested)
+- [x] #2 The report shows mention recall per corpus
 
 ## Implementation Notes
 
 ## Outcome
+
+- **Status**: completed
+
+`runner.evaluate` scores `fee_mention` facts apart (`mention_recall`) and keeps them out of precision,
+provenance and the portfolio input. Test `test_fee_mentions_never_change_ledger_scores` failed first
+(the analysis raised on mention facts) and passes now.
 
 ## Issues Encountered
 
@@ -68,3 +74,4 @@ After merge, SC-5.8 may drop its finder-only workaround.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-uk1c1t | 322782e | 2026-11-11 | score fee mentions apart, mention_recall |
