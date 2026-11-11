@@ -44,6 +44,7 @@ from .extraction.parsers import PARSERS, classify, extract
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
 from .finance.money import D
 from .pipeline_view import document_pipeline
+from .review_points import review_points
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_XLSX_UNCOMPRESSED = 100 * 1024 * 1024
@@ -177,20 +178,61 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     fmap = {f.id: f for f in facts}
     dmap = {d.id: d for d in docs}
 
+    def where(f: FactRow) -> str:
+        ev = f.evidence or {}
+        loc = f"p.{ev['page']}" if ev.get("page") else f"{ev.get('sheet')}!{ev.get('cell')}"
+        return f"{dmap[f.document_id].filename} {loc}"
+
     def sources(ids: list[int]) -> list[str]:
-        out = []
-        for i in ids:
-            f = fmap.get(i)
-            if not f:
-                continue
-            ev = f.evidence or {}
-            where = f"p.{ev['page']}" if ev.get("page") else f"{ev.get('sheet')}!{ev.get('cell')}"
-            out.append(f"{dmap[f.document_id].filename} {where}")
-        return out
+        return [where(fmap[i]) for i in ids if i in fmap]
+
+    def provenance(fid: int, role: str) -> dict:
+        """Everything the trace view needs to show one input without another request."""
+        f = fmap[fid]
+        ev = f.evidence or {}
+        return {
+            "fact_id": f.id,
+            "role": "fx_rate" if f.field == "fx_rate" else role,
+            "document_id": f.document_id,
+            "filename": dmap[f.document_id].filename,
+            "where": where(f),
+            "field": f.field,
+            "label": f.label,
+            "value": f.value_current,
+            "value_extracted": f.value_extracted,
+            "currency": f.currency,
+            "status": f.status,
+            "review": (f.extra or {}).get("review"),
+            **{
+                k: ev.get(k)
+                for k in (
+                    "page",
+                    "bbox",
+                    "page_width",
+                    "page_height",
+                    "sheet",
+                    "cell",
+                    "snippet",
+                    "engine",
+                    "confidence",
+                    "row_bbox",
+                    "label_bbox",
+                    "region",
+                )
+            },
+        }
+
+    # a product cost is rate x holding value: the holding line is the basis input
+    holding_fact = {(h["institution"], h["isin"]): h["fact_id"] for h in result["holdings"] if h["isin"]}
 
     def enrich(ledger: dict) -> None:
         for a in ledger["atoms"]:
             a["evidence_sources"] = sources(a["evidence_fact_ids"])
+            ev = [provenance(i, "value") for i in a["evidence_fact_ids"] if i in fmap]
+            basis = holding_fact.get((a["institution"], a["instrument_id"]))
+            if a["basis_amount"] is not None and basis in fmap:
+                ev.append(provenance(basis, "basis"))
+            a["evidence"] = ev
 
     enrich(result["current"])
     enrich(result["scenarios"]["current_comparable"])
@@ -198,6 +240,8 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     enrich(result["scenarios"]["optimized"]["ledger"])
     for chk in result["checks"]:
         chk["sources"] = sources(chk["fact_ids"])
+        chk["evidence"] = [provenance(i, "value") for i in chk["fact_ids"] if i in fmap]
+    result["review_points"] = review_points(result)
     result["documents"] = [
         {"id": d.id, "filename": d.filename, "doc_type": d.doc_type_override or d.doc_type} for d in docs
     ]

@@ -141,18 +141,35 @@ export function Kpi({
   sub,
   tone,
   help,
-}: { label: string; value: ReactNode; sub?: ReactNode; tone?: "teal" | "amber" | "navy"; help?: string }) {
+  onClick,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  tone?: "teal" | "amber" | "navy";
+  help?: string;
+  /** Opens how the number is calculated. */
+  onClick?: () => void;
+}) {
+  const cls = cn(
+    "num mt-1 text-[22px] font-semibold leading-tight",
+    tone === "teal" ? "text-teal-700" : tone === "amber" ? "text-amber-700" : "text-navy-900",
+  );
   return (
     <div className="rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3.5" title={help}>
       <div className="text-[12px] font-medium uppercase tracking-wide text-subtle">{label}</div>
-      <div
-        className={cn(
-          "num mt-1 text-[22px] font-semibold leading-tight",
-          tone === "teal" ? "text-teal-700" : tone === "amber" ? "text-amber-700" : "text-navy-900",
-        )}
-      >
-        {value}
-      </div>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          title={t("How is this calculated?")}
+          className={cn(cls, "block text-left decoration-dotted underline-offset-4 hover:underline")}
+        >
+          {value}
+        </button>
+      ) : (
+        <div className={cls}>{value}</div>
+      )}
       {sub && <div className="mt-1 text-[12.5px] text-muted">{sub}</div>}
     </div>
   );

@@ -1,5 +1,5 @@
-import { AtomEvidenceDialog } from "@/components/AtomEvidence";
 import { PageTitle } from "@/components/Shell";
+import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Kpi, Spinner, StatusBadge, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { BOUND_TEXT, LAYER, chf, cn } from "@/lib/format";
@@ -16,13 +16,16 @@ export default function ComparePage() {
   const pid = Number(useParams().id);
   const q = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
   const [mode, setMode] = useState<"same" | "optimized">("same");
-  const [atom, setAtom] = useState<Atom | null>(null);
+  const [trace, setTrace] = useState<TraceTarget | null>(null);
   if (q.isLoading) return <Spinner label={t("Calculating")} />;
   if (q.error || !q.data) return <ErrorBox error={q.error ?? "no data"} />;
   const a = q.data;
   const sc = mode === "same" ? a.scenarios.same_holdings : a.scenarios.optimized;
   const cmp = sc.comparison;
   const firm = a.proposal_inputs.firm_name;
+  const today = sumOf(t("Today (comparable)"), cmp.current_known, a.scenarios.current_comparable);
+  const withFirm = sumOf(t("With {firm}", { firm }), cmp.proposal_known, sc.ledger);
+  const pick = (x: Atom) => setTrace({ kind: "atom", atom: x, ledger: sc.ledger });
   return (
     <div className="space-y-4">
       <PageTitle
@@ -74,16 +77,28 @@ export default function ComparePage() {
         <Kpi
           label={t("Today (comparable)")}
           value={chf(cmp.current_known)}
+          onClick={() => setTrace(today)}
           sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
         />
         <Kpi
           label={t("With {firm}", { firm })}
           value={chf(cmp.proposal_known)}
+          onClick={() => setTrace(withFirm)}
           sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
         />
         <Kpi
           label={t("Annual saving")}
           tone="teal"
+          onClick={() =>
+            setTrace({
+              kind: "diff",
+              title: t("Annual saving"),
+              amount: cmp.annual_saving,
+              prefix: t(BOUND_TEXT[cmp.bound]),
+              left: today,
+              right: withFirm,
+            })
+          }
           value={
             <>
               <span className="mr-1 text-[14px] font-medium">{t(BOUND_TEXT[cmp.bound])}</span>
@@ -195,9 +210,9 @@ export default function ComparePage() {
         </Card>
       )}
 
-      <ProposalLines ledger={sc.ledger} onPick={setAtom} firm={firm} />
+      <ProposalLines ledger={sc.ledger} onPick={pick} firm={firm} />
       <ProposalEditor a={a} />
-      <AtomEvidenceDialog atom={atom} analysis={a} onClose={() => setAtom(null)} />
+      <TraceDialog root={trace} onClose={() => setTrace(null)} />
     </div>
   );
 }
