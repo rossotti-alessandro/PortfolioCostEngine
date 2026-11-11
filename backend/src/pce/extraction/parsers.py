@@ -16,6 +16,7 @@ from openpyxl.utils import get_column_letter
 
 from ..finance.isin import ISIN_RE, is_valid_isin
 from ..finance.money import parse_amount, parse_percent
+from . import finder, verify
 from .layout import Line, PageInfo, read_pdf
 from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact
 from .vocab import (
@@ -1109,6 +1110,50 @@ def _possible_misses(pages: list[PageInfo], facts: list[Fact], limit: int = 40) 
     return out
 
 
+REVIEWED_KINDS = {"fee_observed", "fee_rule", "product_cost", "cash_debit"}
+
+
+def _same_spot(a: Fact, b: Fact) -> bool:
+    ea, eb = a.evidence, b.evidence
+    if ea.page != eb.page or not ea.bbox or not eb.bbox:
+        return False
+    (ax0, ay0, ax1, ay1), (bx0, by0, bx1, by1) = ea.bbox, eb.bbox
+    return min(ax1, bx1) - max(ax0, bx0) > 0 and min(ay1, by1) - max(ay0, by0) > 0
+
+
+def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fact]:
+    """Two independent linkers, one verdict (SC-5.8).
+
+    The layout-generic finder runs on every document. Its values are verified (second reading of the
+    printed pixels, zero, range and separator checks). A type parser's fee fact at the same spot gets
+    the finder's review when both read the same value, and ``needs_review`` with the other reading when
+    they differ; the finder's twin is then dropped. Finder values no parser produced are returned as
+    ``fee_mention`` facts: visible and clickable for the analyst, not in the totals until accepted."""
+    verify.verify(found, [], verify.second_reading(data, found))
+    extra: list[Fact] = []
+    for g in found:
+        twin = next((f for f in parsed if f.kind in REVIEWED_KINDS and _same_spot(f, g)), None)
+        if twin is None:
+            g.extra["review"] = g.review.model_dump() if g.review else None
+            extra.append(g)
+            continue
+        review = g.review.model_copy(deep=True) if g.review else verify.Review()
+        same = twin.value is not None and abs(Decimal(twin.value)) == abs(Decimal(g.value or "0"))
+        review.checks.append(verify.Check(name="linkers_agree", passed=same, detail=f"finder read {g.value}"))
+        if not same:
+            review.status = "needs_review"
+            review.reasons.append("linkers_disagree")
+            review.alternatives.append(
+                {"value": g.value, "engine": finder.FINDER_VERSION, "bbox": g.evidence.bbox}
+            )
+        twin.review = review
+        twin.extra["review"] = review.model_dump()
+        for k in ("label_bbox", "row_bbox", "region"):
+            if getattr(twin.evidence, k) is None:
+                setattr(twin.evidence, k, getattr(g.evidence, k))
+    return extra
+
+
 def _ms(start: float, end: float | None = None) -> int:
     return round(((end if end is not None else time.perf_counter()) - start) * 1000)
 
@@ -1129,7 +1174,14 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
     t2 = time.perf_counter()
     parser = PARSERS.get(prof.doc_type)
     facts = parser(pages, prof) if parser else []
-    prof.timings_ms = {"read": _ms(t0, t1), "classify": _ms(t1, t2), "extract": _ms(t2)}
+    t3 = time.perf_counter()
+    facts += _cross_check(facts, finder.find_fees(pages), data)
+    prof.timings_ms = {
+        "read": _ms(t0, t1),
+        "classify": _ms(t1, t2),
+        "extract": _ms(t2, t3),
+        "find_and_verify": _ms(t3),
+    }
     prof.possible_misses = _possible_misses(pages, facts)
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None
