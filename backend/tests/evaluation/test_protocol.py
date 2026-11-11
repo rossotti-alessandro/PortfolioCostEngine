@@ -158,3 +158,34 @@ def test_invariants_catch_double_count_and_missing_as_number():
     fails = invariants({"current": led, "scenarios": {"same_holdings": {"ledger": led}}})
     text = " ".join(fails)
     assert "double count" in text and "missing became a number" in text and "not traceable" in text
+
+
+def _with_mentions(strategy):
+    """The same prediction plus a fee_mention for every fact: candidates the ledger does not use."""
+
+    def run(filename, data):
+        p = strategy(filename, data)
+        p.facts += [
+            {**f, "key": f"mention:{f['key']}", "kind": "fee_mention", "value": "999"} for f in p.facts
+        ]
+        return p
+
+    return run
+
+
+def test_fee_mentions_never_change_ledger_scores(p1042, monkeypatch):
+    from pce.evaluation import strategies
+
+    plain = evaluate(p1042, "baseline", "digital")
+    monkeypatch.setitem(strategies.BUILTIN, "mentions", _with_mentions(strategies.baseline))
+    noisy = evaluate(p1042, "mentions", "digital")
+    for k in (
+        "precision",
+        "recall",
+        "wrong_value",
+        "provenance",
+        "portfolio_mismatches",
+        "invariant_failures",
+    ):
+        assert noisy[k] == plain[k], k
+    assert plain["mention_recall"] is None and noisy["mention_recall"] is not None
