@@ -1126,9 +1126,10 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
 
     The layout-generic finder runs on every document. Its values are verified (second reading of the
     printed pixels, zero, range and separator checks). A type parser's fee fact at the same spot gets
-    the finder's review when both read the same value, and ``needs_review`` with the other reading when
-    they differ; the finder's twin is then dropped. Finder values no parser produced are returned as
-    ``fee_mention`` facts: visible and clickable for the analyst, not in the totals until accepted."""
+    the finder's review when both read the same value (the finder's twin is then dropped); when they
+    differ, both stay, both ``needs_review``, each naming the other reading. Finder values no parser
+    produced are returned as ``fee_mention`` facts: visible and clickable for the analyst, not in the
+    totals until accepted."""
     verify.verify(found, [], verify.second_reading(data, found))
     extra: list[Fact] = []
     for g in found:
@@ -1140,14 +1141,25 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
         review = g.review.model_copy(deep=True) if g.review else verify.Review()
         same = twin.value is not None and abs(Decimal(twin.value)) == abs(Decimal(g.value or "0"))
         review.checks.append(verify.Check(name="linkers_agree", passed=same, detail=f"finder read {g.value}"))
-        if not same:
+        if not same:  # both readings stay visible, both flagged: the analyst picks, the code does not
             review.status = "needs_review"
             review.reasons.append("linkers_disagree")
             review.alternatives.append(
                 {"value": g.value, "engine": finder.FINDER_VERSION, "bbox": g.evidence.bbox}
             )
+            if g.review is not None:
+                g.review.status = "needs_review"
+                g.review.reasons.append("linkers_disagree")
+                g.review.alternatives.append({"value": twin.value, "engine": EXTRACTOR_VERSION})
+                g.extra["review"] = g.review.model_dump()
+            extra.append(g)
         twin.review = review
         twin.extra["review"] = review.model_dump()
+        words = set(re.findall(r"\w{3,}", twin.label.lower()))
+        if same and words <= set(re.findall(r"\w{3,}", g.label.lower())) and len(g.label) > len(twin.label):
+            # same value, and the finder's label holds every word of the parser's plus the wrapped rest
+            twin.extra["parser_label"] = twin.label
+            twin.label = g.label
         for k in ("label_bbox", "row_bbox", "region"):
             if getattr(twin.evidence, k) is None:
                 setattr(twin.evidence, k, getattr(g.evidence, k))

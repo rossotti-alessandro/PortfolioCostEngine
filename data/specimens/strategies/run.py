@@ -64,7 +64,8 @@ def main() -> None:
         s = results[name]["summary"]
         print(
             f"{name:<28} pages {s['pages']:>2} P {s['precision']:.2f} R {s['recall']:.2f} F1 {s['f1']:.2f} "
-            f"wrong {s['wrong_share']:.1%} review {s['review_share']:.0%} acc-wrong {s['wrong_accepted_share']:.1%} "
+            f"wrong {s['wrong_share']:.1%} review {s['review_share']:.0%} "
+            f"acc-wrong {s['wrong_accepted_share']:.1%} "
             f"bbox {s['bbox_hit_rate']:.0%} {s['s_per_page']:.2f}s",
             flush=True,
         )
@@ -96,7 +97,8 @@ def write_md(results: dict) -> None:
         out.append(f"\n## {title}\n\n" + head)
         for k, s in sorted(rows.items(), key=lambda kv: -kv[1]["f1"]):
             out.append(
-                f"| {k} | {s['pages']} | {s['gold']} | {s['pred']} | {s['precision']:.0%} | {s['recall']:.0%} | "
+                f"| {k} | {s['pages']} | {s['gold']} | {s['pred']} | "
+                f"{s['precision']:.0%} | {s['recall']:.0%} | "
                 f"{s['f1']:.2f} | {s['value_recall']:.0%} | {s['wrong']} ({s['wrong_share']:.1%}) | "
                 f"{s['review_share']:.0%} | {s['accepted_precision']:.0%} | {s['wrong_accepted']} "
                 f"({s['wrong_accepted_share']:.1%}) | {s['bbox_hit_rate']:.0%} | {s['s_per_page']:.2f} |\n"

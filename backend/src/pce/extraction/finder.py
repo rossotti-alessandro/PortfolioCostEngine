@@ -243,13 +243,18 @@ def _header_above(
     return "", None
 
 
-def _heading_above(lines: list[Line], i: int, vals_by_line: list[list[_Val]], limit: int = 40) -> str:
+def _heading_above(
+    lines: list[Line], i: int, vals_by_line: list[list[_Val]], top: float, limit: int = 40
+) -> str:
     """Section path above the row: the nearest title line (one cell, short, no values) and, when that
-    title has no fee word, the nearest fee-word title above it ("Transaction fees › Equities and bonds")."""
+    title has no fee word, the nearest fee-word title above it ("Transaction fees › Equities and bonds").
+    Only lines above ``top`` (the top of the row's label) count: a wrapped label is not its own title."""
     path: list[str] = []
     for j in range(i - 1, max(-1, i - limit), -1):
         ln = lines[j]
         t = ln.text
+        if ln.bbox[3] > top + 1:
+            continue
         if vals_by_line[j] or len(ln.cells) != 1 or not _has_letters(t) or len(t.split()) > 10:
             continue
         if not path:
@@ -336,7 +341,8 @@ def find_fees(
                 header, header_cell = _header_above(lines, i, v, vals_by_line, region)
                 if v.weak and not AMOUNT_HEADER.search(header):
                     continue
-                heading = _heading_above(lines, i, vals_by_line)
+                top = min([v.bbox[1], *(c.bbox[1] for c in label_cells)])
+                heading = _heading_above(lines, i, vals_by_line, top)
                 context = " ".join(x for x in (label, header, heading) if x)
                 if not FEE_WORDS.search(context) or NOT_FEE.search(f"{label} {header}"):
                     continue

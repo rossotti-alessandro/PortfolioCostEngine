@@ -22,7 +22,7 @@ from functools import cache
 from pathlib import Path
 
 from pce.extraction import finder, verify
-from pce.extraction.layout import Cell, Line, PageInfo, _group, read_pdf
+from pce.extraction.layout import Cell, PageInfo, _group, read_pdf
 from pce.extraction.numbers import find_numbers
 from pce.extraction.parsers import extract
 
@@ -71,7 +71,9 @@ def stored_pages(engine: str, p: dict) -> tuple[list[PageInfo], float] | None:
     d = stored(engine, p["id"])
     if d is None or not d.get("words"):
         return None
-    cells = [Cell(w["t"], tuple(round(v / 2, 2) for v in w["b"])) for w in d["words"] if w.get("t", "").strip()]
+    cells = [
+        Cell(w["t"], tuple(round(v / 2, 2) for v in w["b"])) for w in d["words"] if w.get("t", "").strip()
+    ]
     conf = sum(w.get("c", 1.0) for w in d["words"]) / max(len(d["words"]), 1)
     lines = _group(cells, 1, engine, round(conf, 3), tol=4.0)
     return [PageInfo(1, p["width"] / 2, p["height"] / 2, engine, lines)], d.get("seconds", 0.0)
@@ -81,7 +83,9 @@ def regions(engine: str, pid: str) -> tuple[dict, float]:
     d = stored(engine, pid)
     if d is None:
         return {}, 0.0
-    return {1: [(r["label"], tuple(v / 2 for v in r["b"])) for r in d.get("regions", [])]}, d.get("seconds", 0.0)
+    return {1: [(r["label"], tuple(v / 2 for v in r["b"])) for r in d.get("regions", [])]}, d.get(
+        "seconds", 0.0
+    )
 
 
 # ---------- strategies ----------
@@ -132,8 +136,15 @@ def _line_rule(pages: list[PageInfo]) -> list[dict]:
             for c in ln.cells:
                 for n in find_numbers(c.text):
                     if finder._accepted(n, c.text[: n.start]):
-                        out.append({"label": ln.text, "snippet": ln.text, "value": str(n.value),
-                                    "bbox": list(finder._num_bbox(c, n)), "needs_review": False})
+                        out.append(
+                            {
+                                "label": ln.text,
+                                "snippet": ln.text,
+                                "value": str(n.value),
+                                "bbox": list(finder._num_bbox(c, n)),
+                                "needs_review": False,
+                            }
+                        )
     return out
 
 
@@ -238,12 +249,20 @@ def vlm_anchored(engine: str):
                         if not finder._accepted(n, (cell or "")[: n.start]):
                             continue
                         ctx = f"{label} {header[ci] if ci < len(header) else ''}"
-                        if not finder.FEE_WORDS.search(ctx + " " + " ".join(header)) or finder.NOT_FEE.search(ctx):
+                        if not finder.FEE_WORDS.search(ctx + " " + " ".join(header)) or finder.NOT_FEE.search(
+                            ctx
+                        ):
                             continue
                         box = _anchor(n.text, cells)
-                        preds.append({"label": ctx.strip(), "snippet": " | ".join(c or "" for c in row)[:300],
-                                      "value": str(n.value), "bbox": box,
-                                      "needs_review": box is None})
+                        preds.append(
+                            {
+                                "label": ctx.strip(),
+                                "snippet": " | ".join(c or "" for c in row)[:300],
+                                "value": str(n.value),
+                                "bbox": box,
+                                "needs_review": box is None,
+                            }
+                        )
         return preds, secs + d.get("seconds", 0.0)
 
     return run
