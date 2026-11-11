@@ -1,15 +1,15 @@
 ---
 id: SC-5.8
 title: Extraction strategy - routed, table-aware, verified fee extraction
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Define document extraction strategy"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-8zmug5"
 pr: ""
 created_date: "2026-11-11 19:15"
-updated_date: "2026-11-11 19:15"
+updated_date: "2026-11-11 19:10"
 labels:
   - extraction
 dependencies: []
