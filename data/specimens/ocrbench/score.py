@@ -50,7 +50,11 @@ BLOCK_PX = 80  # taller than ~3 text lines at 144 dpi
 
 def page_lines(res: dict) -> list[str]:
     """Every line or table row an engine produced, as plain text."""
-    lines = [ln for ln in adapters.strip_markup(res.get("text", "")).splitlines() if ln.strip()]
+    lines = [
+        ln
+        for ln in adapters.strip_markup(res.get("text", "")).splitlines()
+        if ln.strip()
+    ]
     for t in res.get("tables", []):
         lines += [" | ".join(c or "" for c in row) for row in t["rows"]]
     # A block-level box (paragraph or whole table) counts line by line; as one "line" it would
@@ -70,7 +74,9 @@ def visual_rows_boxes(words: list[dict]) -> list[list[dict]]:
     separate items. Any pipeline would rebuild rows from the boxes; this is the simplest such step.
     """
     rows: list[list[dict]] = []
-    for w in sorted((w for w in words if w.get("b")), key=lambda w: (w["b"][1] + w["b"][3]) / 2):
+    for w in sorted(
+        (w for w in words if w.get("b")), key=lambda w: (w["b"][1] + w["b"][3]) / 2
+    ):
         cy, h = (w["b"][1] + w["b"][3]) / 2, max(4.0, w["b"][3] - w["b"][1])
         if h > BLOCK_PX:  # a block or table box, not a text line
             continue
@@ -108,7 +114,7 @@ def pair_found(lines: list[str], gt: dict, key: str) -> bool:
                 continue
             if not need:
                 return True
-            ctx = ln[max(0, m.start() - PAIR_WINDOW): m.end() + PAIR_WINDOW // 2]
+            ctx = ln[max(0, m.start() - PAIR_WINDOW) : m.end() + PAIR_WINDOW // 2]
             if len(need & fees.label_tokens(ctx)) >= max(1, len(need) / 2):
                 return True
     return False
@@ -134,10 +140,18 @@ def score_page(res: dict, gt_items: list[dict], ref_text: str | None) -> dict:
     lines = page_lines(res)
     full = "\n".join(lines)
     boxes = [(w["b"], w["t"]) for w in res.get("words", [])]
-    boxes += [(f["b"], f"{f['label']} {f['value']}") for f in res.get("fees", []) if f.get("b")]
-    boxes += [(r["b"], r.get("text", "")) for r in res.get("regions", []) if r.get("text")]
+    boxes += [
+        (f["b"], f"{f['label']} {f['value']}")
+        for f in res.get("fees", [])
+        if f.get("b")
+    ]
+    boxes += [
+        (r["b"], r.get("text", "")) for r in res.get("regions", []) if r.get("text")
+    ]
     regions = res.get("regions", [])
-    table_regs = [r["b"] for r in regions if "table" in r["label"].lower() or r["label"] == "otsl"]
+    table_regs = [
+        r["b"] for r in regions if "table" in r["label"].lower() or r["label"] == "otsl"
+    ]
     table_regs += [t["b"] for t in res.get("tables", []) if t.get("b")]
     c = Counter()
     flags = []
@@ -152,6 +166,9 @@ def score_page(res: dict, gt_items: list[dict], ref_text: str | None) -> dict:
         c["value"] += f["v"]
         p = f["p"] = pair_found(lines, g, key)
         c["pair"] += p
+        el = g.get("element", "table" if g.get("in_table") else "text")
+        c[f"gt_el:{el}"] += 1
+        c[f"pair_el:{el}"] += p
         if g.get("in_table"):
             c["gt_table"] += 1
             c["table_pair"] += p
@@ -159,12 +176,23 @@ def score_page(res: dict, gt_items: list[dict], ref_text: str | None) -> dict:
             c["gt_boxed"] += 1
             x0, y0, x1, y1 = (v * S for v in g["bbox"])
             ctr, h = ((x0 + x1) / 2, (y0 + y1) / 2), (y1 - y0)
-            hits = [b for b, t in boxes if b and centre_in(b, ctr) and has_number(t, key)]
+            hits = [
+                b for b, t in boxes if b and centre_in(b, ctr) and has_number(t, key)
+            ]
             f["l"] = bool(hits)
             f["t"] = any((b[3] - b[1]) <= 3.5 * max(h, 8) for b in hits)
             c["located"] += f["l"]
             c["located_tight"] += f["t"]
             c["roi"] += any(centre_in(r["b"], ctr) for r in regions)
+            # Which region label holds the fee (smallest region wins): tells us what to detect.
+            holders = sorted(
+                (r for r in regions if centre_in(r["b"], ctr)),
+                key=lambda r: (r["b"][2] - r["b"][0]) * (r["b"][3] - r["b"][1]),
+            )
+            if regions:
+                c[
+                    f"rl:{el}:{holders[0]['label'].lower() if holders else '(none)'}"
+                ] += 1
             if g.get("in_table"):
                 c["gt_table_boxed"] += 1
                 c["table_roi"] += any(centre_in(b, ctr) for b in table_regs)
@@ -176,7 +204,12 @@ def score_page(res: dict, gt_items: list[dict], ref_text: str | None) -> dict:
         preds2 = preds
     else:
         preds = [i["value"] for i in fees.extract_fee_lines(full)]
-        preds2 = preds + [i["value"] for i in fees.extract_fee_tables(res.get("tables", []), res.get("text", "")[:3000])]
+        preds2 = preds + [
+            i["value"]
+            for i in fees.extract_fee_tables(
+                res.get("tables", []), res.get("text", "")[:3000]
+            )
+        ]
     tp, npred = match(preds, gt_keys)
     tp2, npred2 = match(preds2, gt_keys)
     c["pred"] += npred
@@ -185,14 +218,26 @@ def score_page(res: dict, gt_items: list[dict], ref_text: str | None) -> dict:
     c["tp2"] += tp2
     c["gt_distinct"] += len(gt_keys)
     # structure: the fee's value and label in one row of an engine-produced table
-    trows = [" | ".join(c_ or "" for c_ in row) for t in res.get("tables", []) for row in t["rows"]]
-    for g, f in zip([g for g in gt_items if fees.value_key(g["value"])], [f for f in flags if f]):
+    trows = [
+        " | ".join(c_ or "" for c_ in row)
+        for t in res.get("tables", [])
+        for row in t["rows"]
+    ]
+    for g, f in zip(
+        [g for g in gt_items if fees.value_key(g["value"])], [f for f in flags if f]
+    ):
         if g.get("in_table"):
             f["s"] = pair_found(trows, g, fees.value_key(g["value"]))
             c["table_struct"] += f["s"]
     out = dict(c)
     if ref_text is not None:
-        out["text_f1"] = round(f1(tokens(adapters.strip_markup(res.get("text", "")) or full), tokens(ref_text)), 3)
+        out["text_f1"] = round(
+            f1(
+                tokens(adapters.strip_markup(res.get("text", "")) or full),
+                tokens(ref_text),
+            ),
+            3,
+        )
     out["regions"] = len(regions)
     out["tables"] = len(res.get("tables", []))
     out["items"] = flags
@@ -224,14 +269,22 @@ def main() -> None:
     ref = {}
     for pid, p in pages.items():
         if p["text_layer"] and p["variant"] == "original":
-            ref[pid] = json.loads((OUT / "pdfplumber" / f"{pid}.json").read_text())["text"] \
-                if (OUT / "pdfplumber" / f"{pid}.json").exists() else None
+            ref[pid] = (
+                json.loads((OUT / "pdfplumber" / f"{pid}.json").read_text())["text"]
+                if (OUT / "pdfplumber" / f"{pid}.json").exists()
+                else None
+            )
     per_page: dict[str, dict] = {}
-    runs: dict[str, dict] = {}  # engine -> {meta, pages: {pid: (score, seconds or None, error)}}
+    runs: dict[
+        str, dict
+    ] = {}  # engine -> {meta, pages: {pid: (score, seconds or None, error)}}
     for d in sorted(OUT.iterdir()):
         if not d.is_dir() or not (d / "_run.json").exists():
             continue
-        run = runs[d.name] = {"meta": json.loads((d / "_run.json").read_text()), "pages": {}}
+        run = runs[d.name] = {
+            "meta": json.loads((d / "_run.json").read_text()),
+            "pages": {},
+        }
         for pid, p in pages.items():
             f = d / f"{pid}.json"
             gt_key = p.get("gt_from", pid)
@@ -240,15 +293,63 @@ def main() -> None:
             res = json.loads(f.read_text())
             s = score_page(res, gt[gt_key]["items"], ref.get(pid))
             per_page.setdefault(pid, {})[d.name] = s
-            run["pages"][pid] = (s, None if res.get("includes_load") else res["seconds"], bool(res.get("error")))
-    core = set(json.loads((HERE / "vlm_core.json").read_text(encoding="utf-8"))["pages"])
+            run["pages"][pid] = (
+                s,
+                None if res.get("includes_load") else res["seconds"],
+                bool(res.get("error")),
+            )
+    core = set(
+        json.loads((HERE / "vlm_core.json").read_text(encoding="utf-8"))["pages"]
+    )
     engines = {k: e for k, r in runs.items() if (e := summarise(k, r, None))}
     engines_core = {k: e for k, r in runs.items() if (e := summarise(k, r, core))}
+    families = family_scores(runs, pages)
     SCORES_JSON.parent.mkdir(parents=True, exist_ok=True)
-    SCORES_JSON.write_text(json.dumps({"engines": engines, "engines_core": engines_core, "per_page": per_page},
-                                      indent=1), encoding="utf-8")
-    write_md(engines, engines_core, len(core))
+    SCORES_JSON.write_text(
+        json.dumps(
+            {
+                "engines": engines,
+                "engines_core": engines_core,
+                "families": families,
+                "per_page": per_page,
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    write_md(engines, engines_core, len(core), families)
     print(SCORES_MD.read_text(encoding="utf-8"))
+
+
+def family(p: dict) -> str:
+    """Document family of a page: its stratum without the language suffix."""
+    return re.sub(r" (EN|DE|FR|IT)$", "", p["stratum"])
+
+
+def family_scores(runs: dict, pages: dict) -> dict:
+    """Label+value pair recall per engine and document family, with the pages and figures behind it."""
+    out: dict[str, dict] = {}
+    for name, run in runs.items():
+        if run["meta"].get("family") == "layout":  # regions only, no text to pair
+            continue
+        tot: dict[str, Counter] = {}
+        for pid, (s, _sec, _err) in run["pages"].items():
+            t = tot.setdefault(family(pages[pid]), Counter())
+            t["pages"] += 1
+            t["gt"] += s.get("gt", 0)
+            t["pair"] += s.get("pair", 0)
+        rows = {
+            f: {
+                "pages": t["pages"],
+                "gt": t["gt"],
+                "pair_recall": ratio(t["pair"], t["gt"]),
+            }
+            for f, t in sorted(tot.items())
+            if t["gt"]
+        }
+        if rows and any(r["pair_recall"] is not None for r in rows.values()):
+            out[name] = rows
+    return out
 
 
 def summarise(name: str, run: dict, only: set[str] | None) -> dict | None:
@@ -271,8 +372,12 @@ def summarise(name: str, run: dict, only: set[str] | None) -> dict | None:
     if not tot["pages"]:
         return None
     return {
-        "engine": name, "family": meta.get("family"), "repo": meta.get("repo"),
-        "licence": meta.get("licence"), "pages": tot["pages"], "errors": errors,
+        "engine": name,
+        "family": meta.get("family"),
+        "repo": meta.get("repo"),
+        "licence": meta.get("licence"),
+        "pages": tot["pages"],
+        "errors": errors,
         "value_recall": ratio(tot["value"], tot["gt"]),
         "pair_recall": ratio(tot["pair"], tot["gt"]),
         "table_pair_recall": ratio(tot["table_pair"], tot["gt_table"]),
@@ -289,6 +394,15 @@ def summarise(name: str, run: dict, only: set[str] | None) -> dict | None:
         "sec_per_page": round(statistics.median(secs), 2) if secs else None,
         "peak_rss_gb": meta.get("peak_rss_gb"),
         "gt_items": tot["gt"],
+        "element_pair_recall": {
+            k[8:]: ratio(tot["pair_el:" + k[8:]], v)
+            for k, v in sorted(tot.items())
+            if k.startswith("gt_el:")
+        },
+        "region_labels": {
+            k[3:]: v for k, v in sorted(tot.items()) if k.startswith("rl:")
+        }
+        or None,
     }
 
 
@@ -296,28 +410,103 @@ def pct(v: float | None) -> str:
     return "–" if v is None else f"{v * 100:.0f}%"
 
 
-def write_md(engines: dict, engines_core: dict, n_core: int) -> None:
-    lines = ["# Local OCR / layout / VLM benchmark — scores", "",
-             "Generated by `data/specimens/ocrbench/score.py`. Real public pages from the specimen corpus; "
-             "ground truth hand-checked in `groundtruth.json`. CPU only (no GPU). `–` = not applicable.", "",
-             f"## Same {n_core} pages for every engine (fair comparison)", "", *table(engines_core), "",
-             "## Every page each engine ran (fast engines: all 44)", "", *table(engines)]
+def write_md(engines: dict, engines_core: dict, n_core: int, families: dict) -> None:
+    lines = [
+        "# Local OCR / layout / VLM benchmark — scores",
+        "",
+        "Generated by `data/specimens/ocrbench/score.py`. Real public pages from the specimen corpus; "
+        "ground truth hand-checked in `groundtruth.json`. CPU only (no GPU). `–` = not applicable.",
+        "",
+        f"## Same {n_core} pages for every engine (fair comparison)",
+        "",
+        *table(engines_core),
+        "",
+        f"## Every page each engine ran (fast engines: all {max(e['pages'] for e in engines.values())})",
+        "",
+        *table(engines),
+        "",
+        "## Label+value same row, by layout element (every page each engine ran)",
+        "",
+        *element_table(engines),
+        "",
+        "## Label+value same row, by document family",
+        "",
+        *family_table(families),
+    ]
     SCORES_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+ELEMENTS = ("table", "key_value", "text", "footnote")
+
+
+def element_table(engines: dict) -> list[str]:
+    lines = [
+        "| Engine | Pages | " + " | ".join(ELEMENTS) + " |",
+        "|---|---|" + "---|" * len(ELEMENTS),
+    ]
+    for e in sorted(engines.values(), key=lambda e: -(e["pair_recall"] or 0)):
+        if e["family"] == "layout":
+            continue
+        el = e["element_pair_recall"]
+        lines.append(
+            f"| {e['engine']} | {e['pages']} | "
+            + " | ".join(pct(el.get(k)) for k in ELEMENTS)
+            + " |"
+        )
+    return lines
+
+
+def family_table(families: dict) -> list[str]:
+    fams = sorted({f for rows in families.values() for f in rows})
+    lines = ["| Engine | " + " | ".join(fams) + " |", "|---|" + "---|" * len(fams)]
+    for name, rows in sorted(families.items()):
+        lines.append(
+            f"| {name} | "
+            + " | ".join(
+                pct(rows[f]["pair_recall"]) + f" ({rows[f]['pages']})"
+                if f in rows
+                else "–"
+                for f in fams
+            )
+            + " |"
+        )
+    return lines
+
+
 def table(engines: dict) -> list[str]:
-    cols = [("value_recall", "Values read"), ("pair_recall", "Label+value same row"),
-            ("table_struct_recall", "In a table row"), ("located_tight", "Value boxed (tight)"),
-            ("table_roi_recall", "Table ROI hit"), ("extract_precision", "Extract precision"),
-            ("extract_recall", "Extract recall"), ("extract2_precision", "Table-aware precision"),
-            ("extract2_recall", "Table-aware recall"), ("text_f1", "Text F1")]
-    lines = ["| Engine | Family | Pages | " + " | ".join(c[1] for c in cols) + " | s/page | Peak RAM | Licence |",
-             "|---|---|---|" + "---|" * len(cols) + "---|---|---|"]
-    for e in sorted(engines.values(), key=lambda e: -(e["pair_recall"] or e["table_roi_recall"] or 0)):
-        ram = f"{e['peak_rss_gb']} GB" if e["peak_rss_gb"] is not None else "sum of parts"
+    cols = [
+        ("value_recall", "Values read"),
+        ("pair_recall", "Label+value same row"),
+        ("table_struct_recall", "In a table row"),
+        ("located_tight", "Value boxed (tight)"),
+        ("table_roi_recall", "Table ROI hit"),
+        ("extract_precision", "Extract precision"),
+        ("extract_recall", "Extract recall"),
+        ("extract2_precision", "Table-aware precision"),
+        ("extract2_recall", "Table-aware recall"),
+        ("text_f1", "Text F1"),
+    ]
+    lines = [
+        "| Engine | Family | Pages | "
+        + " | ".join(c[1] for c in cols)
+        + " | s/page | Peak RAM | Licence |",
+        "|---|---|---|" + "---|" * len(cols) + "---|---|---|",
+    ]
+    for e in sorted(
+        engines.values(),
+        key=lambda e: -(e["pair_recall"] or e["table_roi_recall"] or 0),
+    ):
+        ram = (
+            f"{e['peak_rss_gb']} GB" if e["peak_rss_gb"] is not None else "sum of parts"
+        )
         lines.append(
             f"| {e['engine']} | {e['family']} | {e['pages']} | "
-            + " | ".join(pct(e[c]) if c != "text_f1" else ("–" if e[c] is None else f"{e[c]:.2f}") for c, _ in cols)
+            + " | ".join(
+                pct(e[c])
+                if c != "text_f1"
+                else ("–" if e[c] is None else f"{e[c]:.2f}")
+                for c, _ in cols
+            )
             + f" | {e['sec_per_page'] if e['sec_per_page'] is not None else '–'} | {ram} | {e['licence']} |"
         )
     return lines

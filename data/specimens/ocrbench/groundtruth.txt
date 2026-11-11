@@ -1,7 +1,9 @@
 # Hand-checked ground truth for the OCR / layout / VLM benchmark (SC-5.6).
 # One block per page (## page id). One line per fee figure printed on the page:
 #   T|label|value   the figure sits in a table
+#   K|label|value   the figure sits in a key-value list (label and value in columns, no table grid)
 #   N|label|value   the figure sits in running text or a free layout
+#   F|label|value   the figure sits in a footnote
 # Rules: label and value as printed (short label). Every fee rate or amount counts, explicit zeros
 # included (zero is a printed fact; missing is not zero). Not fees: returns, scenarios, invested
 # amounts, holding periods, footnote marks, page numbers, addresses. A range gives two lines.
@@ -339,8 +341,8 @@ T|Money market investments Minimum|CHF 120
 T|Money market investments Minimum|CHF 200
 T|Money market investments Minimum|CHF 200
 T|Money market investments Minimum|CHF 200
-N|Minimum charge for third-party recommended hedge funds|CHF 400
-N|Minimum charge for third-party non-recommended hedge funds|CHF 1,000
+F|Minimum charge for third-party recommended hedge funds|CHF 400
+F|Minimum charge for third-party non-recommended hedge funds|CHF 1,000
 
 ## tariff-juliusbaer-lu-banking-custody-en-p3
 T|Custody service fee up to 5m|0.300%
@@ -605,3 +607,322 @@ T|Retrait aux guichets à l'étranger du montant|4%
 T|DR Note CUSTODY FEE|66.34
 T|DR Note CUSTODY FEE|(3.28)
 T|DR Note CUSTODY FEE|63.06
+
+# Round 2 (SC-5.7): hard pages added for the expanded lab. Same rules as above.
+
+## tariff-akb-anlageberatung-portfolio-2025-p1
+T|Depotvermögen bis CHF 500'000 pro Jahr|0,68 %
+T|Depotvermögen ab CHF 500'000 pro Jahr|0,52 %
+T|Minimumgebühr|CHF 180
+T|Eigene Produkte und ausgewählte Dritt-Produkte|0,30 %
+T|Transaktionsvolumen bis CHF 50'000|0,55 %
+T|Transaktionsvolumen bis CHF 100'000|0,45 %
+T|Transaktionsvolumen bis CHF 500'000|0,30 %
+T|Transaktionsvolumen ab CHF 500'000|0,15 %
+T|Mindestkommission|CHF 60
+N|Rabatt bei Auftragserfassung via e-Banking|25 %
+N|Rabatt mind. bis 30.09.2025|CHF 25
+N|Rabatt mind. ab 01.10.2025|CHF 40
+
+## tariff-bawag-entgelte-konditionen-wertpapiere-at-p16
+K|Anmeldung/Teilnahmebest. je Hauptversammlung|20 Euro
+K|Anmeldung/Teilnahmebest. fremde Spesen von|0,00 Euro
+K|Anmeldung/Teilnahmebest. fremde Spesen bis zu|150 Euro
+K|Ausübung von Bezugsrechten|1,1%
+K|Ausübung von Bezugsrechten mind.|30 Euro
+K|Einrichtung von Depot-/Positionssperren je Auftrag|30 Euro
+K|Zusätzlicher Depotauszug|10 Euro
+K|Erträgnisaufstellung|10 Euro
+K|Belegkopie pro Seite|6 Euro
+K|besonderer Arbeitsaufwand pro Stunde|100 Euro
+K|Fremdspesen Steuerbestätigungen mind.|40 Euro
+K|Fremdspesen Steuerbestätigungen max.|200 Euro
+K|Kontoführungsentgelt Wertpapierverrechnungskonto pro Quartal|6,38 Euro
+N|fremde Spesen Dividendenzahlungen ADR von|0,01
+N|fremde Spesen Dividendenzahlungen ADR bis|0,03 USD
+F|p.a. für Depoteröffnungen vor dem 1.1.2015|0,20%
+F|p.a. für eigene Emissionen SVK|0,10%
+
+## tariff-bcge-prestations-services-2026-p28
+T|Cotisation annuelle|CHF/EUR/USD 25
+T|Carte de remplacement dans le monde entier|CHF/EUR/USD 20
+T|Frais de chargement du montant|1%
+T|Frais de chargement min.|CHF 5
+T|Frais de chargement min. EUR/USD|3
+T|Frais de blocage de la carte|CHF/EUR/USD 10
+T|Remplacement code NIP|CHF/EUR/USD 10
+T|Transactions en monnaie étrangère frais de traitement|1.75%
+T|Transactions en CHF à l'étranger frais de traitement|1.75%
+T|Bancomats retrait d'espèces du montant|4%
+T|Bancomats retrait d'espèces min.|CHF/EUR/USD 10
+
+## tariff-banca-patrimoni-sella-conto-trader-c16-it-p13
+T|Commissione standard per l'esecuzione delle operazioni|0,185%
+T|Commissione standard Minimo per ordine|4,00 Euro
+T|Commissione standard Massimo per ordine|19,95 Euro
+T|commissione fissa per ordine|12,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,20%
+T|Commissione standard Minimo per ordine|8,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,185%
+T|Commissione standard Minimo per ordine|4,00 Euro
+T|Commissione standard Massimo per ordine|19,95 Euro
+T|commissione fissa per ordine|12,00 Euro
+T|Commissione massima per ordini eseguiti nella medesima giornata|13,00 Euro
+T|Commissione massima per ordini eseguiti nella medesima giornata|4,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,16%
+T|Commissione standard minimo|2,00 Euro
+T|spese per ordine eseguito|9,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,16%
+T|Commissione standard minimo|2,00 Euro
+T|spese per ordine eseguito|9,00 Euro
+T|commissione fissa per ordine|8,00 Euro
+T|spese per ordine eseguito|9,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,16%
+T|Commissione standard minimo|2,00 Euro
+T|spese per ordine eseguito|12,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,16%
+T|Commissione standard minimo|2,00 Euro
+T|spese per ordine eseguito|12,00 Euro
+T|commissione fissa per ordine|8,00 Euro
+T|spese per ordine eseguito|12,00 Euro
+T|Commissione standard per l'esecuzione delle operazioni|0,16%
+T|Commissione standard minimo per ordine eseguito|12,00 USD
+
+## tariff-vontobel-eam-custody-2021-p4
+T|Basic service per quarter|CHF 350
+T|Custody account management Up to CHF 5 million|0.300 %
+T|Custody account management Next CHF 5 million|0.270 %
+T|Custody account management Next CHF 10 million|0.240 %
+T|Custody account management Over CHF 20 million|0.140 %
+T|Equities group 1 Up to CHF 25,000|1.10 %
+T|Equities group 2 Up to CHF 25,000|1.70 %
+T|Equities group 3 Up to CHF 25,000|2.00 %
+T|Bonds CHF Up to CHF 25,000|0.80 %
+T|Bonds foreign currency Up to CHF 25,000|0.90 %
+T|Equities group 1 Next CHF 25,000|1.00 %
+T|Equities group 2 Next CHF 25,000|1.60 %
+T|Equities group 3 Next CHF 25,000|1.90 %
+T|Bonds CHF Next CHF 25,000|0.70 %
+T|Bonds foreign currency Next CHF 25,000|0.80 %
+T|Equities group 1 Next CHF 50,000|0.80 %
+T|Equities group 2 Next CHF 50,000|1.35 %
+T|Equities group 3 Next CHF 50,000|1.70 %
+T|Bonds CHF Next CHF 50,000|0.50 %
+T|Bonds foreign currency Next CHF 50,000|0.60 %
+T|Equities group 1 Next CHF 100,000|0.60 %
+T|Equities group 2 Next CHF 100,000|1.00 %
+T|Equities group 3 Next CHF 100,000|1.50 %
+T|Bonds CHF Next CHF 100,000|0.35 %
+T|Bonds foreign currency Next CHF 100,000|0.40 %
+T|Equities group 1 Next CHF 300,000|0.25 %
+T|Equities group 2 Next CHF 300,000|0.55 %
+T|Equities group 3 Next CHF 300,000|1.10 %
+T|Bonds CHF Next CHF 300,000|0.10 %
+T|Bonds foreign currency Next CHF 300,000|0.10 %
+T|Equities group 1 Over CHF 500,000|0.20 %
+T|Equities group 2 Over CHF 500,000|0.50 %
+T|Equities group 3 Over CHF 500,000|1.00 %
+T|Bonds CHF Over CHF 500,000|0.10 %
+T|Bonds foreign currency Over CHF 500,000|0.10 %
+T|Equities group 1 Minimum|CHF 120
+T|Equities group 2 Minimum|CHF 200
+T|Equities group 3 Minimum|CHF 200
+T|Bonds CHF Minimum|CHF 120
+T|Bonds foreign currency Minimum|CHF 200
+T|Options fees on option premium|1.50 %
+T|Futures fees per contract|CHF 30
+T|Options Minimum|CHF 200
+T|Futures Minimum|CHF 200
+T|Vontobel funds Up to CHF 25,000|0.80 %
+T|External funds Up to CHF 25,000|1.30 %
+T|Hedge funds Up to CHF 25,000|1.30 %
+T|Vontobel funds Next CHF 25,000|0.70 %
+T|External funds Next CHF 25,000|1.20 %
+T|Hedge funds Next CHF 25,000|1.20 %
+T|Vontobel funds Next CHF 50,000|0.60 %
+T|External funds Next CHF 50,000|1.10 %
+T|Hedge funds Next CHF 50,000|1.10 %
+T|Vontobel funds Next CHF 100,000|0.50 %
+T|External funds Next CHF 100,000|1.00 %
+T|Hedge funds Next CHF 100,000|1.00 %
+T|Vontobel funds Next CHF 300,000|0.25 %
+T|External funds Next CHF 300,000|0.75 %
+T|Hedge funds Next CHF 300,000|0.75 %
+T|Vontobel funds Over CHF 500,000|0.20 %
+T|External funds Over CHF 500,000|0.70 %
+T|Hedge funds Over CHF 500,000|0.70 %
+T|Vontobel funds Minimum|CHF 120
+T|External funds Minimum|CHF 200
+T|Hedge funds Minimum|CHF 200
+F|Minimum charge third-party recommended hedge funds|CHF 400
+F|Minimum charge third-party non-recommended hedge funds|CHF 2,000
+T|Money market funds Up to CHF 500,000|0.300 %
+T|Money market papers Up to CHF 500,000|0.500 %
+T|Call money Up to CHF 500,000|0.500 %
+T|Time deposit Up to CHF 500,000|0.500 %
+T|Money market funds Next CHF 500,000|0.300 %
+T|Money market papers Next CHF 500,000|0.375 %
+T|Call money Next CHF 500,000|0.500 %
+T|Time deposit Next CHF 500,000|0.375 %
+T|Money market funds Over CHF 1 million|0.300 %
+T|Money market papers Over CHF 1 million|0.250 %
+T|Call money Over CHF 1 million|0.375 %
+T|Time deposit Over CHF 1 million|0.250 %
+T|Money market funds Minimum|CHF 120
+T|Money market papers Minimum|CHF 200
+T|Call money Minimum|CHF 200
+T|Time deposit Minimum|CHF 200
+
+## tariff-cic-tarification-titres-bourse-fr-p7
+T|Frais de transaction sur OPC|49,76€
+T|Frais de transaction sur OPC des montants investis|0,5%
+T|Pour chaque OPC|0,5%
+T|Pour chaque OPC|24,88€
+T|Frais de Convention de compte-titres et de services|25€
+T|Frais liés à l'instrument financier|169,14
+T|Total des frais liés au service fourni €|74,76
+T|Total des frais liés au service fourni %|0,75
+T|Total des frais indirects liés aux produits €|169,14
+T|Total des frais indirects liés aux produits %|1,69
+T|TOTAL des frais €|243,90
+T|TOTAL des frais %|2,44
+T|Dont rétrocession €|124,38
+T|Dont rétrocession %|1,24
+
+## tariff-banca-passadore-deposito-titoli-it-p3
+T|rimborso spese accredito cedole e dividendi titoli italiani|€ 3,00
+T|rimborso spese accredito cedole e dividendi titoli esteri|€ 5,00
+T|Commissioni per operazioni sul capitale|€ 15,00
+T|Commissioni per operazioni sul capitale min.|€ 2,00
+T|Commissioni per operazioni sul capitale max. del controvalore|1,5%
+T|Commissione valutaria d'intervento massimo|0,15%
+T|Recupero spese affrancamento per ogni strumento finanziario|€ 25,00
+T|ritiro titoli non dematerializzati commissioni massime per pratica|€ 60,00
+
+## costs-kbc-securities-services-mifid-cost-transparency-en-p4
+N|charges for investment services estimated total|76.88 EUR
+N|charges as a proportion of initial investment|1.54%
+N|charges including taxes reduce the return by|1.54%
+N|sale impact on the return|1.06%
+
+## costs-spuerkeess-illustrations-couts-ex-ante-fr-p5
+N|commission de souscription|0,1%
+N|commission de souscription min.|EUR 50
+N|commission de rachat|0%
+N|droits de garde|0%
+N|frais manufacturiers per annum|0,45%
+T|Coûts et frais liés au(x) service(s) d'investissement 5 ans en EUR|50,00
+T|Coûts et frais liés au(x) service(s) d'investissement 5 ans en %|0,50
+T|Coûts et frais liés à l'instrument financier 5 ans en EUR|225,00
+T|Coûts et frais liés à l'instrument financier 5 ans en %|2,25
+T|Total des coûts et frais liés 5 ans en EUR|275,00
+T|Total des coûts et frais liés 5 ans en %|2,75
+T|Coûts et frais liés au(x) service(s) d'investissement 1 an en EUR|50,00
+T|Coûts et frais liés au(x) service(s) d'investissement 1 an en %|0,50
+T|Coûts et frais liés au(x) service(s) d'investissement 2 ans en EUR|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 2 ans en %|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 3 ans en EUR|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 3 ans en %|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 4 ans en EUR|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 4 ans en %|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 5 ans en EUR|0,00
+T|Coûts et frais liés au(x) service(s) d'investissement 5 ans en %|0,00
+T|Coûts et frais liés à l'instrument financier 1 an en EUR|45,00
+T|Coûts et frais liés à l'instrument financier 1 an en %|0,45
+T|Coûts et frais liés à l'instrument financier 2 ans en EUR|45,00
+T|Coûts et frais liés à l'instrument financier 2 ans en %|0,45
+T|Coûts et frais liés à l'instrument financier 3 ans en EUR|45,00
+T|Coûts et frais liés à l'instrument financier 3 ans en %|0,45
+T|Coûts et frais liés à l'instrument financier 4 ans en EUR|45,00
+T|Coûts et frais liés à l'instrument financier 4 ans en %|0,45
+T|Coûts et frais liés à l'instrument financier 5 ans en EUR|45,00
+T|Coûts et frais liés à l'instrument financier 5 ans en %|0,45
+T|Total des coûts et frais liés 1 an en EUR|95,00
+T|Total des coûts et frais liés 1 an en %|0,95
+T|Total des coûts et frais liés 2 ans en EUR|45,00
+T|Total des coûts et frais liés 2 ans en %|0,45
+T|Total des coûts et frais liés 3 ans en EUR|45,00
+T|Total des coûts et frais liés 3 ans en %|0,45
+T|Total des coûts et frais liés 4 ans en EUR|45,00
+T|Total des coûts et frais liés 4 ans en %|0,45
+T|Total des coûts et frais liés 5 ans en EUR|45,00
+T|Total des coûts et frais liés 5 ans en %|0,45
+
+## costs-banco-di-sardegna-gestione-portafogli-informativa-it-p13
+
+## sample-rathbones-statement-cc-p1
+T|Costs and charges paid to Rathbone Investment Management Ltd Amount|3,581.98
+T|Costs and charges paid to Rathbone Investment Management Ltd VAT|389.75
+T|Costs and charges paid to Rathbone Investment Management Ltd Total|3,971.73
+T|Rathbones Management Fees Amount|1,948.75
+T|Rathbones Management Fees VAT|389.75
+T|Rathbones Management Fees Total|2,338.50
+T|Rathbones Management Fee Amount|1,948.75
+T|Rathbones Management Fee VAT|389.75
+T|Rathbones Management Fee Total|2,338.50
+T|Rathbones Transaction Charges Amount|1,633.23
+T|Rathbones Transaction Charges VAT|0.00
+T|Rathbones Transaction Charges Total|1,633.23
+T|Dealing Commission Amount|1,633.23
+T|Dealing Commission VAT|0.00
+T|Dealing Commission Total|1,633.23
+T|Other Costs and Charges paid to Third Parties Amount|1,795.13
+T|Other Costs and Charges paid to Third Parties VAT|0.00
+T|Other Costs and Charges paid to Third Parties Total|1,795.13
+T|Transaction Costs Amount|85.68
+T|Transaction Costs VAT|0.00
+T|Transaction Costs Total|85.68
+T|HMRC Stamp Duty Amount|85.68
+T|HMRC Stamp Duty VAT|0.00
+T|HMRC Stamp Duty Total|85.68
+T|Ongoing Third Party Charges Amount|1,709.45
+T|Ongoing Third Party Charges VAT|0.00
+T|Ongoing Third Party Charges Total|1,709.45
+T|Ongoing Fund Charge Amount|1,709.45
+T|Ongoing Fund Charge VAT|0.00
+T|Ongoing Fund Charge Total|1,709.45
+T|Total Amount|5,377.11
+T|Total VAT|389.75
+T|Total Total|5,766.86
+T|Total Costs and Charges as a Percentage of the Average Value of Portfolio|1.91%
+
+## sample-fidelity-us-investment-report-p5
+T|Transaction Costs This Period|-95.40
+T|Transaction Costs Year-to-Date|-445.18
+T|Fees & Charges This Period|-44.37
+T|Fees & Charges Year-to-Date|-325.69
+T|Margin Interest This Period|-1,673.75
+T|Margin Interest Year-to-Date|-19,670.87
+
+## dip-allianz-global-life-active4life-set-informativo-it-p25
+N|costi di caricamento sul premio unico|3,00%
+N|costi di caricamento sui premi aggiuntivi|3,00%
+N|premio annuo della garanzia|0,90%
+N|premio annuo della garanzia|1,00%
+N|premio annuo della garanzia|1,05%
+
+## kid-bnp-autocall-eurostoxx-utilities-en-p3
+T|Total costs if called at first date|EUR 221
+T|Total costs if reaches maturity|EUR 221
+T|Annual cost impact if called at first date|2.32%
+T|Annual cost impact if reaches maturity|0.76%
+T|Entry costs|2.21%
+T|Entry costs|EUR 221
+T|Exit costs|0.5%
+T|Exit costs|EUR 50
+T|Management fees and other administrative or operating costs|0%
+T|Management fees and other administrative or operating costs|EUR 0
+T|Transaction costs|0%
+T|Transaction costs|EUR 0
+T|Performance fees|EUR 0
+N|fee deducted from the market price on resale|0.50%
+N|commission taken into account in the table|0.50%
+
+## terms-postfinance-01789-it-p2
+
+## fs-deka-de0008474503-p3
+T|Einstiegskosten|5,26 %
+T|Ausstiegskosten|0,00 %
+T|Verwaltungsgebühren und sonstige Verwaltungs- oder Betriebskosten|1,44 %
+T|Transaktionskosten|0,15 %
+T|Erfolgsgebühren|0,000 %

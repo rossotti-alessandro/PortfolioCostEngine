@@ -353,11 +353,12 @@ def _load_vlm(repo: str, **kw: Any):
 
     if repo not in _vlm:
         proc = AutoProcessor.from_pretrained(repo, **kw)
-        # LightOnOCR-2's config says mistral3, but its weights use LightOnOCR names: the Auto class
+        # LightOnOCR-2 and 3-1B say mistral3, but their weights use LightOnOCR names: the Auto class
         # silently leaves the vision tower random (the model then "sees" a blank page).
+        # LightOnOCR-3-0.8B is a plain qwen3_5 checkpoint and loads with the Auto class.
         cls = (
             transformers.LightOnOcrForConditionalGeneration
-            if "LightOnOCR" in repo
+            if "LightOnOCR" in repo and "0.8B" not in repo
             else AutoModelForImageTextToText
         )
         model = cls.from_pretrained(repo, dtype=torch.bfloat16, **kw).eval()
