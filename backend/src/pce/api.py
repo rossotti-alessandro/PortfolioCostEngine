@@ -196,6 +196,7 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
             "document_id": f.document_id,
             "filename": dmap[f.document_id].filename,
             "where": where(f),
+            "field": f.field,
             "label": f.label,
             "value": f.value_current,
             "value_extracted": f.value_extracted,

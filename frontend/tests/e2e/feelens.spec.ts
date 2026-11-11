@@ -177,3 +177,62 @@ test("10 pipeline: every processing step of a document, with details on demand",
   await expect(page.getByRole("heading", { name: "Come è stato elaborato questo documento" })).toBeVisible();
   await page.getByRole("button", { name: "English" }).click();
 });
+
+test("11 trace: result → computation → line → highlighted source page", async ({ page }) => {
+  const rows: { id: number; code: string }[] = await (
+    await page.request.get("/api/prospects", { headers: { "X-Role": "analyst" } })
+  ).json();
+  const demo = rows.find((x) => x.code === "P-1042");
+  await page.goto(`/p/${demo?.id}/costs`);
+  await expect(page.getByRole("heading", { name: "Points to review" })).toBeVisible();
+  await shot(page, "11-costs-review-points");
+
+  // headline number → the lines that make it up
+  await page.getByTitle("How is this calculated?").first().click();
+  const dlg = page.getByRole("dialog");
+  await expect(dlg.getByText(/Sum of 14 counted lines/)).toBeVisible();
+  await expect(dlg.getByText(/not determined and are not counted as zero/)).toBeVisible();
+  await shot(page, "12-trace-total");
+
+  // a fund line → formula, both inputs (KID rate and holding value), page with the box
+  await dlg.getByRole("row", { name: /Global Equity Leaders Fund A CHF Fund ongoing/ }).click();
+  await expect(dlg.getByText("900,000.00 × 1.08%", { exact: false })).toBeVisible();
+  await expect(dlg.getByRole("button", { name: /Read from the document/ })).toBeVisible();
+  await expect(dlg.locator('.evidence-box[data-active="true"]')).toBeVisible();
+  await shot(page, "13-trace-line-kid");
+  await dlg.getByRole("button", { name: /Holding value used as basis/ }).click();
+  await expect(dlg.getByText(/alpha_statement_of_assets/).first()).toBeVisible();
+  await expect(dlg.locator('.evidence-box[data-active="true"]')).toBeVisible();
+  await shot(page, "14-trace-line-statement");
+
+  // breadcrumb back to the total
+  await dlg.getByRole("navigation").getByRole("button", { name: "Known annual cost" }).click();
+  await expect(dlg.getByText(/Sum of 14 counted lines/)).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // a review point opens its number
+  await page.getByRole("button", { name: /Show all \d+ points/ }).click();
+  await page.getByRole("button", { name: /Not yet checked: Bank Alpha \(Synthetic\) · Advisory mandate fee/ }).click();
+  await expect(page.getByRole("dialog").getByText("Calculation")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // the analyst can hide a section and it stays hidden
+  await page.getByText("Customise view").click();
+  await page.getByRole("checkbox", { name: "Positions" }).uncheck();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Current costs" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Positions/ })).toHaveCount(0);
+  await page.getByText("Customise view").click();
+  await page.getByRole("checkbox", { name: "Positions" }).check();
+
+  // compare: the saving opens today − proposal, each side opens its lines
+  await page.goto(`/p/${demo?.id}/compare`);
+  await page.getByTitle("How is this calculated?").nth(2).click();
+  await expect(page.getByRole("dialog").getByText("= Annual saving")).toBeVisible();
+  await shot(page, "15-trace-saving");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Today \(comparable\)/ })
+    .click();
+  await expect(page.getByRole("dialog").getByText(/counted lines/)).toBeVisible();
+});
