@@ -1,15 +1,15 @@
 ---
 id: SC-9.1
 title: Synthetic golden corpus and extraction evaluation runner
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Build end-to-end accuracy protocol"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-uk1c1t"
 pr: ""
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-06 15:05"
+updated_date: "2026-11-11 19:09"
 labels:
   - qa
 dependencies:
