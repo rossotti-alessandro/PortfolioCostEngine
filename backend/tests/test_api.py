@@ -2,6 +2,7 @@ import json
 import os
 import re
 import tempfile
+from decimal import Decimal
 
 os.environ["PCE_DATA_DIR"] = tempfile.mkdtemp(prefix="pce-test-")
 os.environ["PCE_DATABASE_URL"] = f"sqlite:///{os.environ['PCE_DATA_DIR']}/t.sqlite"
@@ -153,3 +154,19 @@ def test_document_pipeline_traces_every_stage():
     cat = client.get(f"/api/documents/{kid['id']}/pipeline", headers=A).json()["stages"][6]
     assert {"counted", "included_in_parent"} <= {a["role"] for a in cat["atoms"]}  # AMF inside OCF, once
     assert client.get(f"/api/documents/{kid['id']}/pipeline", headers=B).status_code == 404
+
+
+def test_every_counted_line_traces_to_its_source_inline():
+    pid = seeded()
+    r = client.get(f"/api/prospects/{pid}/analysis", headers=A).json()
+    counted = [a for a in r["current"]["atoms"] if a["role"] == "counted"]
+    assert counted and all(a["evidence"] for a in counted)
+    for a in counted:
+        for e in a["evidence"]:
+            assert e["filename"] and ((e["page"] and e["bbox"]) or (e["sheet"] and e["cell"]))
+    fund = next(a for a in counted if a["fee_code"] == "FUND_ONGOING" and a["basis_amount"])
+    roles = {e["role"]: e for e in fund["evidence"]}
+    assert set(roles) == {"value", "basis"}  # the rate from the KID and the holding value from the statement
+    assert Decimal(roles["basis"]["value"]) == Decimal(fund["basis_amount"])
+    assert r["review_points"] and r["review_points"][0]["severity"] == "high"
+    assert not re.search(r"min_margin_pct|servicing_cost|annual_contribution", json.dumps(r))

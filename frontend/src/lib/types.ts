@@ -76,6 +76,48 @@ export interface DocumentRow {
   fact_count: number;
 }
 
+/** One input of a computed number, with where it was read (inline from the analysis payload). */
+export interface EvidenceRef {
+  fact_id: number;
+  role: "value" | "basis" | "fx_rate";
+  document_id: number;
+  filename: string;
+  where: string;
+  field: string;
+  label: string;
+  value: string | null;
+  value_extracted: string | null;
+  currency: string | null;
+  status: Fact["status"];
+  review: { status: string; reasons?: string[] } | null;
+  page: number | null;
+  bbox: number[] | null;
+  sheet: string | null;
+  cell: string | null;
+  snippet: string | null;
+  engine: string | null;
+  confidence: number | null;
+}
+
+export interface ReviewPoint {
+  key: string;
+  kind:
+    | "not_determined"
+    | "low_confidence"
+    | "extraction_flag"
+    | "corrected"
+    | "unreviewed"
+    | "list_price"
+    | "rate_high"
+    | "large_driver"
+    | "check";
+  severity: "high" | "medium" | "low";
+  atom_id: string | null;
+  fact_ids: number[];
+  amount: string | null;
+  vars: Record<string, string>;
+}
+
 export interface Atom {
   id: string;
   fee_code: string;
@@ -96,6 +138,7 @@ export interface Atom {
   basis_amount: string | null;
   evidence_fact_ids: number[];
   evidence_sources?: string[];
+  evidence?: EvidenceRef[];
   formula: string;
   note: string;
   materiality: string;
@@ -139,6 +182,7 @@ export interface Check {
   detail: string;
   fact_ids: number[];
   sources?: string[];
+  evidence?: EvidenceRef[];
 }
 
 export interface MissingRequest {
@@ -202,6 +246,7 @@ export interface Analysis {
   current: Ledger;
   coverage: { institution: string; assets: string; jurisdiction: string | null; cells: Record<string, string> }[];
   checks: Check[];
+  review_points: ReviewPoint[];
   requests: MissingRequest[];
   comparison_exclusions: { fee_code: string; label: string; amount: string; reason: string }[];
   scenarios: {
