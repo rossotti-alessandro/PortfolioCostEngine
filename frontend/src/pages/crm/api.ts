@@ -1,5 +1,5 @@
-/** CRM API client (/api/crm). Same demo identity headers as the rest of the app (lib/api.ts). */
-import { ApiError, getRole } from "@/lib/api";
+/** CRM API client (/api/crm). Same session, role and CSRF headers as the rest of the app (lib/api.ts). */
+import { ApiError, authFetch } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 export type StageId = "lead" | "qualified" | "documents_received" | "cost_review" | "proposal_sent" | "won" | "lost";
@@ -108,23 +108,11 @@ export type ContactInput = Partial<
   >
 > & { stage?: StageId };
 
-const USER_BY_ROLE: Record<string, string> = {
-  analyst: "a.analyst",
-  senior: "s.reviewer",
-  relationship_manager: "r.manager",
-};
-
 async function req<T>(path: string, body?: unknown, method = body === undefined ? "GET" : "POST"): Promise<T> {
-  const role = getRole();
-  const res = await fetch(`/api/crm${path}`, {
+  const res = await authFetch(`/api/crm${path}`, {
     method,
     body: body === undefined ? undefined : JSON.stringify(body),
-    headers: {
-      "X-Tenant-Id": "demo-firm",
-      "X-User": USER_BY_ROLE[role],
-      "X-Role": role,
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-    },
+    headers: body === undefined ? {} : { "Content-Type": "application/json" },
   });
   if (!res.ok) {
     let msg = res.statusText;

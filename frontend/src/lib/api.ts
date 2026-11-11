@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   Analysis,
   DocumentPipeline,
@@ -17,20 +18,49 @@ export const ROLE_LABEL: Record<Role, string> = {
   relationship_manager: "Relationship manager",
 };
 
-const USER_BY_ROLE: Record<Role, string> = {
-  analyst: "a.analyst",
-  senior: "s.reviewer",
-  relationship_manager: "r.manager",
-};
+export interface Me {
+  username: string;
+  tenant: string;
+  roles: Role[];
+  admin: boolean;
+  csrf_token: string;
+}
+
+// The session lives in an HttpOnly cookie the page cannot read. The CSRF token is kept in memory only
+// and sent on every request; /api/auth/me hands it out again after a reload.
+let csrf = "";
+let allowedRoles: Role[] = ["analyst"];
+let onSignedOut: () => void = () => {};
+
+export function setSession(me: Me | null) {
+  csrf = me?.csrf_token ?? "";
+  allowedRoles = me?.roles.length ? me.roles : ["analyst"];
+}
+
+/** Called once by the app: what to do when the server says the session is gone. */
+export function onUnauthorized(fn: () => void) {
+  onSignedOut = fn;
+}
+
+/** Forget the session and every cached answer; the app falls back to the sign-in page. */
+export function signedOut(qc: QueryClient) {
+  setSession(null);
+  qc.setQueryData(["me"], null);
+  qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+}
+
+export function allowedRoleList(): Role[] {
+  return allowedRoles;
+}
 
 export function getRole(): Role {
   try {
     const r = localStorage.getItem("pce.role") as Role | null;
-    if (r && r in ROLE_LABEL) return r;
+    if (r && allowedRoles.includes(r)) return r;
   } catch {
     /* storage unavailable: default role */
   }
-  return "analyst";
+  return allowedRoles.includes("analyst") ? "analyst" : allowedRoles[0];
 }
 
 export function setRole(r: Role) {
@@ -41,9 +71,15 @@ export function setRole(r: Role) {
   }
 }
 
-function headers(extra?: Record<string, string>): Record<string, string> {
-  const role = getRole();
-  return { "X-Tenant-Id": "demo-firm", "X-User": USER_BY_ROLE[role], "X-Role": role, ...extra };
+export function headers(extra?: Record<string, string>): Record<string, string> {
+  return { "X-Role": getRole(), ...(csrf ? { "X-CSRF-Token": csrf } : {}), ...extra };
+}
+
+/** fetch with the session headers; a 401 sends the app back to the sign-in page. */
+export async function authFetch(path: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(path, { ...init, headers: headers(init?.headers as Record<string, string>) });
+  if (res.status === 401) onSignedOut();
+  return res;
 }
 
 export class ApiError extends Error {
@@ -55,7 +91,7 @@ export class ApiError extends Error {
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, { ...init, headers: headers(init?.headers as Record<string, string>) });
+  const res = await authFetch(path, init);
   if (!res.ok) {
     let msg = res.statusText;
     try {
@@ -74,6 +110,12 @@ const json = (body: unknown, method = "POST"): RequestInit => ({
   body: JSON.stringify(body),
   headers: { "Content-Type": "application/json" },
 });
+
+export const auth = {
+  me: () => req<Me>("/api/auth/me"),
+  login: (username: string, password: string) => req<Me>("/api/auth/login", json({ username, password })),
+  logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+};
 
 export const api = {
   taxonomy: () => req<Taxonomy>("/api/taxonomy"),
@@ -119,12 +161,12 @@ export const api = {
     req<{ at: string; user: string; action: string; detail: Record<string, unknown> }[]>(`/api/prospects/${id}/audit`),
   fileUrl: (docId: number) => `/api/documents/${docId}/file`,
   fetchFile: async (docId: number) => {
-    const res = await fetch(`/api/documents/${docId}/file`, { headers: headers() });
+    const res = await authFetch(`/api/documents/${docId}/file`);
     if (!res.ok) throw new ApiError(res.status, "file not available");
     return res.arrayBuffer();
   },
   downloadReport: async (id: number, code: string) => {
-    const res = await fetch(`/api/prospects/${id}/report.pdf`, { headers: headers() });
+    const res = await authFetch(`/api/prospects/${id}/report.pdf`);
     if (!res.ok) throw new ApiError(res.status, "report failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

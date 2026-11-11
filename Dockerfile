@@ -24,4 +24,5 @@ COPY --from=ui /app/frontend/dist frontend/dist
 # OMP_THREAD_LIMIT=1: Tesseract threads thrash on small shared CPUs (free tiers).
 ENV PCE_DATA_DIR=/app/var PCE_ALLOW_EXTERNAL_AI=false PORT=8000 OMP_THREAD_LIMIT=1
 EXPOSE 8000
-CMD ["sh", "-c", "cd backend && exec .venv/bin/uvicorn pce.serve:app --host 0.0.0.0 --port ${PORT}"]
+# --proxy-headers: behind Render's proxy the client address (login throttling) comes from X-Forwarded-For.
+CMD ["sh", "-c", "cd backend && exec .venv/bin/uvicorn pce.serve:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips '*' --no-server-header"]
