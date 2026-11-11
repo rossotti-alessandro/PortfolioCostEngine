@@ -102,7 +102,7 @@ of values flagged for review and 8.0% accepted wrong values (about a third real 
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
-| claude/project-thread-8zmug5 | df9e263 | 2026-11-11 | layout-aware fee finder with value verification |
-| claude/project-thread-8zmug5 | 4dedfaf | 2026-11-11 | cross-check parsers with finder, strategy doc |
-| claude/project-thread-8zmug5 | 96358d6 | 2026-11-11 | drop finder twins, skip positions, keep parser label |
-| claude/project-thread-8zmug5 | ce2a331 | 2026-11-11 | skip finder-only totals on parser-read pages |
+| claude/project-thread-8zmug5 | a9ef227 | 2026-11-11 | layout-aware fee finder with value verification |
+| claude/project-thread-8zmug5 | 5e0e9f5 | 2026-11-11 | cross-check parsers with finder, strategy doc |
+| claude/project-thread-8zmug5 | f43a9c2 | 2026-11-11 | drop finder twins, skip positions, keep parser label |
+| claude/project-thread-8zmug5 | c3c666f | 2026-11-11 | skip finder-only totals on parser-read pages |
