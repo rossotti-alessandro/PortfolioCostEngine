@@ -7,9 +7,9 @@ owner: "Build end-to-end accuracy protocol"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-uk1c1t"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/16"
 created_date: "2026-11-11 22:20"
-updated_date: "2026-11-11 22:17"
+updated_date: "2026-11-11 22:20"
 labels:
   - qa
 dependencies: []
