@@ -2125,8 +2125,8 @@
     {
      "label": "Vita residua fino a 40gg",
      "value": "0,05%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.6,
       137.7,
@@ -2137,8 +2137,8 @@
     {
      "label": "Vita residua minimo Euro per operazione",
      "value": "10,00",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       381.9,
       137.7,
@@ -2149,8 +2149,8 @@
     {
      "label": "Vita residua da 41 a 80gg",
      "value": "0,05%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       147.4,
@@ -2159,10 +2159,22 @@
      ]
     },
     {
+     "label": "Vita residua da 41 a 80gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      147.4,
+      406.5,
+      155.4
+     ]
+    },
+    {
      "label": "Vita residua da 81 a 120gg",
      "value": "0,10%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       157.1,
@@ -2171,10 +2183,22 @@
      ]
     },
     {
+     "label": "Vita residua da 81 a 120gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      157.1,
+      406.5,
+      165.2
+     ]
+    },
+    {
      "label": "Vita residua da 121 a 170gg",
      "value": "0,10%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       166.8,
@@ -2183,10 +2207,22 @@
      ]
     },
     {
+     "label": "Vita residua da 121 a 170gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      166.8,
+      406.5,
+      174.9
+     ]
+    },
+    {
      "label": "Vita residua da 171 a 210gg",
      "value": "0,20%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       176.6,
@@ -2195,10 +2231,22 @@
      ]
     },
     {
+     "label": "Vita residua da 171 a 210gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      176.6,
+      406.5,
+      184.6
+     ]
+    },
+    {
      "label": "Vita residua da 211 a 250gg",
      "value": "0,20%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       186.3,
@@ -2207,10 +2255,22 @@
      ]
     },
     {
+     "label": "Vita residua da 211 a 250gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      186.3,
+      406.5,
+      194.3
+     ]
+    },
+    {
      "label": "Vita residua da 251 a 330gg",
      "value": "0,20%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       196.0,
@@ -2219,10 +2279,22 @@
      ]
     },
     {
+     "label": "Vita residua da 251 a 330gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      196.0,
+      406.5,
+      204.0
+     ]
+    },
+    {
      "label": "Vita residua da 331 a 366gg",
      "value": "0,30%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       205.7,
@@ -2231,10 +2303,22 @@
      ]
     },
     {
+     "label": "Vita residua da 331 a 366gg minimo Euro per operazione",
+     "value": "10,00",
+     "in_table": false,
+     "element": "key_value",
+     "bbox": [
+      383.3,
+      205.7,
+      406.5,
+      213.8
+     ]
+    },
+    {
      "label": "Titoli di Stato italiani",
      "value": "0,50%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       244.6,
@@ -2245,8 +2329,8 @@
     {
      "label": "Titoli di Stato italiani minimo Euro per operazione",
      "value": "20",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       316.9,
       244.6,
@@ -2257,8 +2341,8 @@
     {
      "label": "Obbligazioni italiane",
      "value": "0,50%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       254.3,
@@ -2269,8 +2353,8 @@
     {
      "label": "Titoli di Stato Esteri",
      "value": "0,50%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       264.0,
@@ -2281,8 +2365,8 @@
     {
      "label": "Titoli di Stato Esteri minimo Euro per operazione",
      "value": "25",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       316.9,
       264.0,
@@ -2293,8 +2377,8 @@
     {
      "label": "Obbligazioni Estere",
      "value": "0,50%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       273.8,
@@ -2305,8 +2389,8 @@
     {
      "label": "Azioni Italiane",
      "value": "0,70%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       302.9,
@@ -2317,8 +2401,8 @@
     {
      "label": "Azioni Italiane minimo Euro per operazione",
      "value": "30",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       316.9,
       302.9,
@@ -2329,8 +2413,8 @@
     {
      "label": "Warrant, CW e Diritti d'opzione Italiani",
      "value": "0,70%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       312.6,
@@ -2341,8 +2425,8 @@
     {
      "label": "ETF/ETC/ETN Italiani",
      "value": "0,70%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       322.4,
@@ -2353,8 +2437,8 @@
     {
      "label": "Certificates Italiani",
      "value": "0,70%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       332.1,
@@ -2365,8 +2449,8 @@
     {
      "label": "Azioni Estere",
      "value": "0,90%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       351.5,
@@ -2377,8 +2461,8 @@
     {
      "label": "Azioni Estere minimo Euro per operazione",
      "value": "50",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       316.9,
       351.5,
@@ -2389,8 +2473,8 @@
     {
      "label": "Warrant, CW e Diritti di opzione Esteri",
      "value": "0,90%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       361.2,
@@ -2401,8 +2485,8 @@
     {
      "label": "ETF/ETC/ETN Esteri",
      "value": "0,90%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       371.0,
@@ -2413,8 +2497,8 @@
     {
      "label": "Certificates Esteri",
      "value": "0,90%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       380.7,
@@ -2425,8 +2509,8 @@
     {
      "label": "commissioni di negoziazione azionario Italia ed ETF",
      "value": "0,195%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       283.5,
       419.7,
@@ -2437,8 +2521,8 @@
     {
      "label": "commissioni di negoziazione azionario Italia ed ETF minimo",
      "value": "€ 5,0",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       361.8,
       419.7,
@@ -2449,8 +2533,8 @@
     {
      "label": "spese per revoca o ineseguito",
      "value": "€ 2,00",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       291.5,
       429.4,
@@ -2461,8 +2545,8 @@
     {
      "label": "recupero spese per operazione",
      "value": "€ 3,00",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       291.5,
       439.1,
@@ -2473,8 +2557,8 @@
     {
      "label": "Vita residua fino a 40gg",
      "value": "0,03%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       526.6,
@@ -2485,8 +2569,8 @@
     {
      "label": "Vita residua da 41 a 80 gg",
      "value": "0,03%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       536.3,
@@ -2497,8 +2581,8 @@
     {
      "label": "Vita residua da 81 a 120 gg",
      "value": "0,05%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       546.0,
@@ -2509,8 +2593,8 @@
     {
      "label": "Vita residua da 121 a 170gg",
      "value": "0,05%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       555.8,
@@ -2521,8 +2605,8 @@
     {
      "label": "Vita residua da 171 a 210gg",
      "value": "0,10%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.2,
       565.5,
@@ -2533,8 +2617,8 @@
     {
      "label": "Vita residua da 211 a 250gg",
      "value": "0,10%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       575.2,
@@ -2545,8 +2629,8 @@
     {
      "label": "Vita residua da 251 a 330gg",
      "value": "0,10%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       584.9,
@@ -2557,8 +2641,8 @@
     {
      "label": "Vita residua da 331 a 366gg",
      "value": "0,15%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       248.1,
       594.6,
@@ -2569,8 +2653,8 @@
     {
      "label": "recupero spese per operazioni di compravendita",
      "value": "€ 6,00",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       327.0,
       701.6,
@@ -2581,8 +2665,8 @@
     {
      "label": "recupero spese per operazioni di compravendita titoli esteri",
      "value": "€ 9,00",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       409.0,
       701.6,
@@ -2593,8 +2677,8 @@
     {
      "label": "recupero spese per operazioni di compravendita ineseguite o revocate",
      "value": "€ 3,00",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       327.0,
       721.0,
@@ -2605,8 +2689,8 @@
     {
      "label": "recupero spese per negoziazione spezzature titoli obbligazionari",
      "value": "€ 5,16",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       365.6,
       740.4,
@@ -2617,8 +2701,8 @@
     {
      "label": "commissione valutaria d'intervento per operazioni su strumenti finanziari in divisa estera",
      "value": "0,15%",
-     "in_table": true,
-     "element": "table",
+     "in_table": false,
+     "element": "key_value",
      "bbox": [
       360.5,
       769.6,
@@ -5031,6 +5115,18 @@
      ]
     },
     {
+     "label": "Service costs Ancillary",
+     "value": "0.00%",
+     "in_table": true,
+     "element": "table",
+     "bbox": [
+      447.1,
+      283.8,
+      470.4,
+      293.7
+     ]
+    },
+    {
      "label": "Service costs Incidental",
      "value": "0.00",
      "in_table": true,
@@ -5039,6 +5135,18 @@
       395.2,
       306.3,
       411.2,
+      316.3
+     ]
+    },
+    {
+     "label": "Service costs Incidental",
+     "value": "0.00%",
+     "in_table": true,
+     "element": "table",
+     "bbox": [
+      447.1,
+      306.3,
+      470.4,
       316.3
      ]
     },
@@ -5072,10 +5180,22 @@
      "in_table": true,
      "element": "table",
      "bbox": [
+      395.2,
+      351.2,
+      411.2,
+      361.2
+     ]
+    },
+    {
+     "label": "Product costs One-off",
+     "value": "0.00%",
+     "in_table": true,
+     "element": "table",
+     "bbox": [
       447.1,
-      283.8,
+      351.2,
       470.4,
-      293.7
+      361.2
      ]
     },
     {
@@ -6124,6 +6244,13 @@
      "bbox": null
     },
     {
+     "label": "Retrait de CHF aux bancomats d'autres banques min.",
+     "value": "10",
+     "in_table": true,
+     "element": "table",
+     "bbox": null
+    },
+    {
      "label": "Retrait d'EUR aux bancomats d'autres banques par opération",
      "value": "CHF 5",
      "in_table": true,
@@ -6133,6 +6260,13 @@
     {
      "label": "Retrait d'EUR aux bancomats d'autres banques du montant",
      "value": "4%",
+     "in_table": true,
+     "element": "table",
+     "bbox": null
+    },
+    {
+     "label": "Retrait d'EUR aux bancomats d'autres banques min.",
+     "value": "10",
      "in_table": true,
      "element": "table",
      "bbox": null
@@ -6159,8 +6293,22 @@
      "bbox": null
     },
     {
+     "label": "Retrait aux bancomats à l'étranger min.",
+     "value": "10",
+     "in_table": true,
+     "element": "table",
+     "bbox": null
+    },
+    {
      "label": "Retrait aux guichets à l'étranger du montant",
      "value": "4%",
+     "in_table": true,
+     "element": "table",
+     "bbox": null
+    },
+    {
+     "label": "Retrait aux guichets à l'étranger min.",
+     "value": "10",
      "in_table": true,
      "element": "table",
      "bbox": null

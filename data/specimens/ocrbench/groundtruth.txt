@@ -213,48 +213,55 @@ T|Exchange-Traded Fund Spese correnti|1.00
 T|Exchange-Traded Fund Costi di transazione del portafoglio|0.80
 
 ## tariff-banca-passadore-intermediazione-it-p2
-T|Vita residua fino a 40gg|0,05%
-T|Vita residua minimo Euro per operazione|10,00
-T|Vita residua da 41 a 80gg|0,05%
-T|Vita residua da 81 a 120gg|0,10%
-T|Vita residua da 121 a 170gg|0,10%
-T|Vita residua da 171 a 210gg|0,20%
-T|Vita residua da 211 a 250gg|0,20%
-T|Vita residua da 251 a 330gg|0,20%
-T|Vita residua da 331 a 366gg|0,30%
-T|Titoli di Stato italiani|0,50%
-T|Titoli di Stato italiani minimo Euro per operazione|20
-T|Obbligazioni italiane|0,50%
-T|Titoli di Stato Esteri|0,50%
-T|Titoli di Stato Esteri minimo Euro per operazione|25
-T|Obbligazioni Estere|0,50%
-T|Azioni Italiane|0,70%
-T|Azioni Italiane minimo Euro per operazione|30
-T|Warrant, CW e Diritti d'opzione Italiani|0,70%
-T|ETF/ETC/ETN Italiani|0,70%
-T|Certificates Italiani|0,70%
-T|Azioni Estere|0,90%
-T|Azioni Estere minimo Euro per operazione|50
-T|Warrant, CW e Diritti di opzione Esteri|0,90%
-T|ETF/ETC/ETN Esteri|0,90%
-T|Certificates Esteri|0,90%
-T|commissioni di negoziazione azionario Italia ed ETF|0,195%
-T|commissioni di negoziazione azionario Italia ed ETF minimo|€ 5,0
-T|spese per revoca o ineseguito|€ 2,00
-T|recupero spese per operazione|€ 3,00
-T|Vita residua fino a 40gg|0,03%
-T|Vita residua da 41 a 80 gg|0,03%
-T|Vita residua da 81 a 120 gg|0,05%
-T|Vita residua da 121 a 170gg|0,05%
-T|Vita residua da 171 a 210gg|0,10%
-T|Vita residua da 211 a 250gg|0,10%
-T|Vita residua da 251 a 330gg|0,10%
-T|Vita residua da 331 a 366gg|0,15%
-T|recupero spese per operazioni di compravendita|€ 6,00
-T|recupero spese per operazioni di compravendita titoli esteri|€ 9,00
-T|recupero spese per operazioni di compravendita ineseguite o revocate|€ 3,00
-T|recupero spese per negoziazione spezzature titoli obbligazionari|€ 5,16
-T|commissione valutaria d'intervento per operazioni su strumenti finanziari in divisa estera|0,15%
+K|Vita residua fino a 40gg|0,05%
+K|Vita residua minimo Euro per operazione|10,00
+K|Vita residua da 41 a 80gg|0,05%
+K|Vita residua da 41 a 80gg minimo Euro per operazione|10,00
+K|Vita residua da 81 a 120gg|0,10%
+K|Vita residua da 81 a 120gg minimo Euro per operazione|10,00
+K|Vita residua da 121 a 170gg|0,10%
+K|Vita residua da 121 a 170gg minimo Euro per operazione|10,00
+K|Vita residua da 171 a 210gg|0,20%
+K|Vita residua da 171 a 210gg minimo Euro per operazione|10,00
+K|Vita residua da 211 a 250gg|0,20%
+K|Vita residua da 211 a 250gg minimo Euro per operazione|10,00
+K|Vita residua da 251 a 330gg|0,20%
+K|Vita residua da 251 a 330gg minimo Euro per operazione|10,00
+K|Vita residua da 331 a 366gg|0,30%
+K|Vita residua da 331 a 366gg minimo Euro per operazione|10,00
+K|Titoli di Stato italiani|0,50%
+K|Titoli di Stato italiani minimo Euro per operazione|20
+K|Obbligazioni italiane|0,50%
+K|Titoli di Stato Esteri|0,50%
+K|Titoli di Stato Esteri minimo Euro per operazione|25
+K|Obbligazioni Estere|0,50%
+K|Azioni Italiane|0,70%
+K|Azioni Italiane minimo Euro per operazione|30
+K|Warrant, CW e Diritti d'opzione Italiani|0,70%
+K|ETF/ETC/ETN Italiani|0,70%
+K|Certificates Italiani|0,70%
+K|Azioni Estere|0,90%
+K|Azioni Estere minimo Euro per operazione|50
+K|Warrant, CW e Diritti di opzione Esteri|0,90%
+K|ETF/ETC/ETN Esteri|0,90%
+K|Certificates Esteri|0,90%
+K|commissioni di negoziazione azionario Italia ed ETF|0,195%
+K|commissioni di negoziazione azionario Italia ed ETF minimo|€ 5,0
+K|spese per revoca o ineseguito|€ 2,00
+K|recupero spese per operazione|€ 3,00
+K|Vita residua fino a 40gg|0,03%
+K|Vita residua da 41 a 80 gg|0,03%
+K|Vita residua da 81 a 120 gg|0,05%
+K|Vita residua da 121 a 170gg|0,05%
+K|Vita residua da 171 a 210gg|0,10%
+K|Vita residua da 211 a 250gg|0,10%
+K|Vita residua da 251 a 330gg|0,10%
+K|Vita residua da 331 a 366gg|0,15%
+K|recupero spese per operazioni di compravendita|€ 6,00
+K|recupero spese per operazioni di compravendita titoli esteri|€ 9,00
+K|recupero spese per operazioni di compravendita ineseguite o revocate|€ 3,00
+K|recupero spese per negoziazione spezzature titoli obbligazionari|€ 5,16
+K|commissione valutaria d'intervento per operazioni su strumenti finanziari in divisa estera|0,15%
 
 ## tariff-vontobel-eam-prices-conditions-2021-p5
 T|Custody account management Up to CHF 3 million|0.210%
@@ -467,10 +474,13 @@ T|Service costs Ongoing|0.28%
 T|Service costs Transactional|1,000
 T|Service costs Transactional|0.01%
 T|Service costs Ancillary|0.00
+T|Service costs Ancillary|0.00%
 T|Service costs Incidental|0.00
+T|Service costs Incidental|0.00%
 T|Product costs|20,344.08
 T|Product costs|0.28%
 T|Product costs One-off|0.00
+T|Product costs One-off|0.00%
 T|Product costs Ongoing|8,251.37
 T|Product costs Ongoing|0.12%
 T|Product costs Transactional|7,485.39
@@ -592,12 +602,16 @@ T|Retrait de CHF/EUR aux bancomats BCV du montant|4%
 T|Retrait de CHF/EUR aux bancomats BCV min.|10
 T|Retrait de CHF aux bancomats d'autres banques par opération|CHF 3
 T|Retrait de CHF aux bancomats d'autres banques du montant|4%
+T|Retrait de CHF aux bancomats d'autres banques min.|10
 T|Retrait d'EUR aux bancomats d'autres banques par opération|CHF 5
 T|Retrait d'EUR aux bancomats d'autres banques du montant|4%
+T|Retrait d'EUR aux bancomats d'autres banques min.|10
 T|Retrait aux bancomats à l'étranger par opération|CHF 5
 T|Retrait aux bancomats à l'étranger du montant|+0,5%
 T|Retrait aux bancomats à l'étranger du montant|4%
+T|Retrait aux bancomats à l'étranger min.|10
 T|Retrait aux guichets à l'étranger du montant|4%
+T|Retrait aux guichets à l'étranger min.|10
 
 ## sample-scotia-swm-releves-fr-p3
 # mixed page: text layer plus embedded statement images; no fee figures

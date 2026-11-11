@@ -1,37 +1,466 @@
 {
- "pdfplumber": {"name": "pdfplumber (current FeeLens engine)", "kind": "Text layer reader", "params": "no model", "download_gb": 0, "boxes": "word", "tables": "ruled tables only", "licence_risk": "none", "role": "Baseline: reads born-digital PDFs exactly; blind on scans and on text drawn as images."},
- "tesseract": {"name": "Tesseract 5", "kind": "OCR", "params": "LSTM, 4 languages", "download_gb": 0.05, "boxes": "word", "tables": "no", "licence_risk": "none", "role": "Classic OCR already in the toolchain (via OCRmyPDF)."},
- "rapidocr": {"name": "RapidOCR (PP-OCRv5 det + PP-OCRv6 rec, ONNX)", "kind": "OCR", "params": "~15M", "download_gb": 0.03, "boxes": "line", "tables": "no", "licence_risk": "none", "role": "PaddleOCR models without the Paddle framework; ONNX Runtime on CPU."},
- "doctr": {"name": "docTR (DBNet ResNet-50 + PARSeq multilingual)", "kind": "OCR", "params": "~50M", "download_gb": 0.15, "boxes": "line", "tables": "no", "licence_risk": "none", "role": "PyTorch OCR from Mindee with a multilingual recogniser."},
- "florence2": {"name": "Florence-2-large", "kind": "Vision foundation model (OCR with regions)", "params": "0.77B", "download_gb": 1.55, "boxes": "line", "tables": "no", "licence_risk": "none", "role": "Microsoft's small VLM; <OCR_WITH_REGION> gives text lines with boxes."},
- "heron": {"name": "Docling Layout Heron (RT-DETRv2)", "kind": "Layout / ROI detection", "params": "~42M", "download_gb": 0.17, "boxes": "region", "tables": "region only", "licence_risk": "none", "role": "The layout model inside Docling: 17 classes (table, text, title, picture, key-value…)."},
- "ppdoclayout3": {"name": "PP-DocLayoutV3", "kind": "Layout / ROI detection", "params": "~33M", "download_gb": 0.13, "boxes": "region", "tables": "region only", "licence_risk": "none", "role": "PaddleOCR's layout model (25 classes incl. reading order), native in transformers."},
- "doclayout_yolo": {"name": "DocLayout-YOLO (DocStructBench)", "kind": "Layout / ROI detection", "params": "~20M", "download_gb": 0.04, "boxes": "region", "tables": "region only", "licence_risk": "high", "role": "Fast YOLOv10 layout model. Weights Apache-2.0, but the doclayout_yolo package is AGPL-3.0 (Ultralytics fork): benchmark only."},
- "tatr": {"name": "Table Transformer (TATR) detection + structure v1.1", "kind": "Table detection + structure", "params": "2 x 29M", "download_gb": 0.35, "boxes": "table + cells", "tables": "yes (grid)", "licence_risk": "none", "role": "Microsoft's table models; rows and columns filled with PDF words (or Tesseract words on scans)."},
- "docling": {"name": "Docling 2 (Heron + TableFormer accurate, Tesseract on bitmaps)", "kind": "Full document converter", "params": "~250M total", "download_gb": 0.5, "boxes": "region + table", "tables": "yes (grid)", "licence_risk": "none", "role": "IBM's converter: layout, TableFormer cell structure, reading order, markdown."},
- "granite_docling": {"name": "granite-docling-258M", "kind": "End-to-end VLM (DocTags)", "params": "0.26B", "download_gb": 0.52, "boxes": "block (0-500 grid)", "tables": "yes (OTSL)", "licence_risk": "none", "role": "IBM's tiny page-to-DocTags model: text, tables and boxes in one pass."},
- "paddleocr_vl": {"name": "PaddleOCR-VL 1.6 (+ PP-DocLayoutV3)", "kind": "Layout + VLM recogniser", "params": "0.9B + 33M", "download_gb": 2.05, "boxes": "block", "tables": "yes (OTSL/HTML)", "licence_risk": "none", "role": "Baidu's two-stage parser: layout boxes, then the VLM reads each crop (text or table)."},
- "glm_ocr": {"name": "GLM-OCR", "kind": "End-to-end VLM (page to markdown)", "params": "0.9B", "download_gb": 2.65, "boxes": "none", "tables": "yes (HTML/markdown)", "licence_risk": "none", "role": "Zhipu's OCR model, full page in one pass."},
- "lighton_ocr": {"name": "LightOnOCR-2-1B", "kind": "End-to-end VLM (page to markdown)", "params": "1B", "download_gb": 2.01, "boxes": "none", "tables": "yes (HTML/markdown)", "licence_risk": "none", "role": "LightOn's French OCR model, distilled for speed; strong on European languages."},
- "got_ocr": {"name": "GOT-OCR 2.0", "kind": "End-to-end VLM (page to formatted text)", "params": "0.58B", "download_gb": 1.12, "boxes": "none", "tables": "partial (markdown/LaTeX)", "licence_risk": "none", "role": "StepFun's general OCR-2.0 model, format mode."},
- "qwen3vl": {"name": "Qwen3-VL-2B-Instruct (fee prompt)", "kind": "General VLM, direct fee extraction + grounding", "params": "2B", "download_gb": 4.26, "boxes": "value box (0-1000 grid)", "tables": "no (asked for a fee list)", "licence_risk": "none", "role": "Asked directly for every fee figure with its box, as JSON. Shows the 'agent reads the page' route."},
- "layoutlm_docqa": {"name": "LayoutLM document QA (impira)", "kind": "Document question answering", "params": "0.13B", "download_gb": 1.02, "boxes": "none", "tables": "no", "licence_risk": "none", "role": "Extractive QA over Tesseract words: 8 fixed fee questions per page."},
- "hybrid_route": {"name": "Hybrid: text layer or RapidOCR + Heron tables", "kind": "Pipeline (no new model)", "params": "sum of parts", "download_gb": 0.2, "boxes": "word", "tables": "yes (rows rebuilt from words)", "licence_risk": "none", "role": "The cheap path every page takes: exact PDF text where it exists, OCR elsewhere, table rows rebuilt inside layout regions."},
- "hybrid_vlm": {"name": "Hybrid + PaddleOCR-VL on scans and table pages", "kind": "Pipeline (no new model)", "params": "sum of parts", "download_gb": 2.25, "boxes": "word + block", "tables": "yes", "licence_risk": "none", "role": "The cheap path, plus the vision model as a second reader only where it helps."},
+ "pdfplumber": {
+  "name": "pdfplumber (current FeeLens engine)",
+  "kind": "Text layer reader",
+  "params": "no model",
+  "download_gb": 0,
+  "boxes": "word",
+  "tables": "ruled tables only",
+  "licence_risk": "none",
+  "role": "Baseline: reads born-digital PDFs exactly; blind on scans and on text drawn as images."
+ },
+ "tesseract": {
+  "name": "Tesseract 5",
+  "kind": "OCR",
+  "params": "LSTM, 4 languages",
+  "download_gb": 0.05,
+  "boxes": "word",
+  "tables": "no",
+  "licence_risk": "none",
+  "role": "Classic OCR already in the toolchain (via OCRmyPDF)."
+ },
+ "rapidocr": {
+  "name": "RapidOCR (PP-OCRv5 det + PP-OCRv6 rec, ONNX)",
+  "kind": "OCR",
+  "params": "~15M",
+  "download_gb": 0.03,
+  "boxes": "line",
+  "tables": "no",
+  "licence_risk": "none",
+  "role": "PaddleOCR models without the Paddle framework; ONNX Runtime on CPU."
+ },
+ "doctr": {
+  "name": "docTR (DBNet ResNet-50 + PARSeq multilingual)",
+  "kind": "OCR",
+  "params": "~50M",
+  "download_gb": 0.15,
+  "boxes": "line",
+  "tables": "no",
+  "licence_risk": "none",
+  "role": "PyTorch OCR from Mindee with a multilingual recogniser."
+ },
+ "florence2": {
+  "name": "Florence-2-large",
+  "kind": "Vision foundation model (OCR with regions)",
+  "params": "0.77B",
+  "download_gb": 1.55,
+  "boxes": "line",
+  "tables": "no",
+  "licence_risk": "none",
+  "role": "Microsoft's small VLM; <OCR_WITH_REGION> gives text lines with boxes."
+ },
+ "heron": {
+  "name": "Docling Layout Heron (RT-DETRv2)",
+  "kind": "Layout / ROI detection",
+  "params": "~42M",
+  "download_gb": 0.17,
+  "boxes": "region",
+  "tables": "region only",
+  "licence_risk": "none",
+  "role": "The layout model inside Docling: 17 classes (table, text, title, picture, key-value…)."
+ },
+ "ppdoclayout3": {
+  "name": "PP-DocLayoutV3",
+  "kind": "Layout / ROI detection",
+  "params": "~33M",
+  "download_gb": 0.13,
+  "boxes": "region",
+  "tables": "region only",
+  "licence_risk": "none",
+  "role": "PaddleOCR's layout model (25 classes incl. reading order), native in transformers."
+ },
+ "doclayout_yolo": {
+  "name": "DocLayout-YOLO (DocStructBench)",
+  "kind": "Layout / ROI detection",
+  "params": "~20M",
+  "download_gb": 0.04,
+  "boxes": "region",
+  "tables": "region only",
+  "licence_risk": "high",
+  "role": "Fast YOLOv10 layout model. Weights Apache-2.0, but the doclayout_yolo package is AGPL-3.0 (Ultralytics fork): benchmark only."
+ },
+ "tatr": {
+  "name": "Table Transformer (TATR) detection + structure v1.1",
+  "kind": "Table detection + structure",
+  "params": "2 x 29M",
+  "download_gb": 0.35,
+  "boxes": "table + cells",
+  "tables": "yes (grid)",
+  "licence_risk": "none",
+  "role": "Microsoft's table models; rows and columns filled with PDF words (or Tesseract words on scans)."
+ },
+ "docling": {
+  "name": "Docling 2 (Heron + TableFormer accurate, Tesseract on bitmaps)",
+  "kind": "Full document converter",
+  "params": "~250M total",
+  "download_gb": 0.5,
+  "boxes": "region + table",
+  "tables": "yes (grid)",
+  "licence_risk": "none",
+  "role": "IBM's converter: layout, TableFormer cell structure, reading order, markdown."
+ },
+ "granite_docling": {
+  "name": "granite-docling-258M",
+  "kind": "End-to-end VLM (DocTags)",
+  "params": "0.26B",
+  "download_gb": 0.52,
+  "boxes": "block (0-500 grid)",
+  "tables": "yes (OTSL)",
+  "licence_risk": "none",
+  "role": "IBM's tiny page-to-DocTags model: text, tables and boxes in one pass."
+ },
+ "paddleocr_vl": {
+  "name": "PaddleOCR-VL 1.6 (+ PP-DocLayoutV3)",
+  "kind": "Layout + VLM recogniser",
+  "params": "0.9B + 33M",
+  "download_gb": 2.05,
+  "boxes": "block",
+  "tables": "yes (OTSL/HTML)",
+  "licence_risk": "none",
+  "role": "Baidu's two-stage parser: layout boxes, then the VLM reads each crop (text or table)."
+ },
+ "glm_ocr": {
+  "name": "GLM-OCR",
+  "kind": "End-to-end VLM (page to markdown)",
+  "params": "0.9B",
+  "download_gb": 2.65,
+  "boxes": "none",
+  "tables": "yes (HTML/markdown)",
+  "licence_risk": "none",
+  "role": "Zhipu's OCR model, full page in one pass."
+ },
+ "lighton_ocr": {
+  "name": "LightOnOCR-2-1B",
+  "kind": "End-to-end VLM (page to markdown)",
+  "params": "1B",
+  "download_gb": 2.01,
+  "boxes": "none",
+  "tables": "yes (HTML/markdown)",
+  "licence_risk": "none",
+  "role": "LightOn's French OCR model, distilled for speed; strong on European languages."
+ },
+ "got_ocr": {
+  "name": "GOT-OCR 2.0",
+  "kind": "End-to-end VLM (page to formatted text)",
+  "params": "0.58B",
+  "download_gb": 1.12,
+  "boxes": "none",
+  "tables": "partial (markdown/LaTeX)",
+  "licence_risk": "none",
+  "role": "StepFun's general OCR-2.0 model, format mode."
+ },
+ "qwen3vl": {
+  "name": "Qwen3-VL-2B-Instruct (fee prompt)",
+  "kind": "General VLM, direct fee extraction + grounding",
+  "params": "2B",
+  "download_gb": 4.26,
+  "boxes": "value box (0-1000 grid)",
+  "tables": "no (asked for a fee list)",
+  "licence_risk": "none",
+  "role": "Asked directly for every fee figure with its box, as JSON. Shows the 'agent reads the page' route."
+ },
+ "layoutlm_docqa": {
+  "name": "LayoutLM document QA (impira)",
+  "kind": "Document question answering",
+  "params": "0.13B",
+  "download_gb": 1.02,
+  "boxes": "none",
+  "tables": "no",
+  "licence_risk": "none",
+  "role": "Extractive QA over Tesseract words: 8 fixed fee questions per page."
+ },
+ "lighton3_08b": {
+  "name": "LightOnOCR-3-0.8B (grounding mode)",
+  "kind": "End-to-end VLM (page to markdown with block boxes)",
+  "params": "0.85B",
+  "download_gb": 1.7,
+  "boxes": "block (0-1000 grid)",
+  "tables": "yes (HTML/markdown)",
+  "licence_risk": "none",
+  "role": "LightOn's 2026 OCR model on a Qwen3.5 base; the 'grounding' prompt returns every block with its box."
+ },
+ "lighton3_1b": {
+  "name": "LightOnOCR-3-1B (grounding mode)",
+  "kind": "End-to-end VLM (page to markdown with block boxes)",
+  "params": "1.0B",
+  "download_gb": 2.0,
+  "boxes": "block (0-1000 grid)",
+  "tables": "yes (HTML/markdown)",
+  "licence_risk": "none",
+  "role": "The Mistral-based sibling of the 0.8B model, same prompt."
+ },
+ "xiaomi_ocr": {
+  "name": "Xiaomi-OCR-0",
+  "kind": "End-to-end VLM (page to markdown)",
+  "params": "0.87B",
+  "download_gb": 1.75,
+  "boxes": "none",
+  "tables": "yes (OTSL, converted to HTML)",
+  "licence_risk": "none",
+  "role": "Xiaomi's document parser; tables come as OTSL grids, so cell structure is explicit."
+ },
+ "minicpm_ocr": {
+  "name": "MiniCPM-OCR-1.0 (+ PP-DocLayoutV3)",
+  "kind": "Layout + VLM recogniser",
+  "params": "1.3B + 33M",
+  "download_gb": 2.7,
+  "boxes": "block",
+  "tables": "yes (HTML)",
+  "licence_risk": "none",
+  "role": "OpenBMB's OCR model used the official way: layout crops, then one prompt per element type."
+ },
+ "mineru25": {
+  "name": "MinerU2.5-Pro-2605-1.2B",
+  "kind": "Two-step VLM (layout, then crops)",
+  "params": "1.16B",
+  "download_gb": 2.3,
+  "boxes": "block (0-1000 grid)",
+  "tables": "yes (OTSL/HTML)",
+  "licence_risk": "none",
+  "role": "OpenDataLab's parser: the same model first finds the layout, then reads each crop. Apache-2.0 (the older 2509 release is AGPL)."
+ },
+ "kosmos25": {
+  "name": "Kosmos-2.5",
+  "kind": "OCR VLM with line boxes",
+  "params": "1.37B",
+  "download_gb": 2.7,
+  "boxes": "line",
+  "tables": "no",
+  "licence_risk": "none",
+  "role": "Microsoft's text-intensive image model; the <ocr> task gives each line with its box."
+ },
+ "firered_ocr": {
+  "name": "FireRed-OCR",
+  "kind": "End-to-end VLM (page to markdown)",
+  "params": "2.1B",
+  "download_gb": 4.3,
+  "boxes": "none",
+  "tables": "yes (HTML/markdown)",
+  "licence_risk": "none",
+  "role": "Qwen3-VL fine-tune for document parsing."
+ },
+ "infinity_parser2": {
+  "name": "Infinity-Parser2-Flash",
+  "kind": "End-to-end VLM (layout JSON)",
+  "params": "2.2B",
+  "download_gb": 4.4,
+  "boxes": "block",
+  "tables": "yes (HTML)",
+  "licence_risk": "none",
+  "role": "Asked for a JSON list of layout blocks (type, box, content); thinking turned off."
+ },
+ "deepseek_ocr2": {
+  "name": "DeepSeek-OCR-2",
+  "kind": "End-to-end VLM (grounded markdown)",
+  "params": "3.4B",
+  "download_gb": 6.8,
+  "boxes": "block (0-999 grid)",
+  "tables": "yes (HTML)",
+  "licence_risk": "none",
+  "role": "DeepSeek's optical-compression OCR; the grounding prompt tags each block with its box."
+ },
+ "heron101": {
+  "name": "Docling Layout Heron-101 (RT-DETRv2, ResNet-101)",
+  "kind": "Layout / ROI detection",
+  "params": "~77M",
+  "download_gb": 0.3,
+  "boxes": "region",
+  "tables": "region only",
+  "licence_risk": "none",
+  "role": "The larger Heron variant: same 17 classes, deeper backbone."
+ },
+ "egret_large": {
+  "name": "Docling Layout Egret-large (D-FINE)",
+  "kind": "Layout / ROI detection",
+  "params": "~31M",
+  "download_gb": 0.13,
+  "boxes": "region",
+  "tables": "region only",
+  "licence_risk": "none",
+  "role": "Docling's faster D-FINE layout family, large size."
+ },
+ "egret_xlarge": {
+  "name": "Docling Layout Egret-xlarge (D-FINE)",
+  "kind": "Layout / ROI detection",
+  "params": "~63M",
+  "download_gb": 0.25,
+  "boxes": "region",
+  "tables": "region only",
+  "licence_risk": "none",
+  "role": "Docling's D-FINE layout family, largest size."
+ },
+ "slanet": {
+  "name": "SLANet+ (RapidTable) on PP-DocLayoutV3 table crops",
+  "kind": "Table structure",
+  "params": "~10M",
+  "download_gb": 0.01,
+  "boxes": "table + cells",
+  "tables": "yes (HTML)",
+  "licence_risk": "none",
+  "role": "PaddleOCR's light table-structure model via ONNX; RapidOCR reads the cells."
+ },
+ "easyocr": {
+  "name": "EasyOCR (CRAFT + CRNN)",
+  "kind": "OCR",
+  "params": "~20M",
+  "download_gb": 0.1,
+  "boxes": "line",
+  "tables": "no",
+  "licence_risk": "low (python-bidi dependency is LGPL-3.0)",
+  "role": "Popular PyTorch OCR, run for comparison with RapidOCR and docTR."
+ },
+ "hybrid_route": {
+  "name": "Hybrid: text layer or RapidOCR + Heron tables",
+  "kind": "Pipeline (no new model)",
+  "params": "sum of parts",
+  "download_gb": 0.2,
+  "boxes": "word",
+  "tables": "yes (rows rebuilt from words)",
+  "licence_risk": "none",
+  "role": "The cheap path every page takes: exact PDF text where it exists, OCR elsewhere, table rows rebuilt inside layout regions."
+ },
+ "hybrid_vlm": {
+  "name": "Hybrid + PaddleOCR-VL on scans and table pages",
+  "kind": "Pipeline (no new model)",
+  "params": "sum of parts",
+  "download_gb": 2.25,
+  "boxes": "word + block",
+  "tables": "yes",
+  "licence_risk": "none",
+  "role": "The cheap path, plus the vision model as a second reader only where it helps."
+ },
  "_not_run": [
-  {"repo": "baidu/Unlimited-OCR", "size_gb": 13.35, "licence": "MIT", "why": "13 GB of weights; generation on 4 CPUs would take tens of minutes per page. Needs a GPU."},
-  {"repo": "datalab-to/chandra-ocr-2", "size_gb": 10.59, "licence": "OpenRAIL (Datalab)", "why": "Licence limits commercial use above a revenue cap; 10 GB, GPU model. Licence risk."},
-  {"repo": "allenai/olmOCR-2-7B-1025", "size_gb": 16.58, "licence": "Apache-2.0", "why": "7B, built for GPU batch conversion. Candidate for a GPU box later."},
-  {"repo": "deepseek-ai/DeepSeek-OCR-2", "size_gb": 6.78, "licence": "Apache-2.0", "why": "3B; GPU-oriented. Candidate for a GPU box later."},
-  {"repo": "dots-studio/dots.ocr", "size_gb": 6.08, "licence": "MIT", "why": "3B layout+OCR VLM; needs custom code and a GPU for useful speed."},
-  {"repo": "nanonets/Nanonets-OCR2-3B", "size_gb": 7.51, "licence": "not stated on the card", "why": "No licence tag: not usable until clarified."},
-  {"repo": "tencent/HunyuanOCR", "size_gb": 4.6, "licence": "Tencent licence (other)", "why": "Custom Tencent licence with territory and use limits: check the card before any EU/Swiss use. Not run."},
-  {"repo": "opendatalab/MinerU2.5-Pro-2605-1.2B", "size_gb": 2.31, "licence": "weights Apache-2.0, MinerU toolkit AGPL-3.0", "why": "Strong parser, but the official pipeline is AGPL; would need a clean re-implementation of its prompts."},
-  {"repo": "datalab-to/surya-ocr-2", "size_gb": 1.0, "licence": "OpenRAIL-M style with revenue cap; code GPL-3.0", "why": "Licence risk (GPL code, commercial cap)."},
-  {"repo": "microsoft/layoutlmv3-base", "size_gb": 0.5, "licence": "CC-BY-NC-SA-4.0", "why": "Non-commercial licence, and needs fine-tuning on labelled fee data. LayoutLM v1 QA (MIT) was run instead."},
-  {"repo": "facebook/nougat-base", "size_gb": 1.4, "licence": "CC-BY-NC-4.0", "why": "Non-commercial; trained on scientific papers."},
-  {"repo": "naver-clova-ix/donut-base-finetuned-docvqa", "size_gb": 0.8, "licence": "MIT", "why": "English-only DocVQA; LayoutLM QA covers the same idea with word boxes."},
-  {"repo": "keremberke/yolov8m-table-extraction", "size_gb": 0.05, "licence": "AGPL-3.0", "why": "AGPL (Ultralytics)."},
-  {"repo": "marker / pymupdf4llm", "size_gb": 0, "licence": "GPL-3.0 / AGPL-3.0", "why": "Copyleft; PyMuPDF is already banned in this repo."}
+  {
+   "repo": "baidu/Unlimited-OCR",
+   "size_gb": 13.35,
+   "licence": "MIT",
+   "why": "13 GB of weights; generation on 4 CPUs would take tens of minutes per page. Needs a GPU."
+  },
+  {
+   "repo": "datalab-to/chandra-ocr-2",
+   "size_gb": 10.59,
+   "licence": "OpenRAIL (Datalab)",
+   "why": "Licence limits commercial use above a revenue cap; 10 GB, GPU model. Licence risk."
+  },
+  {
+   "repo": "allenai/olmOCR-2-7B-1025",
+   "size_gb": 16.58,
+   "licence": "Apache-2.0",
+   "why": "7B, built for GPU batch conversion. Candidate for a GPU box later."
+  },
+  {
+   "repo": "deepseek-ai/DeepSeek-OCR-2",
+   "size_gb": 6.78,
+   "licence": "Apache-2.0",
+   "why": "3B; GPU-oriented. Candidate for a GPU box later."
+  },
+  {
+   "repo": "dots-studio/dots.ocr",
+   "size_gb": 6.08,
+   "licence": "MIT",
+   "why": "3B layout+OCR VLM; needs custom code and a GPU for useful speed."
+  },
+  {
+   "repo": "nanonets/Nanonets-OCR2-3B",
+   "size_gb": 7.51,
+   "licence": "not stated on the card",
+   "why": "No licence tag: not usable until clarified."
+  },
+  {
+   "repo": "tencent/HunyuanOCR",
+   "size_gb": 4.6,
+   "licence": "Tencent licence (other)",
+   "why": "Custom Tencent licence with territory and use limits: check the card before any EU/Swiss use. Not run."
+  },
+  {
+   "repo": "opendatalab/MinerU2.5-Pro-2605-1.2B",
+   "size_gb": 2.31,
+   "licence": "weights Apache-2.0, MinerU toolkit AGPL-3.0",
+   "why": "Strong parser, but the official pipeline is AGPL; would need a clean re-implementation of its prompts."
+  },
+  {
+   "repo": "datalab-to/surya-ocr-2",
+   "size_gb": 1.0,
+   "licence": "OpenRAIL-M style with revenue cap; code GPL-3.0",
+   "why": "Licence risk (GPL code, commercial cap)."
+  },
+  {
+   "repo": "microsoft/layoutlmv3-base",
+   "size_gb": 0.5,
+   "licence": "CC-BY-NC-SA-4.0",
+   "why": "Non-commercial licence, and needs fine-tuning on labelled fee data. LayoutLM v1 QA (MIT) was run instead."
+  },
+  {
+   "repo": "facebook/nougat-base",
+   "size_gb": 1.4,
+   "licence": "CC-BY-NC-4.0",
+   "why": "Non-commercial; trained on scientific papers."
+  },
+  {
+   "repo": "naver-clova-ix/donut-base-finetuned-docvqa",
+   "size_gb": 0.8,
+   "licence": "MIT",
+   "why": "English-only DocVQA; LayoutLM QA covers the same idea with word boxes."
+  },
+  {
+   "repo": "keremberke/yolov8m-table-extraction",
+   "size_gb": 0.05,
+   "licence": "AGPL-3.0",
+   "why": "AGPL (Ultralytics)."
+  },
+  {
+   "repo": "marker / pymupdf4llm",
+   "size_gb": 0,
+   "licence": "GPL-3.0 / AGPL-3.0",
+   "why": "Copyleft; PyMuPDF is already banned in this repo."
+  },
+  {
+   "repo": "zenosai/MonkeyOCRv2-B-Parsing",
+   "size_gb": 1.8,
+   "licence": "Apache-2.0",
+   "why": "Needs trust_remote_code (custom Python from the repo). We only run code that ships in transformers or a pinned licensed package."
+  },
+  {
+   "repo": "baidu/Unlimited-OCR-2",
+   "size_gb": 6.7,
+   "licence": "MIT",
+   "why": "Needs trust_remote_code, and 3.3B parameters are too slow on 4 CPU cores."
+  },
+  {
+   "repo": "Logics-MLLM/Logics-Parsing-V3",
+   "size_gb": 1.7,
+   "licence": "none stated",
+   "why": "No licence on the model card: cannot be used commercially."
+  },
+  {
+   "repo": "baidu/Qianfan-OCR",
+   "size_gb": 9.5,
+   "licence": "Apache-2.0",
+   "why": "4.7B parameters: minutes per page on this CPU. Candidate for a GPU run."
+  },
+  {
+   "repo": "lightonai/LightOnOCR-3-4B",
+   "size_gb": 9.1,
+   "licence": "Apache-2.0",
+   "why": "4.5B parameters: too slow on this CPU. The 0.8B and 1B siblings were run. Candidate for a GPU run."
+  },
+  {
+   "repo": "docling-project/DeskForge-Qwen3.5-4B",
+   "size_gb": 9.1,
+   "licence": "Apache-2.0",
+   "why": "4.5B parameters: too slow on this CPU. Candidate for a GPU run."
+  },
+  {
+   "repo": "datalab-to/surya-ocr-2.5",
+   "size_gb": 1.4,
+   "licence": "OpenRAIL (Datalab)",
+   "why": "Licence limits commercial use above a revenue cap."
+  },
+  {
+   "repo": "opendatalab/MinerU2.5-2509-1.2B",
+   "size_gb": 2.3,
+   "licence": "AGPL-3.0",
+   "why": "AGPL. The Apache-2.0 Pro-2605 release of the same model was run instead."
+  }
  ]
 }
