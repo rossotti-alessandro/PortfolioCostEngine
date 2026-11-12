@@ -1,15 +1,15 @@
 ---
 id: SC-8.13
 title: Professional visual system: square cards, figures and one primary action
-status: "To Do"
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Redesign FeeLens user flow and components"
+model: "claude-opus-5-5"
+progress: 5
+branch: "local/sc-8.13"
 pr: ""
 created_date: "2026-11-12 20:45"
-updated_date: "2026-11-12 20:45"
+updated_date: "2026-11-12 20:46"
 labels:
   - ui
 dependencies: []
