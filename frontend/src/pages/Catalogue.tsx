@@ -1,11 +1,12 @@
 import { Page, PageTitle } from "@/components/Shell";
-import { Badge, Card, CardHeader, ErrorBox, Spinner, inputCls } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Search } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const FAMILY: Record<string, string> = {
   holdings: "Holdings",
@@ -36,6 +37,11 @@ export default function CataloguePage() {
         subtitle={t(
           "The document types an analyst can upload, the data extracted from each, what each document can and cannot prove, and the fee codes every cost is mapped to.",
         )}
+        actions={
+          <Link to="/how-it-works">
+            <Button variant="outline">{t("How it works")}</Button>
+          </Link>
+        }
       />
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-md border border-line bg-surface p-0.5 text-[13px]" role="tablist">

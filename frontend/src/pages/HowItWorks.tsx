@@ -1,6 +1,7 @@
 import { Page, PageTitle } from "@/components/Shell";
-import { Card, CardHeader } from "@/components/ui";
+import { Button, Card, CardHeader } from "@/components/ui";
 import { t } from "@/lib/i18n";
+import { Link } from "react-router-dom";
 
 const STEPS = [
   {
@@ -94,6 +95,11 @@ export default function HowItWorksPage() {
         subtitle={t(
           "From a pile of bank documents to a verified, like-for-like cost comparison. No source, no verified figure. Missing is never zero.",
         )}
+        actions={
+          <Link to="/catalogue">
+            <Button variant="outline">{t("Data catalogue")}</Button>
+          </Link>
+        }
       />
       <Card className="mb-4">
         <CardHeader title={t("Workflow")} />

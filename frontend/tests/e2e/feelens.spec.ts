@@ -117,6 +117,7 @@ test("07 roles: analysts cannot see internal margin, seniors can", async ({ page
   const id = rows.find((x) => x.code === "P-1042")?.id;
   await page.goto(`/p/${id}/internal`);
   await expect(page.getByText("Restricted to senior reviewers")).toBeVisible();
+  await page.getByLabel("Account menu").click();
   await page.getByLabel("Demo role").selectOption("senior");
   await expect(page.getByRole("heading", { name: "Internal economics" })).toBeVisible();
   await shot(page, "09-internal-senior");
@@ -139,9 +140,11 @@ test("08 access: signed-out requests are refused, a firm header cannot switch fi
 
 test("09 Italian interface", async ({ page }) => {
   await page.goto(`/p/${pid}/costs`);
+  await page.getByLabel("Account menu").click();
   await page.getByRole("button", { name: "Italiano" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "it");
   await shot(page, "10-costs-italiano");
+  await page.getByLabel("Menu account").click(); // the menu closes when the language changes
   await page.getByRole("button", { name: "English" }).click();
 });
 
@@ -186,8 +189,10 @@ test("10 pipeline: every processing step of a document, with details on demand",
   const layers = page.locator("#stage-categorize");
   await layers.getByRole("button", { name: "Show details" }).click();
   await expect(layers.getByText("Counted in the total").first()).toBeVisible();
+  await page.getByLabel("Account menu").click();
   await page.getByRole("button", { name: "Italiano" }).click();
   await expect(page.getByRole("heading", { name: "Come è stato elaborato questo documento" })).toBeVisible();
+  await page.getByLabel("Menu account").click(); // the menu closes when the language changes
   await page.getByRole("button", { name: "English" }).click();
 });
 

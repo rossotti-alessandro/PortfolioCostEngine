@@ -4,9 +4,19 @@ import { chf, cn } from "@/lib/format";
 import { setLang, t, useLang } from "@/lib/i18n";
 import { crm } from "@/pages/crm/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, FolderOpen, Lock, LogOut, ShieldCheck, Users, Workflow } from "lucide-react";
+import {
+  BookOpen,
+  Check,
+  ChevronRight,
+  ChevronsUpDown,
+  FolderOpen,
+  Lock,
+  LogOut,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { type ReactNode, useState } from "react";
-import { Link, NavLink, Outlet, useMatch, useParams } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
 import { Badge, InfoTip } from "./ui";
 
 /** Logo and name; a link home inside the app, plain on the sign-in page (no router there). */
@@ -34,7 +44,7 @@ function LangSwitch() {
   const lang = useLang();
   return (
     <fieldset
-      className="mb-3 flex rounded-md border border-line bg-surface p-0.5 text-[12px]"
+      className="flex rounded-[var(--radius-control)] border border-line bg-surface p-0.5 text-[12px]"
       aria-label={t("Language")}
     >
       {(["en", "it"] as const).map((l) => (
@@ -44,7 +54,7 @@ function LangSwitch() {
           aria-pressed={lang === l}
           onClick={() => setLang(l)}
           className={cn(
-            "flex-1 rounded px-2 py-1 font-medium",
+            "flex-1 rounded-[3px] px-2 py-1 font-medium",
             lang === l ? "bg-navy-900 text-white" : "text-muted hover:text-ink",
           )}
         >
@@ -72,7 +82,7 @@ function RoleSwitch() {
           setR(r);
           qc.invalidateQueries();
         }}
-        className="mt-1 h-8 w-full rounded-md border border-line-strong bg-surface px-2 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+        className="mt-1 h-8 w-full rounded-[var(--radius-control)] border border-line-strong bg-surface px-2 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-teal-600/20"
       >
         {roles.map((r) => (
           <option key={r} value={r}>
@@ -84,91 +94,127 @@ function RoleSwitch() {
   );
 }
 
-function Account() {
+/** Language, demo role and sign-out in one menu, so the sidebar keeps only places to go. */
+function AccountMenu() {
   const qc = useQueryClient();
+  const lang = useLang();
   const me = qc.getQueryData<Me>(["me"]);
-  if (!me) return null;
   return (
-    <div className="flex items-center justify-between gap-2 text-[11.5px] text-subtle">
-      <span className="truncate">{t("Signed in as {user}", { user: me.username })}</span>
-      <button
-        type="button"
-        onClick={async () => {
-          await auth.logout().catch(() => undefined);
-          signedOut(qc);
-        }}
-        className="flex shrink-0 items-center gap-1 rounded px-1.5 py-1 font-medium text-muted hover:bg-paper hover:text-ink"
+    <details className="group relative">
+      <summary
+        aria-label={t("Account menu")}
+        className="flex cursor-pointer list-none items-center gap-2 rounded-[var(--radius-control)] px-2 py-1.5 hover:bg-paper"
       >
-        <LogOut className="h-3.5 w-3.5" /> {t("Sign out")}
-      </button>
-    </div>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy-900 text-[12px] font-semibold uppercase text-white">
+          {(me?.username ?? "?").slice(0, 1)}
+        </span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-[13px] font-medium text-ink">{me?.username ?? "…"}</span>
+          <span className="block truncate text-[11.5px] text-subtle">
+            {lang.toUpperCase()} · {t(ROLE_LABEL[getRole()])}
+          </span>
+        </span>
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
+      </summary>
+      <div className="absolute bottom-full left-0 z-30 mb-1 w-full space-y-3 rounded-[var(--radius-card)] border border-line bg-surface p-3 shadow-lg">
+        <LangSwitch />
+        <RoleSwitch />
+        <button
+          type="button"
+          onClick={async () => {
+            await auth.logout().catch(() => undefined);
+            signedOut(qc);
+          }}
+          className="flex w-full items-center gap-1.5 rounded-[var(--radius-control)] px-1.5 py-1 text-[12.5px] font-medium text-muted hover:bg-paper hover:text-ink"
+        >
+          <LogOut className="h-3.5 w-3.5" /> {t("Sign out")}
+        </button>
+      </div>
+    </details>
   );
 }
 
 const STEPS = [
   { to: "documents", label: "Documents" },
-  { to: "review", label: "Review evidence" },
-  { to: "costs", label: "Current costs" },
+  { to: "review", label: "Check values" },
+  { to: "costs", label: "Costs" },
   { to: "compare", label: "Compare" },
-  { to: "report", label: "Client report" },
+  { to: "report", label: "Report" },
 ];
 
 const navCls = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13.5px] font-medium",
+    "flex items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[13.5px] font-medium",
     isActive ? "bg-navy-100 text-navy-900" : "text-muted hover:bg-paper hover:text-ink",
   );
 
-function ProspectNav({ pid }: { pid: number }) {
+/** The five steps of a review across the top of the workspace: done ticks and what is left to check. */
+function StepBar({ pid }: { pid: number }) {
   const { data } = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
   const { data: docs } = useQuery({ queryKey: ["documents", pid], queryFn: () => api.documents(pid) });
+  const toCheck = data ? data.review.facts - data.review.reviewed - data.review.rejected : 0;
   const done: Record<string, boolean> = {
     documents: (docs?.length ?? 0) > 0,
-    review: !!data && data.review.facts > 0 && data.review.reviewed + data.review.rejected >= data.review.facts,
+    review: !!data && data.review.facts > 0 && toCheck <= 0,
     costs: !!data && data.current.is_complete,
     compare: false,
     report: !!data?.approval?.valid,
   };
   return (
-    <div className="mt-5">
-      <div className="px-2.5 text-[11px] font-semibold uppercase tracking-wider text-subtle">{t("Prospect")}</div>
-      <div className="mt-1 truncate px-2.5 text-[13px] font-medium text-ink" title={data?.prospect.label}>
-        {data?.prospect.label ?? "…"}
-      </div>
-      <nav aria-label={t("Review workflow")} className="mt-2 space-y-0.5">
-        {STEPS.map((s, i) => (
-          <NavLink key={s.to} to={`/p/${pid}/${s.to}`} className={navCls}>
-            {({ isActive }) => (
-              <>
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px]",
-                    done[s.to]
-                      ? "bg-teal-700 text-white"
-                      : isActive
-                        ? "bg-navy-900 text-white"
-                        : "bg-surface text-muted ring-1 ring-line-strong",
-                  )}
-                >
-                  {done[s.to] ? <Check className="h-3 w-3" /> : i + 1}
+    <nav aria-label={t("Review workflow")} className="-mb-px flex items-end gap-1 overflow-x-auto">
+      {STEPS.map((s, i) => (
+        <NavLink
+          key={s.to}
+          to={`/p/${pid}/${s.to}`}
+          className={({ isActive }) =>
+            cn(
+              "flex shrink-0 items-center gap-2 border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium",
+              isActive ? "border-navy-900 text-navy-900" : "border-transparent text-muted hover:text-ink",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px]",
+                  done[s.to]
+                    ? "bg-teal-700 text-white"
+                    : isActive
+                      ? "bg-navy-900 text-white"
+                      : "bg-surface text-muted ring-1 ring-line-strong",
+                )}
+              >
+                {done[s.to] ? <Check className="h-3 w-3" aria-label={t("done")} /> : i + 1}
+              </span>
+              {t(s.label)}
+              {s.to === "review" && toCheck > 0 && (
+                <span className="num rounded-[3px] bg-amber-50 px-1.5 text-[11.5px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-700/20">
+                  {toCheck}
                 </span>
-                {t(s.label)}
-              </>
-            )}
-          </NavLink>
-        ))}
-        <NavLink to={`/p/${pid}/internal`} className={navCls}>
-          <Lock className="ml-0.5 h-4 w-4" /> {t("Internal economics")}
+              )}
+            </>
+          )}
         </NavLink>
-      </nav>
-    </div>
+      ))}
+      <NavLink
+        to={`/p/${pid}/internal`}
+        className={({ isActive }) =>
+          cn(
+            "ml-auto flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2.5 pt-1 text-[12.5px] font-medium",
+            isActive ? "border-navy-900 text-navy-900" : "border-transparent text-subtle hover:text-ink",
+          )
+        }
+      >
+        <Lock className="h-3.5 w-3.5" /> {t("Internal economics")}
+      </NavLink>
+    </nav>
   );
 }
 
 /** Left navigation (240px) per DESIGN_SYSTEM.md §3; collapses to a top block on small screens. */
 export function AppShell() {
-  const m = useMatch("/p/:id/*");
-  const pid = m ? Number(m.params.id) : null;
+  const path = useLocation().pathname;
   return (
     <div className="flex min-h-full flex-col md:flex-row">
       <aside className="no-print flex shrink-0 flex-col border-b border-line bg-surface px-3 py-4 md:sticky md:top-0 md:h-screen md:w-[240px] md:border-b-0 md:border-r">
@@ -180,22 +226,20 @@ export function AppShell() {
           <NavLink to="/prospects" end className={navCls}>
             <FolderOpen className="h-4 w-4" /> {t("Cost reviews")}
           </NavLink>
-          <NavLink to="/catalogue" className={navCls}>
-            <BookOpen className="h-4 w-4" /> {t("Data catalogue")}
-          </NavLink>
-          <NavLink to="/how-it-works" className={navCls}>
-            <Workflow className="h-4 w-4" /> {t("How it works")}
+          <NavLink
+            to="/catalogue"
+            className={() => navCls({ isActive: path.startsWith("/catalogue") || path.startsWith("/how-it-works") })}
+          >
+            <BookOpen className="h-4 w-4" /> {t("Library")}
           </NavLink>
         </nav>
-        {pid !== null && <ProspectNav pid={pid} />}
-        <div className="mt-6 space-y-3 md:mt-auto">
-          <div className="flex items-start gap-2 rounded-md bg-teal-50 px-2.5 py-2 text-[11.5px] leading-snug text-teal-700">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {t("Processed on this server. No document content is sent to external AI.")}
+        <div className="mt-6 space-y-2 md:mt-auto">
+          <div className="flex items-center gap-1.5 px-2.5 text-[11.5px] text-teal-700">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+            {t("Local only")}
+            <InfoTip>{t("Processed on this server. No document content is sent to external AI.")}</InfoTip>
           </div>
-          <LangSwitch />
-          <RoleSwitch />
-          <Account />
+          <AccountMenu />
         </div>
       </aside>
       <main className="min-w-0 flex-1">
@@ -217,7 +261,7 @@ export function ProspectLayout() {
         </div>
       )}
       <div className="no-print border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-3.5 sm:px-8">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[12px] text-subtle">
               {contact.data ? (
@@ -258,6 +302,9 @@ export function ProspectLayout() {
               )}
             </div>
           )}
+        </div>
+        <div className="mx-auto max-w-[1200px] px-2 sm:px-6">
+          <StepBar pid={pid} />
         </div>
       </div>
       <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8">
