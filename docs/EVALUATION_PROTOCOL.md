@@ -97,7 +97,7 @@ product cost reconciliation) must fail or warn. A wrong total with no alarm is a
 |---|---|---|---|
 | `synthetic-p1042` | 11 SYNTHETIC docs, 2 banks, CHF, one scanned statement, an xlsx | built from `demo/spec.py` (the generator's inputs, never parser output) + pinned totals | yes |
 | `synthetic-p2077` | 4 SYNTHETIC docs, Italian bank (EUR) and US broker (USD) | from `demo/archetypes.py` + pinned totals | yes |
-| `ocrbench` | 38 pages of real public PDFs (KIDs, price lists, cost reports), 4 languages | 514 hand-checked fee figures with value boxes (`data/specimens/ocrbench/groundtruth.json`) | yes, fee facts on those pages |
+| `ocrbench` | 54 pages of real public PDFs (KIDs, price lists, cost reports, statements), 4 languages | 813 hand-checked fee figures, each tagged table / key-value / text / footnote with value boxes (`data/specimens/ocrbench/groundtruth.json`) | yes, fee facts on those pages |
 | `specimen_corpus` | manifest rows with an `expected` column | a few values read by a person | no |
 
 Variant `scan` rasterises every PDF to an image-only copy at 150 dpi, so the same labels test the OCR
@@ -155,7 +155,7 @@ data says so.
 | synthetic-p2077 | digital | 100% | 100% | 0 | 0 | all 4 numbers right, gate PASS |
 | synthetic-p1042 | scan | 85.5% | 100% | 0 | (unverifiable) | 7 numbers wrong, alarms raised |
 | synthetic-p2077 | scan | 96.2% | 100% | 0 | (unverifiable) | 3 numbers wrong, alarms raised |
-| ocrbench (514 real fee figures) | digital | 4.3% | 43.1% | 5 (18.5% of matched), 2 as zero | 4 | – |
+| ocrbench (813 real fee figures, 54 pages; re-run 2026-11-12 after SC-5.7 grew the gold) | digital | 3.6% | 43.9% | 11 (27.5% of matched), 3 as zero | 8 | – |
 | specimen_corpus (partial labels) | digital | 91.2% | – | 0 | 1 of 294 | – |
 | sanity: sabotaged, p1042 | digital | 56.5% | 56.5% | 27 | 26 | 9 wrong, gate FAIL as intended |
 

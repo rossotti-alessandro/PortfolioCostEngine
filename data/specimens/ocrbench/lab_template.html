@@ -116,7 +116,7 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <p class="sub" id="lede">Local OCR, layout, table and vision-language models run on real public bank and fund documents, scored against hand-checked fee figures.</p>
     </div>
     <nav class="tabs" aria-label="Views">
-      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
+      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#app">App end to end</a><a href="#workflows">Workflows</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
     </nav>
   </header>
 
@@ -127,6 +127,7 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <p class="muted" style="margin-top:0">Main score: <b>fee figure read with its label on the same row</b>, the input a fee parser needs. Click a column to sort. All runs on 4 CPU cores, no GPU.</p>
       <div class="controls"><label for="scope">Pages <select id="scope">
         <option value="engines_core">Same pages for every engine (fair)</option>
+        <option value="engines_mini">Same 8 hard pages (slow VLMs)</option>
         <option value="engines_all">Every page each engine ran</option></select></label></div>
       <div class="scroll"><table id="rank"></table></div>
       <details><summary>What each column means</summary>
@@ -149,6 +150,16 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <h2>By document family</h2>
       <p class="muted" style="margin-top:0">Label + value on the same row, per family of pages, for the engines that read text.</p>
       <div class="scroll"><table id="byfam"></table></div>
+    </div>
+    <div class="panel">
+      <h2>By layout element</h2>
+      <p class="muted" style="margin-top:0">Where the fee sits on the page, as tagged by hand: a ruled <b>table</b>, a <b>key-value</b> list (label left, value right, no grid), running <b>text</b>, or a <b>footnote</b>. Label + value on the same row, every page each engine ran.</p>
+      <div class="scroll"><table id="byel"></table></div>
+    </div>
+    <div class="panel">
+      <h2>What the layout models call the fee's region</h2>
+      <p class="muted" style="margin-top:0">For every hand-checked fee, the smallest region each layout model drew around it. This is the list of layout elements a fee extractor has to handle. "(none)" means the model drew no region over the fee.</p>
+      <div class="scroll"><table id="regl"></table></div>
     </div>
   </section>
 
@@ -181,12 +192,53 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
     </div>
   </section>
 
+  <section class="view" id="v-app" hidden>
+    <div class="panel">
+      <h2>The FeeLens app, run end to end</h2>
+      <p class="muted" style="margin-top:0">Two SYNTHETIC prospects go through the same steps as a real upload: read each document, classify it, extract every figure with its page and box, compute the portfolio's all-in cost, and run the validation checks. The expected numbers were pinned by hand. "Scan" means the same documents as image-only copies, so the app has to OCR them. Click a cost line to see the page it comes from.</p>
+      <div class="controls"><label for="run">Run <select id="run"></select></label></div>
+    </div>
+    <div class="tiles" id="apptiles"></div>
+    <div class="panel"><h2>App against the numbers pinned by hand</h2><div class="scroll"><table id="appexp"></table></div></div>
+    <div class="bench" style="grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)">
+      <div class="panel"><h2>Cost lines the app found</h2><p class="muted" style="margin-top:0">Only lines marked "counted in the total" add up to the all-in cost. Click a line to see the page and the box it was read from. Unknown lines have no amount: missing is never zero.</p><div class="scroll" style="max-height:70vh;overflow-y:auto"><table id="atoms"></table></div></div>
+      <div class="panel" style="min-width:0"><h2 id="srctitle">Source</h2><div class="muted" id="srcmeta">Pick a cost line.</div><div id="srcpage"></div></div>
+    </div>
+    <div class="panel"><h2>Validation checks and missing documents</h2><div class="scroll"><table id="checks"></table></div></div>
+    <div class="panel"><h2>Extraction errors per document</h2><p class="muted" style="margin-top:0">From the accuracy protocol (docs/EVALUATION_PROTOCOL.md): every expected value the app did not read correctly.</p><div class="scroll"><table id="docerr"></table></div></div>
+  </section>
+
+  <section class="view" id="v-workflows" hidden>
+    <div class="panel">
+      <h2>Complete workflows, side by side</h2>
+      <p class="muted" style="margin-top:0">Each workflow turns a page into fee figures, each with its label, its value and the box it was read from. All of them are scored the same way against the figures checked by hand. A figure "sent to review" is shown to the analyst with a warning; a "wrong value accepted" is the dangerous error: a confident number that is not on the page under that label.</p>
+      <div class="controls"><label for="wscope">Pages <select id="wscope"><option value="common">Same pages for every workflow (fair)</option><option value="all">Every page each workflow ran</option></select></label></div>
+      <div class="scroll"><table id="wtable"></table></div>
+      <details><summary>How each workflow works</summary><div id="whow"></div></details>
+    </div>
+    <div class="panel" id="wport" hidden><h2>Whole portfolio, SYNTHETIC prospects</h2><p class="muted" style="margin-top:0">The workflows that run inside the app, applied to every document of a prospect: do the final totals match the numbers pinned by hand?</p><div class="scroll"><table id="wptable"></table></div></div>
+    <div class="panel">
+      <h2>Page by page</h2>
+      <div class="controls"><label for="wpage">Page <select id="wpage"></select></label><label for="wwf">Workflow on the page <select id="wwf"></select></label></div>
+      <div class="bench" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:12px">
+        <div class="stage" id="wstage"></div>
+        <div style="min-width:0"><div class="scroll" style="max-height:75vh;overflow-y:auto"><table class="gtt" id="wgrid"></table></div>
+        <details><summary>Figures this workflow reported that are not fees under that label</summary><div id="wextra"></div></details></div>
+      </div>
+    </div>
+  </section>
+
   <section class="view" id="v-models" hidden>
     <div class="cards" id="cards"></div>
     <div class="panel">
       <h2>Looked at, not run</h2>
       <p class="muted" style="margin-top:0">Found on Hugging Face and checked against our rules (local only, no AGPL or non-commercial licences, runs on a normal office machine).</p>
       <div class="scroll"><table id="notrun"></table></div>
+    </div>
+    <div class="panel" id="verifier" hidden>
+      <h2>Second check on what OCR read (MiniCPM-OCR-Jev)</h2>
+      <p class="muted" style="margin-top:0">A 2B model looks at the image region and the OCR text and scores whether they match. Measured on OCR lines that hold a fee figure; "misread" means the line's numbers differ from the PDF text layer. Compared with the OCR engine's own confidence.</p>
+      <div class="scroll"><table id="vtable"></table></div>
     </div>
   </section>
 
@@ -201,8 +253,9 @@ const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let D, cur = null;
 
-const FAM = {hybrid: "Pipeline", baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
-const TEXT_FAMS = new Set(["hybrid", "baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
+const EL = {table: "table", key_value: "key-value", text: "text", footnote: "footnote"};
+const FAM = {app: "FeeLens app", hybrid: "Pipeline", baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
+const TEXT_FAMS = new Set(["app", "hybrid", "baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
 
 fetch("data.json").then(r => r.json()).then(d => { D = d; boot(); }).catch(e => {
   $("#lede").textContent = "Could not load data.json: " + e;
@@ -225,13 +278,14 @@ function boot() {
   rankTable("pair_recall");
   scatter();
   byFamily();
+  byElement();
   docList();
   ["engA", "engB"].forEach((id, i) => {
     const s = $("#" + id);
-    s.innerHTML = Object.keys(D.engines).sort().map(k => `<option value="${k}">${esc(D.engines[k].name || k)}</option>`).join("");
+    s.innerHTML = Object.keys(D.engines_all).sort().map(k => `<option value="${k}">${esc(D.engines_all[k].name || k)}</option>`).join("");
   });
-  $("#engA").value = D.engines.paddleocr_vl ? "paddleocr_vl" : "pdfplumber";
-  $("#engB").value = D.engines.docling ? "docling" : "tesseract";
+  $("#engA").value = D.engines_all.app_baseline ? "app_baseline" : "pdfplumber";
+  $("#engB").value = D.engines_all.hybrid_vlm ? "hybrid_vlm" : "docling";
   ["engA", "engB", "lgt", "lwords", "lregions", "ltables"].forEach(id => $("#" + id).addEventListener("change", render));
   cards();
   route();
@@ -240,11 +294,13 @@ function boot() {
 
 function route() {
   const h = (location.hash || "#overview").slice(1);
-  const views = ["overview", "documents", "models", "pipeline"];
+  const views = ["overview", "documents", "app", "workflows", "models", "pipeline"];
   const v = views.includes(h) ? h : "overview";
   views.forEach(x => { $("#v-" + x).hidden = x !== v; });
   document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + v ? "page" : "false"));
   if (v === "documents" && !cur) pick(D.pages[0].id);
+  if (v === "app") appView();
+  if (v === "workflows") wfView();
 }
 
 const COLS = [
@@ -310,6 +366,21 @@ function byFamily() {
   $("#byfam").innerHTML = head + rows;
 }
 
+function byElement() {
+  const A = D.engines_all;
+  const E = Object.values(A).filter(e => TEXT_FAMS.has(e.family) && e.element_pair_recall).sort((a, b) => (b.pair_recall ?? 0) - (a.pair_recall ?? 0));
+  const els = ["table", "key_value", "text", "footnote"];
+  const n = {}; D.pages.filter(p => p.variant === "original").forEach(p => p.gt.forEach(g => { n[g.el] = (n[g.el] || 0) + 1; }));
+  $("#byel").innerHTML = `<tr><th>Engine</th><th class="num">Pages</th>${els.map(k => `<th class="num">${EL[k]} (${n[k] || 0})</th>`).join("")}</tr>` +
+    E.map(e => `<tr><td>${esc(e.name || e.engine)}</td><td class="num">${e.pages}</td>${els.map(k => `<td class="num">${pct(e.element_pair_recall[k])}</td>`).join("")}</tr>`).join("");
+  const L = Object.values(A).filter(e => e.family === "layout" && e.region_labels);
+  const tot = {}, per = {};
+  L.forEach(e => { per[e.engine] = {}; let t = 0; Object.entries(e.region_labels).forEach(([k, v]) => { const lab = k.split(":").slice(1).join(":"); per[e.engine][lab] = (per[e.engine][lab] || 0) + v; t += v; tot[lab] = (tot[lab] || 0) + v; }); per[e.engine]._t = t; });
+  const labs = Object.keys(tot).sort((a, b) => tot[b] - tot[a]);
+  $("#regl").innerHTML = `<tr><th>Region label</th>${L.map(e => `<th class="num">${esc(e.name || e.engine)}</th>`).join("")}</tr>` +
+    labs.map(l => `<tr><td>${esc(l)}</td>${L.map(e => { const v = per[e.engine][l]; return `<td class="num">${v ? `${v} <span class="muted">(${Math.round(100 * v / per[e.engine]._t)}%)</span>` : "–"}</td>`; }).join("")}</tr>`).join("");
+}
+
 function docList() {
   const groups = {};
   D.pages.forEach(p => (groups[p.stratum] ||= []).push(p));
@@ -335,12 +406,13 @@ function render() {
   pane("#paneA", a); pane("#paneB", b);
   const sa = p.scores[a] || {}, sb = p.scores[b] || {};
   const mark = (s, i) => { const f = s.items && s.items[i]; if (!f) return "<span class='muted'>–</span>"; return f.p ? "<span class='ok'>row ✓</span>" : f.v ? "<span class='muted'>read, row ✗</span>" : "<span class='ko'>missed</span>"; };
-  $("#gtt").innerHTML = p.gt.length ? `<tr><th>Fee (as printed)</th><th>Value</th><th>${esc(a)}</th><th>${esc(b)}</th></tr>` + p.gt.map((g, i) => `<tr><td>${esc(g.label)}${g.in_table ? " <span class='chip'>table</span>" : ""}</td><td class="mono">${esc(g.value)}</td><td>${mark(sa, i)}</td><td>${mark(sb, i)}</td></tr>`).join("") : `<tr><td class="muted">This page has no fee figures. It tests whether engines invent fees: see false positives below.</td></tr>`;
+  const sapp = p.scores.app_baseline || {}, showApp = a !== "app_baseline" && b !== "app_baseline";
+  $("#gtt").innerHTML = p.gt.length ? `<tr><th>Fee (as printed)</th><th>Value</th><th>${esc(a)}</th><th>${esc(b)}</th>${showApp ? "<th>FeeLens app</th>" : ""}</tr>` + p.gt.map((g, i) => `<tr><td>${esc(g.label)} <span class='chip'>${EL[g.el] || "table"}</span></td><td class="mono">${esc(g.value)}</td><td>${mark(sa, i)}</td><td>${mark(sb, i)}</td>${showApp ? `<td>${mark(sapp, i)}</td>` : ""}</tr>`).join("") : `<tr><td class="muted">This page has no fee figures. It tests whether engines invent fees: see false positives below.</td></tr>`;
   const E = Object.keys(p.scores).sort((x, y) => (p.scores[y].pair || 0) - (p.scores[x].pair || 0));
   $("#pscores").innerHTML = `<tr><th>Engine</th><th class="num">Row ✓</th><th class="num">Read</th><th class="num">Boxed</th><th class="num">Table ROI</th><th class="num">False fees</th><th class="num">Seconds</th></tr>` + E.map(k => {
     const s = p.scores[k], o = (D.outputs[k] || {})[p.id] || {};
     const r = (x, n) => n ? `${x}/${n}` : "–";
-    return `<tr><td>${esc(D.engines[k]?.name || k)}</td><td class="num">${r(s.pair || 0, s.gt)}</td><td class="num">${r(s.value || 0, s.gt)}</td><td class="num">${r(s.located_tight || 0, s.gt_boxed)}</td><td class="num">${r(s.table_roi || 0, s.gt_table_boxed)}</td><td class="num">${s.false_pos ?? "–"}</td><td class="num">${o.sec ?? "–"}${o.err ? " ⚠" : ""}</td></tr>`;
+    return `<tr><td>${esc(D.engines_all[k]?.name || k)}</td><td class="num">${r(s.pair || 0, s.gt)}</td><td class="num">${r(s.value || 0, s.gt)}</td><td class="num">${r(s.located_tight || 0, s.gt_boxed)}</td><td class="num">${r(s.table_roi || 0, s.gt_table_boxed)}</td><td class="num">${s.false_pos ?? "–"}</td><td class="num">${o.sec ?? "–"}${o.err ? " ⚠" : ""}</td></tr>`;
   }).join("");
   $("#rawA").innerHTML = raw(a); $("#rawB").innerHTML = raw(b);
 }
@@ -358,7 +430,7 @@ function raw(k) {
 
 function pane(sel, k) {
   const p = cur, o = (D.outputs[k] || {})[p.id], s = p.scores[k] || {};
-  const e = D.engines[k] || {};
+  const e = D.engines_all[k] || {};
   const rect = (b, col, w, dash, title) => b ? `<rect x="${b[0]}" y="${b[1]}" width="${Math.max(1, b[2] - b[0])}" height="${Math.max(1, b[3] - b[1])}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""} vector-effect="non-scaling-stroke"><title>${esc(title)}</title></rect>` : "";
   let g = "";
   if (o) {
@@ -376,6 +448,106 @@ function pane(sel, k) {
     <div class="stage"><svg viewBox="0 0 ${p.w} ${p.h}" role="img" aria-label="${esc(k)} output over page"><image href="img/${p.id}.jpg" x="0" y="0" width="${p.w}" height="${p.h}"/>${g}</svg></div>`;
 }
 
+const chf = v => v == null || v === "None" ? "unknown" : Number(v).toLocaleString("en-CH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const PATHS = {"current.total_known": "All-in annual cost (known)", "current.billed_known": "Billed costs", "current.embedded_known": "Costs inside products",
+  "current.total_bps": "Cost in basis points", "aum.total": "Assets under management"};
+const label = k => PATHS[k] || k.replace(/^scenarios\./, "Proposal: ").replace(/[._]/g, " ");
+let appRun = null;
+const ROLE_ORDER = ["counted", "unknown", "included_in_parent", "corroborating", "not_a_paid_cost"];
+const ROLE = {counted: ["counted in the total", "ok"], unknown: ["unknown: document requested", "risk"], included_in_parent: ["inside the fund's TER, counted once", ""],
+  corroborating: ["cross-check of another line, not added", ""], not_a_paid_cost: ["shown for reference, not a paid cost", ""]};
+function appView() {
+  if (!D.e2e) { $("#apptiles").innerHTML = "<p class='muted'>No end-to-end run in this build.</p>"; return; }
+  const sel = $("#run");
+  if (!sel.options.length) {
+    sel.innerHTML = D.e2e.runs.map((r, i) => `<option value="${i}">${esc(r.corpus.replace("synthetic-", "SYNTHETIC ").toUpperCase())} · ${r.variant === "scan" ? "scanned copies (OCR)" : "original PDFs"}</option>`).join("");
+    sel.addEventListener("change", () => showRun(+sel.value));
+  }
+  showRun(+sel.value || 0);
+}
+function showRun(i) {
+  const r = appRun = D.e2e.runs[i], m = r.metrics;
+  const n = Object.keys(r.expect).length, bad = Object.keys(r.expect).filter(k => r.expect[k] !== r.got[k]).length;
+  $("#apptiles").innerHTML = [
+    [chf(r.summary.total_known), "all-in annual cost the app computed (CHF, known lines)"],
+    [`${n - bad}/${n}`, "totals equal to the numbers pinned by hand"],
+    [pct(m.recall), `figures read correctly (${m.gold ?? "–"} expected)`],
+    [m.missing_as_zero ?? 0, "missing figures shown as zero (must be 0)"],
+    [m.silent_error ? "YES" : "no", "wrong total with no warning"],
+  ].map(([v, l]) => `<div class="tile"><div class="n">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("");
+  $("#appexp").innerHTML = `<tr><th>Number</th><th class="num">Pinned by hand</th><th class="num">App</th><th>Result</th></tr>` +
+    Object.keys(r.expect).map(k => { const ok = r.expect[k] === r.got[k]; return `<tr><td>${esc(label(k))}<div class="muted mono">${esc(k)}</div></td><td class="num">${esc(r.expect[k])}</td><td class="num">${esc(r.got[k])}</td><td><span class="chip ${ok ? "ok" : "risk"}">${ok ? "match" : "differs"}</span></td></tr>`; }).join("");
+  const atoms = [...r.atoms].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || Number(b.amount ?? 0) - Number(a.amount ?? 0));
+  $("#atoms").innerHTML = `<tr><th>Cost line</th><th>Layer</th><th class="num">CHF / year</th><th class="num">bps</th><th>Sources</th></tr>` + atoms.map((a, j) => `<tr data-a="${r.atoms.indexOf(a)}" style="cursor:pointer" tabindex="0"><td><b>${esc(a.fee_label)}</b><div class="muted" style="font-size:.82rem">${esc(a.label)}${a.institution ? " · " + esc(a.institution) : ""}</div><div style="margin-top:3px"><span class="chip ${(ROLE[a.role] || [])[1] || ""}">${esc((ROLE[a.role] || [a.role])[0])}</span></div></td><td><span class="chip">${esc(a.layer)}</span></td><td class="num" style="${a.role === "counted" ? "" : "color:var(--ink-2)"}">${a.amount == null ? "unknown" : chf(a.amount)}</td><td class="num">${a.bps ?? "–"}</td><td class="num">${a.sources.length}</td></tr>`).join("");
+  document.querySelectorAll("#atoms tr[data-a]").forEach(tr => { const go = () => showAtom(+tr.dataset.a, tr); tr.addEventListener("click", go); tr.addEventListener("keydown", e => { if (e.key === "Enter") go(); }); });
+  $("#srctitle").textContent = "Source"; $("#srcmeta").textContent = "Pick a cost line."; $("#srcpage").innerHTML = "";
+  const st = {pass: "ok", fail: "risk", warn: "risk"};
+  $("#checks").innerHTML = `<tr><th>Check</th><th>Result</th><th>Detail</th></tr>` + r.checks.map(c => `<tr><td>${esc(c.title)}</td><td><span class="chip ${st[c.status] || ""}">${esc(c.status)}</span></td><td class="muted">${esc(c.detail)}</td></tr>`).join("") +
+    r.requests.map(q => `<tr><td>Ask the client for: ${esc(q.ask_for || q.title)}</td><td><span class="chip">missing doc</span></td><td class="muted">${esc(q.reason)}</td></tr>`).join("");
+  const errs = r.per_document.flatMap(d => (d.errors || []).map(e => ({...e, file: d.file})).concat(d.error ? [{file: d.file, label: "crash", want: "", got: d.error, status: "error"}] : []));
+  $("#docerr").innerHTML = errs.length ? `<tr><th>Document</th><th>Figure</th><th class="num">Expected</th><th class="num">App read</th><th>Status</th></tr>` + errs.map(e => `<tr><td class="mono">${esc(e.file)}</td><td>${esc(e.label)}</td><td class="num">${esc(e.want)}</td><td class="num">${esc(e.got ?? "nothing")}</td><td><span class="chip risk">${esc(e.status)}</span></td></tr>`).join("") : "<tr><td>Every expected figure was read correctly.</td></tr>";
+}
+function showAtom(i, tr) {
+  const a = appRun.atoms[i];
+  document.querySelectorAll("#atoms tr").forEach(t => t.style.background = t === tr ? "var(--accent-soft)" : "");
+  $("#srctitle").textContent = a.fee_label;
+  const f = a.formula ? `<div class="mono" style="margin:4px 0">${esc(a.formula)}</div>` : "";
+  if (!a.sources.length) { $("#srcmeta").innerHTML = f + "No source fact: " + esc(a.note || "this line comes from a rule or a request, not a printed figure."); $("#srcpage").innerHTML = ""; return; }
+  $("#srcmeta").innerHTML = f + a.sources.map(s => { const d = appRun.docs.find(x => x.id === s.doc); return `<div><b>${esc(s.label)}</b> = <span class="mono">${esc(s.value)}</span> · ${esc(d ? d.file : "")}${s.page ? " p" + s.page : ""}${s.cell ? " " + esc(s.sheet) + "!" + esc(s.cell) : ""}${s.engine ? ` <span class="chip">${esc(s.engine)}</span>` : ""}</div>`; }).join("");
+  const pages = {};
+  a.sources.forEach(s => { if (s.page && s.b) (pages[s.doc + ":" + s.page] ||= []).push(s); });
+  $("#srcpage").innerHTML = Object.entries(pages).map(([k, ss]) => {
+    const d = appRun.docs.find(x => x.id === ss[0].doc), pg = d && d.pages[ss[0].page - 1];
+    if (!pg) return "";
+    const boxes = ss.map(s => `<rect x="${s.b[0] - 3}" y="${s.b[1] - 3}" width="${s.b[2] - s.b[0] + 6}" height="${s.b[3] - s.b[1] + 6}" fill="none" stroke="var(--gt)" stroke-width="3" vector-effect="non-scaling-stroke"><title>${esc(s.label)}</title></rect>`).join("");
+    return `<div class="cap"><span class="muted mono">${esc(d.file)} · page ${ss[0].page}</span></div><div class="stage" style="margin-bottom:12px"><svg viewBox="0 0 ${pg.w} ${pg.h}"><image href="${pg.img}" width="${pg.w}" height="${pg.h}"/>${boxes}</svg></div>`;
+  }).join("") || "<p class='muted'>The source is a spreadsheet cell or has no box.</p>";
+}
+
+const HIT = {found: ["✓", "var(--hit)"], review: ["?", "var(--gt)"], missed: ["✗", "var(--miss)"]};
+function wfView() {
+  const A = D.arena;
+  if (!A) { $("#wtable").innerHTML = "<tr><td>No workflow run in this build.</td></tr>"; return; }
+  const keys = Object.keys(A.workflows);
+  if (!$("#wpage").options.length) {
+    const ids = Object.keys(A.per_page);
+    $("#wpage").innerHTML = D.pages.filter(p => ids.includes(p.id)).map(p => `<option value="${p.id}">${esc(p.issuer)} · p${p.page}${p.variant === "scan-sim" ? " (simulated scan)" : ""} · ${p.gt.length} figures</option>`).join("");
+    $("#wwf").innerHTML = keys.map(k => `<option value="${k}">${esc(A.workflows[k].name)}</option>`).join("");
+    $("#wwf").value = keys.find(k => k.startsWith("agentic")) || "finder_verify";
+    ["wpage", "wwf"].forEach(id => $("#" + id).addEventListener("change", wfPage));
+    $("#wscope").addEventListener("change", wfTable);
+    $("#whow").innerHTML = "<ul>" + keys.map(k => `<li><b>${esc(A.workflows[k].name)}</b>: ${esc(A.workflows[k].how)}</li>`).join("") + "</ul>";
+  }
+  wfTable(); wfPortfolio(); wfPage();
+}
+function wfTable() {
+  const A = D.arena, sc = $("#wscope").value;
+  const rows = Object.entries(A.workflows).filter(([, w]) => w[sc]).sort((a, b) => b[1][sc].f1 - a[1][sc].f1);
+  const bar = v => `<div class="barcell"><div class="bartrack"><div class="bar" style="width:${v * 100}%"></div></div><span class="mono">${pct(v)}</span></div>`;
+  $("#wtable").innerHTML = `<tr><th>Workflow</th><th class="num">Pages</th><th>Fees found (recall)</th><th class="num">Precision</th><th class="num">Sent to review</th><th class="num">Wrong values accepted</th><th class="num">Box on the value</th><th class="num">s/page</th></tr>` +
+    rows.map(([k, w]) => { const s = w[sc]; return `<tr><td><b>${esc(w.name)}</b></td><td class="num">${s.pages}</td><td>${bar(s.recall)}</td><td class="num">${pct(s.precision)}</td><td class="num">${pct(s.review_share)}</td><td class="num">${s.wrong_accepted} (${(s.wrong_accepted_share * 100).toFixed(1)}%)</td><td class="num">${pct(s.bbox_hit_rate)}</td><td class="num">${s.s_per_page == null ? "–" : (+s.s_per_page).toFixed(1)}</td></tr>`; }).join("");
+}
+function wfPortfolio() {
+  const P = D.arena.portfolio;
+  $("#wport").hidden = !P;
+  if (!P) return;
+  $("#wptable").innerHTML = `<tr><th>Workflow</th><th>Prospect</th><th>Copies</th><th class="num">Figures read</th><th class="num">Totals right</th><th>Wrong total without warning</th></tr>` +
+    P.map(r => `<tr><td>${esc(r.workflow)}</td><td>${esc(r.corpus.replace("synthetic-", "SYNTHETIC ").toUpperCase())}</td><td>${r.variant === "scan" ? "scanned" : "original PDFs"}</td><td class="num">${pct(r.recall)}</td><td class="num">${r.totals_ok}/${r.totals}</td><td><span class="chip ${r.silent_error ? "risk" : "ok"}">${r.silent_error ? "yes" : "no"}</span></td></tr>`).join("");
+}
+function wfPage() {
+  const A = D.arena, id = $("#wpage").value, k = $("#wwf").value, p = D.pages.find(x => x.id === id), pp = A.per_page[id];
+  const keys = Object.keys(A.workflows).filter(x => pp.hits[x]);
+  const hits = pp.hits[k] || [];
+  let g = "";
+  p.gt.forEach((t, i) => { if (!t.b) return; const h = HIT[hits[i]] || HIT.missed; g += `<rect x="${t.b[0] - 3}" y="${t.b[1] - 3}" width="${t.b[2] - t.b[0] + 6}" height="${t.b[3] - t.b[1] + 6}" fill="none" stroke="${h[1]}" stroke-width="3" vector-effect="non-scaling-stroke"><title>${esc(t.label)}: ${esc(t.value)} (${hits[i] || "not run"})</title></rect>`; });
+  (pp.extra[k] || []).forEach(x => { if (!x.bbox) return; const b = x.bbox.map(v => v * 2); g += `<rect x="${b[0] - 2}" y="${b[1] - 2}" width="${b[2] - b[0] + 4}" height="${b[3] - b[1] + 4}" fill="none" stroke="var(--region)" stroke-width="2" stroke-dasharray="4 2" vector-effect="non-scaling-stroke"><title>reported, not a fee here: ${esc(x.label)} = ${esc(x.value)}</title></rect>`; });
+  $("#wstage").innerHTML = `<svg viewBox="0 0 ${p.w} ${p.h}" role="img" aria-label="page with figures"><image href="img/${p.id}.jpg" width="${p.w}" height="${p.h}"/>${g}</svg><div class="muted" style="font-size:.8rem;padding:6px">Solid: hand-checked figures (green found, amber sent to review, red missed). Dashed purple: reported by this workflow but not a fee under that label.</div>`;
+  $("#wgrid").innerHTML = `<tr><th>Figure</th><th>Value</th>${keys.map(x => `<th title="${esc(A.workflows[x].name)}">${esc(({app_before: "App before", app_after: "App now", finder_verify: "Finder", finder_layout: "Layout", vision: "Vision"})[x] || ({consensus: "2 readers", consensus_union: "2 readers +"})[x] || (x.startsWith("agentic_zero") ? "Agent, zeros" : x.startsWith("agentic_flag") ? "Agent flags" : "Agent"))}</th>`).join("")}</tr>` +
+    p.gt.map((t, i) => `<tr><td>${esc(t.label)}</td><td class="mono">${esc(t.value)}</td>${keys.map(x => { const h = HIT[pp.hits[x][i]]; return `<td style="color:${h[1]};font-weight:600">${h[0]}</td>`; }).join("")}</tr>`).join("") || "<tr><td>No fee is printed on this page: every figure reported here is a false one.</td></tr>";
+  const ex = pp.extra[k] || [];
+  $("#wextra").innerHTML = ex.length ? "<ul>" + ex.map(x => `<li>${esc(x.label)} = <span class="mono">${esc(x.value)}</span>${x.needs_review ? " <span class='chip'>sent to review</span>" : ""}</li>`).join("") + "</ul>" : "<p class='muted'>None.</p>";
+}
+
 function cards() {
   const M = D.models;
   $("#cards").innerHTML = Object.values(D.engines).sort((a, b) => (b.pair_recall ?? -1) - (a.pair_recall ?? -1)).map(e => `<div class="card">
@@ -387,5 +559,8 @@ function cards() {
     <dt>Speed</dt><dd>${e.sec_per_page ?? "–"} s/page · ${e.peak_rss_gb ?? "–"} GB RAM</dd>
     <dt>Licence</dt><dd><span class="chip ${e.licence_risk === "high" ? "risk" : "ok"}">${esc(e.licence)}</span></dd></dl></div>`).join("");
   $("#notrun").innerHTML = `<tr><th>Model</th><th class="num">Size GB</th><th>Licence</th><th>Why not run here</th></tr>` + (M._not_run || []).map(m => `<tr><td class="mono">${esc(m.repo)}</td><td class="num">${m.size_gb}</td><td>${esc(m.licence)}</td><td>${esc(m.why)}</td></tr>`).join("");
+  const V = D.verifier;
+  $("#verifier").hidden = !V;
+  if (V) $("#vtable").innerHTML = `<tr><th>Lines</th><th class="num">Misread</th><th class="num">Separates right from wrong: Jev</th><th class="num">OCR's own confidence</th><th class="num">Misreads caught if 10% go to review: Jev</th><th class="num">OCR conf.</th></tr>` + Object.entries(V.by).map(([k, v]) => `<tr><td>${k === "all" ? "<b>All</b>" : k === "scans" ? "Simulated scans" : esc(k)}</td><td class="num">${v.jev.misread} / ${v.jev.n}</td><td class="num"><b>${v.jev.auroc?.toFixed(2) ?? "–"}</b></td><td class="num">${v.engine_conf.auroc?.toFixed(2) ?? "–"}</td><td class="num"><b>${pct(v.jev["caught@10%"])}</b></td><td class="num">${pct(v.engine_conf["caught@10%"])}</td></tr>`).join("");
 }
 </script>

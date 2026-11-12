@@ -12,7 +12,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1192,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-pf-lu0266009793-p3",
@@ -27,7 +28,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-ff-ch0228419740-p3",
@@ -42,7 +44,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-21shares-ch0454664027-de-p3",
@@ -57,7 +60,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-amundi-msci-world-swap-ii-dist-fr-p3",
@@ -72,7 +76,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-amundi-lu1883321967-fr-che-p3",
@@ -87,7 +92,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-21shares-ch0454664001-it-p2",
@@ -102,7 +108,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-anima-crescitaitalia-a-p3",
@@ -117,7 +124,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "ikid-axa-mps-investiplan-unico-generic-it-p2",
@@ -132,7 +140,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "ikid-alte-leipziger-alfonds-fr10-ishares-msci-world-de-p3",
@@ -147,7 +156,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "kid-gerifonds-ns-ch-swiss-excellence-fr-p3",
@@ -162,7 +172,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-aekbank-anlagegeschaeft-de-p3",
@@ -177,7 +188,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-akb-anlageberatung-fokus-2025-p1",
@@ -192,7 +204,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-bcv-clientele-privee-fr-p12",
@@ -207,7 +220,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 840,
-  "height": 1191
+  "height": 1191,
+  "round": 1
  },
  {
   "id": "tariff-bcf-gestion-fortune-2026-p12",
@@ -222,7 +236,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-bnpp-wm-svizzera-it-2023-p13",
@@ -237,7 +252,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-banca-passadore-intermediazione-it-p2",
@@ -252,7 +268,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-vontobel-eam-prices-conditions-2021-p5",
@@ -267,7 +284,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-juliusbaer-lu-banking-custody-en-p3",
@@ -282,7 +300,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-cic-tarification-titres-bourse-banque-privee-fr-p7",
@@ -297,7 +316,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-bnl-deposito-titoli-powered-it-p4",
@@ -312,7 +332,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1224,
-  "height": 1584
+  "height": 1584,
+  "round": 1
  },
  {
   "id": "costs-gutzwiller-exante-execution-only-2021-p5",
@@ -327,7 +348,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "finsa-bcv-couts-frais-fr-p8",
@@ -342,7 +364,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "costs-banca-di-san-marino-informativa-precontrattuale-it-p37",
@@ -357,7 +380,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "sample-hsbc-pb-cc-guide-p3",
@@ -372,7 +396,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "sample-ebase-expost-erlaeuterung-p2",
@@ -387,7 +412,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "sample-investcentre-demo-client-report-p5",
@@ -402,7 +428,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1684,
-  "height": 1191
+  "height": 1191,
+  "round": 1
  },
  {
   "id": "sample-edwardjones-releve-fr-p2",
@@ -417,7 +444,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1224,
-  "height": 1584
+  "height": 1584,
+  "round": 1
  },
  {
   "id": "fs-allianz-lu1548497699-p2",
@@ -432,7 +460,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "fs-blackrock-bgf-global-equity-income-en-p1",
@@ -447,7 +476,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "fs-dws-de0009848119-p1",
@@ -462,7 +492,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "ts-juliusbaer-capital-protection-ft-en-de-p25",
@@ -477,7 +508,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "ts-vontobel-mini-future-gold-final-terms-de-p2",
@@ -492,7 +524,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "ar-fundsmith-sicav-2025-p29",
@@ -507,7 +540,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "pr-xex-amundi-fr0010315770-fr-p18",
@@ -522,7 +556,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1190,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "tariff-invest-banca-gp-ib-navigator-it-p1",
@@ -537,7 +572,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1191,
-  "height": 1684
+  "height": 1684,
+  "round": 1
  },
  {
   "id": "sample-scotia-swm-releves-fr-p3",
@@ -552,7 +588,8 @@
   "text_layer": true,
   "variant": "original",
   "width": 1224,
-  "height": 1584
+  "height": 1584,
+  "round": 1
  },
  {
   "id": "sample-utrade-sg-statement-p2",
@@ -567,7 +604,264 @@
   "text_layer": false,
   "variant": "original",
   "width": 1684,
-  "height": 1191
+  "height": 1191,
+  "round": 1
+ },
+ {
+  "id": "tariff-akb-anlageberatung-portfolio-2025-p1",
+  "file": "tariff-akb-anlageberatung-portfolio-2025.pdf",
+  "sha256": "5796e090389b3492b3f81edcb1e494da5ab15a53556992ee337113e9669190a8",
+  "page": 1,
+  "stratum": "Price list DE",
+  "document_type": "general_price_list",
+  "language": "de",
+  "issuer": "Aargauische Kantonalbank",
+  "fee_lines": 2,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "tariff-bawag-entgelte-konditionen-wertpapiere-at-p16",
+  "file": "tariff-bawag-entgelte-konditionen-wertpapiere-at.pdf",
+  "sha256": "51ec9a496ab90fdc10400904d298fb2fd06d7fe3e591038671a67f39ea1f9d98",
+  "page": 16,
+  "stratum": "Price list DE",
+  "document_type": "general_price_list",
+  "language": "de",
+  "issuer": "BAWAG P.S.K. AG",
+  "fee_lines": 8,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "tariff-bcge-prestations-services-2026-p28",
+  "file": "tariff-bcge-prestations-services-2026.pdf",
+  "sha256": "429a4988fc916551002f96d9c3e53531dd22326f5ee5f6d5007b8e5912c64226",
+  "page": 28,
+  "stratum": "Price list FR",
+  "document_type": "general_price_list",
+  "language": "fr",
+  "issuer": "Banque Cantonale de Genève",
+  "fee_lines": 3,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "tariff-banca-patrimoni-sella-conto-trader-c16-it-p13",
+  "file": "tariff-banca-patrimoni-sella-conto-trader-c16-it.pdf",
+  "sha256": "d1e11e050dd4957749b1aad794308917dc3ee4b14e02a0fe31db00cbe9c49d75",
+  "page": 13,
+  "stratum": "Price list IT",
+  "document_type": "general_price_list",
+  "language": "it",
+  "issuer": "Banca Patrimoni Sella & C. S.p.A.",
+  "fee_lines": 16,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "tariff-vontobel-eam-custody-2021-p4",
+  "file": "tariff-vontobel-eam-custody-2021.pdf",
+  "sha256": "09bbd271258dacfc2e3a3104ad28c255581c3a6390ccf1c6f5aeb1748bfe0b12",
+  "page": 4,
+  "stratum": "Custody tariff",
+  "document_type": "custody_tariff",
+  "language": "en",
+  "issuer": "Bank Vontobel AG",
+  "fee_lines": 3,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "tariff-cic-tarification-titres-bourse-fr-p7",
+  "file": "tariff-cic-tarification-titres-bourse-fr.pdf",
+  "sha256": "edbb539b873341ec664b0d519e73ad620602a331125e4f33da102a5194257383",
+  "page": 7,
+  "stratum": "Custody tariff",
+  "document_type": "custody_tariff",
+  "language": "fr",
+  "issuer": "CIC (Crédit Industriel et Commercial)",
+  "fee_lines": 6,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "tariff-banca-passadore-deposito-titoli-it-p3",
+  "file": "tariff-banca-passadore-deposito-titoli-it.pdf",
+  "sha256": "eac138a1d18c2ed90f0d4be8eaf4f3b1a623b2a6acb8ef7724ebe30b3ca7412c",
+  "page": 3,
+  "stratum": "Custody tariff",
+  "document_type": "custody_tariff",
+  "language": "it",
+  "issuer": "Banca Passadore & C. S.p.A.",
+  "fee_lines": 3,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "costs-kbc-securities-services-mifid-cost-transparency-en-p4",
+  "file": "costs-kbc-securities-services-mifid-cost-transparency-en.pdf",
+  "sha256": "b4fc763d9757fa36730f230ca28496883c792d353b48caf0ce86645128ae5463",
+  "page": 4,
+  "stratum": "Cost disclosure",
+  "document_type": "cost_disclosure",
+  "language": "en",
+  "issuer": "KBC Bank NV (KBC Securities Services)",
+  "fee_lines": 3,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1190,
+  "height": 1685,
+  "round": 2
+ },
+ {
+  "id": "costs-spuerkeess-illustrations-couts-ex-ante-fr-p5",
+  "file": "costs-spuerkeess-illustrations-couts-ex-ante-fr.pdf",
+  "sha256": "13aebdcb7daec4ade208e45b69c0d0fe9401c6f559daf76375c6faf1322570c5",
+  "page": 5,
+  "stratum": "Cost disclosure",
+  "document_type": "cost_disclosure",
+  "language": "fr",
+  "issuer": "Banque et Caisse d'Épargne de l'État, Luxembourg (Spuerkeess)",
+  "fee_lines": 5,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "costs-banco-di-sardegna-gestione-portafogli-informativa-it-p13",
+  "file": "costs-banco-di-sardegna-gestione-portafogli-informativa-it.pdf",
+  "sha256": "1b17446e3231de551789ea1248479141dfb94a3e2a9f0b01a91812a68c3e38f8",
+  "page": 13,
+  "stratum": "Cost disclosure",
+  "document_type": "cost_disclosure",
+  "language": "it",
+  "issuer": "Banco di Sardegna S.p.A. (Gruppo BPER)",
+  "fee_lines": 2,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1224,
+  "height": 1584,
+  "round": 2
+ },
+ {
+  "id": "sample-rathbones-statement-cc-p1",
+  "file": "sample-rathbones-statement-cc.pdf",
+  "sha256": "f245230fc0154fe69c5d288b92011948d8155886856dc7f7147a463e397ddfb6",
+  "page": 1,
+  "stratum": "Annual cost report",
+  "document_type": "annual_cost_report",
+  "language": "en",
+  "issuer": "Rathbone Investment Management Ltd",
+  "fee_lines": 10,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1684,
+  "height": 1191,
+  "round": 2
+ },
+ {
+  "id": "sample-fidelity-us-investment-report-p5",
+  "file": "sample-fidelity-us-investment-report.pdf",
+  "sha256": "36a166a5a13e6d6d86b391233023f83f6f7b4d268a4a23fbae01cb81290e3b96",
+  "page": 5,
+  "stratum": "Portfolio statement",
+  "document_type": "portfolio_statement",
+  "language": "en",
+  "issuer": "Fidelity Brokerage Services LLC / National Financial Services LLC",
+  "fee_lines": 2,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1512,
+  "height": 1224,
+  "round": 2
+ },
+ {
+  "id": "dip-allianz-global-life-active4life-set-informativo-it-p25",
+  "file": "dip-allianz-global-life-active4life-set-informativo-it.pdf",
+  "sha256": "9ca3911585b4ac05e54dd1ca4268a8c6a4bc0c90770b9b6878fb4b75c5bfa593",
+  "page": 25,
+  "stratum": "KID insurance",
+  "document_type": "insurance_dip",
+  "language": "it",
+  "issuer": "Allianz Global Life dac – Sede secondaria di Trieste",
+  "fee_lines": 3,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1224,
+  "height": 1584,
+  "round": 2
+ },
+ {
+  "id": "kid-bnp-autocall-eurostoxx-utilities-en-p3",
+  "file": "kid-bnp-autocall-eurostoxx-utilities-en.pdf",
+  "sha256": "edb696fd6692270206e49fb1ef3c87451f91500baa2bb2f2fe8dff250fdc6b37",
+  "page": 3,
+  "stratum": "KID structured product",
+  "document_type": "kid_priips",
+  "language": "en",
+  "issuer": "BNP Paribas Issuance B.V. (guarantor BNP Paribas S.A.)",
+  "fee_lines": 7,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "terms-postfinance-01789-it-p2",
+  "file": "terms-postfinance-01789-it.pdf",
+  "sha256": "f0a0a0ee8fdfb471465b10608cdb411acd45f297e97e92929dac8697323becd2",
+  "page": 2,
+  "stratum": "Mandate contract",
+  "document_type": "mandate_contract",
+  "language": "it",
+  "issuer": "PostFinance SA",
+  "fee_lines": 4,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1191,
+  "height": 1684,
+  "round": 2
+ },
+ {
+  "id": "fs-deka-de0008474503-p3",
+  "file": "fs-deka-DE0008474503.pdf",
+  "sha256": "f1c078bcd64eccd2d39f5340270eab5bf88adfd0f92aaef911c1591c86c976cd",
+  "page": 3,
+  "stratum": "Factsheet",
+  "document_type": "factsheet",
+  "language": "de",
+  "issuer": "Deka Investment GmbH",
+  "fee_lines": 7,
+  "text_layer": true,
+  "variant": "original",
+  "width": 1190,
+  "height": 1684,
+  "round": 2
  },
  {
   "id": "kid-21shares-ch0454664001-en-p3-scan",
@@ -583,6 +877,7 @@
   "variant": "scan-sim",
   "width": 1192,
   "height": 1684,
+  "round": 1,
   "gt_from": "kid-21shares-ch0454664001-en-p3"
  },
  {
@@ -599,6 +894,7 @@
   "variant": "scan-sim",
   "width": 1191,
   "height": 1684,
+  "round": 1,
   "gt_from": "kid-21shares-ch0454664001-it-p2"
  },
  {
@@ -615,6 +911,7 @@
   "variant": "scan-sim",
   "width": 1191,
   "height": 1684,
+  "round": 1,
   "gt_from": "tariff-akb-anlageberatung-fokus-2025-p1"
  },
  {
@@ -631,6 +928,7 @@
   "variant": "scan-sim",
   "width": 1191,
   "height": 1684,
+  "round": 1,
   "gt_from": "tariff-juliusbaer-lu-banking-custody-en-p3"
  },
  {
@@ -647,6 +945,7 @@
   "variant": "scan-sim",
   "width": 1191,
   "height": 1684,
+  "round": 1,
   "gt_from": "sample-hsbc-pb-cc-guide-p3"
  },
  {
@@ -663,6 +962,58 @@
   "variant": "scan-sim",
   "width": 1191,
   "height": 1684,
+  "round": 1,
   "gt_from": "fs-dws-de0009848119-p1"
+ },
+ {
+  "id": "tariff-akb-anlageberatung-portfolio-2025-p1-scan",
+  "file": "tariff-akb-anlageberatung-portfolio-2025.pdf",
+  "sha256": "5796e090389b3492b3f81edcb1e494da5ab15a53556992ee337113e9669190a8",
+  "page": 1,
+  "stratum": "Simulated scan",
+  "document_type": "general_price_list",
+  "language": "de",
+  "issuer": "Aargauische Kantonalbank",
+  "fee_lines": 2,
+  "text_layer": false,
+  "variant": "scan-sim",
+  "width": 1191,
+  "height": 1684,
+  "round": 2,
+  "gt_from": "tariff-akb-anlageberatung-portfolio-2025-p1"
+ },
+ {
+  "id": "tariff-banca-passadore-deposito-titoli-it-p3-scan",
+  "file": "tariff-banca-passadore-deposito-titoli-it.pdf",
+  "sha256": "eac138a1d18c2ed90f0d4be8eaf4f3b1a623b2a6acb8ef7724ebe30b3ca7412c",
+  "page": 3,
+  "stratum": "Simulated scan",
+  "document_type": "custody_tariff",
+  "language": "it",
+  "issuer": "Banca Passadore & C. S.p.A.",
+  "fee_lines": 3,
+  "text_layer": false,
+  "variant": "scan-sim",
+  "width": 1191,
+  "height": 1684,
+  "round": 2,
+  "gt_from": "tariff-banca-passadore-deposito-titoli-it-p3"
+ },
+ {
+  "id": "dip-allianz-global-life-active4life-set-informativo-it-p25-scan",
+  "file": "dip-allianz-global-life-active4life-set-informativo-it.pdf",
+  "sha256": "9ca3911585b4ac05e54dd1ca4268a8c6a4bc0c90770b9b6878fb4b75c5bfa593",
+  "page": 25,
+  "stratum": "Simulated scan",
+  "document_type": "insurance_dip",
+  "language": "it",
+  "issuer": "Allianz Global Life dac – Sede secondaria di Trieste",
+  "fee_lines": 3,
+  "text_layer": false,
+  "variant": "scan-sim",
+  "width": 1224,
+  "height": 1584,
+  "round": 2,
+  "gt_from": "dip-allianz-global-life-active4life-set-informativo-it-p25"
  }
 ]

@@ -899,4 +899,30 @@ export const IT: Record<string, string> = {
   "Corrected by an analyst": "Corretto da un analista",
   "Entered by an analyst": "Inserito da un analista",
   "Rejected by an analyst": "Respinto da un analista",
+  "Reading documents…": "Lettura dei documenti…",
+  "Upload finished": "Caricamento completato",
+  "{done} of {n} files processed": "{done} di {n} file elaborati",
+  "Reading, classifying, extracting…": "Lettura, classificazione, estrazione…",
+  "{n} values read": "{n} valori letti",
+  "check type": "verificare il tipo",
+  "{n} documents need a quick check. Next: confirm the values read, each shown on its page.":
+    "{n} documenti richiedono un breve controllo. Prossimo passo: confermare i valori letti, ognuno mostrato sulla sua pagina.",
+  "Next: confirm the values read, each shown on its page.":
+    "Prossimo passo: confermare i valori letti, ognuno mostrato sulla sua pagina.",
+  "Review values": "Verifica i valori",
+  "See costs": "Vedi i costi",
+  "{facts} values read from {docs} documents": "{facts} valori letti da {docs} documenti",
+  "{n} checked by a person": "{n} verificati da una persona",
+  "{n} points to review": "{n} punti da verificare",
+  "Costs are not calculated yet": "I costi non sono ancora calcolati",
+  "None of the {n} documents is a statement of assets. Without the positions no cost can be put in proportion to assets, so no total is shown (not zero).":
+    "Nessuno dei {n} documenti è un estratto patrimoniale. Senza le posizioni nessun costo può essere rapportato al patrimonio, quindi non viene mostrato alcun totale (non zero).",
+  "Upload a statement of assets for each bank to start.":
+    "Carica un estratto patrimoniale per ogni banca per iniziare.",
+  "Upload documents": "Carica documenti",
+  "No statement of assets yet": "Ancora nessun estratto patrimoniale",
+  "Proposal costs more per year": "La proposta costa di più all'anno",
+  "costs more": "costa di più",
+  "PDF in English": "PDF in inglese",
+  "PDF in Italian": "PDF in italiano",
 };
