@@ -297,6 +297,8 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
             ):
                 name, qty, price, mv = pos
                 sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+                if sym:  # US statements print "$" on a table's first row only: later rows inherit it
+                    ccy = _SYMBOL_CCY[sym]
                 facts.append(
                     Fact(
                         key=f"position:name:{name}",
@@ -304,7 +306,7 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                         field="market_value",
                         label=name,
                         value=str(mv),
-                        currency=_SYMBOL_CCY[sym] if sym else ccy,
+                        currency=ccy,
                         isin=None,
                         extra={"quantity": str(qty), "price": str(price), "no_isin": True},
                         evidence=_ev(ln, page),
@@ -392,7 +394,45 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                             evidence=_ev(ln, page),
                         )
                     )
+    facts.extend(_larger_printed_total(pages, facts))
     return facts
+
+
+_GRAND_TOTAL = re.compile(
+    r"^(?:grand )?total(?: portfolio| value| assets| account value)?$|^totale$|^gesamttotal$", re.I
+)
+
+
+def _larger_printed_total(pages: list[PageInfo], facts: list[Fact]) -> list[Fact]:
+    """A statement's overview often prints the account total including cash, policies held elsewhere or a
+    second account, while each holdings table adds up to its own smaller total (corpus: AJ Bell demo
+    report, SC-9.6). Returned only when the largest bare "Total" line exceeds the holdings read by more
+    than 1%, so the analysis can raise an alarm instead of trusting a reconciliation that passed."""
+    held = sum((Decimal(f.value) for f in facts if f.kind == "position" and f.value), Decimal(0))
+    best: tuple[Decimal, Line, PageInfo] | None = None
+    for page in pages:
+        for ln in page.lines:
+            amounts = _amount_cells(ln)
+            if not amounts or not _GRAND_TOTAL.match(ln.cells[0].text.strip().rstrip(":")):
+                continue
+            first = amounts[0][1]  # value column first; cost and change columns follow
+            if best is None or first > best[0]:
+                best = (first, ln, page)
+    if best is None or best[0] <= held * Decimal("1.01"):
+        return []
+    value, ln, page = best
+    sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+    return [
+        Fact(
+            key="total:largest_printed",
+            kind="doc_total",
+            field="printed_total",
+            label=ln.text,
+            value=str(value),
+            currency=_SYMBOL_CCY[sym] if sym else None,
+            evidence=_ev(ln, page),
+        )
+    ]
 
 
 def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:

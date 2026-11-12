@@ -202,3 +202,53 @@ def test_possible_misses_flag_unread_cost_lines_only():
     )
     misses = _possible_misses([page], [read])
     assert [m["text"] for m in misses] == ["Brokerage commission CHF 1,250.00"]
+
+
+def test_rows_without_a_symbol_keep_the_tables_currency(tmp_path):
+    # US statements (corpus: Fidelity investment report) print "$" on the first row of a table only. The
+    # rows below are in the same currency; the old code labelled them with the CHF fallback.
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / "us.pdf", "Investment report")
+    d.header("Synthetic Brokerage LLC", "Boston", "SYNTHETIC investment report", "Holdings")
+    cols = [(50, "l"), (300, "r"), (380, "r"), (460, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    row("Description", "Quantity", "Price Per Unit", "Ending Market Value")
+    row("ALPHA INC (ALP)", "25.00", "$525.31", "$13,132.75")
+    row("BETA CORP (BET)", "100.00", "42.97", "4,297.00")
+    d.save()
+    res, _ = extract("us.pdf", (tmp_path / "us.pdf").read_bytes())
+    pos = {f.label: (f.value, f.currency) for f in res.facts if f.kind == "position"}
+    assert pos == {"ALPHA INC (ALP)": ("13132.75", "USD"), "BETA CORP (BET)": ("4297.00", "USD")}
+
+
+def test_overview_total_larger_than_holdings_raises_an_alarm(tmp_path):
+    # AJ Bell demo report (corpus, SC-9.6): the overview prints the account total including cash and
+    # off-panel policies; the holdings tables add up to their own smaller totals, so the old reconciliation
+    # passed while AUM was 20% short. The larger printed total must raise an alarm.
+    from pce.demo.generate import Doc
+    from pce.demo.offline import run
+
+    folder = tmp_path / "pack"
+    folder.mkdir()
+    d = Doc(folder / "uk3.pdf", "Client valuation")
+    d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client valuation", "Valuation overview")
+    cols = [(50, "l"), (250, "r"), (310, "r"), (370, "r"), (430, "r"), (490, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    row("Pension cash", "£2,000.00")
+    row("Total", "£10,000.00")
+    row("Holding name", "Quantity", "Price (£)", "Value (£)", "Cost (£)", "Change (%)")
+    row("ALPHA EQUITY I ACC", "1,000.00000", "5.00000", "5,000.00", "4,000.00", "25.00")
+    row("BETA BOND FUND INC", "600.00000", "5.00000", "3,000.00", "3,100.00", "-3.23")
+    row("Total", "8,000.00", "7,100.00", "12.68")
+    d.save()
+    a = run(folder)
+    checks = {c["key"]: c for c in a["checks"]}
+    assert checks["printed_total:1"]["status"] == "fail"
+    assert "10,000.00" in checks["printed_total:1"]["detail"]

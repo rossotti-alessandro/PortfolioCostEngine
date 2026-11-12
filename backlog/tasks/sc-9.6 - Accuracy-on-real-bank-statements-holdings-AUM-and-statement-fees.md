@@ -1,15 +1,15 @@
 ---
 id: SC-9.6
 title: Accuracy on real bank statements: holdings, AUM and statement fees
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Audit production readiness and close gaps"
+model: "claude-opus-5-5"
+progress: 70
+branch: "claude/project-thread-sdc7fx"
 pr: ""
 created_date: "2026-11-12 21:05"
-updated_date: "2026-11-12 21:05"
+updated_date: "2026-11-12 21:42"
 labels:
   - evaluation
   - extraction
@@ -60,11 +60,24 @@ Public sample statements are cleaner than real ones; the pilot (SC-11.1) is the 
 ## Acceptance Criteria
 
 - [ ] #1 Report gives position recall, wrong market values and AUM error on 30+ real statement pages, with 95% intervals
-- [ ] #2 Every AUM error above 1% raises an alarm, or the miss is listed as a silent error and filed as a story
+- [x] #2 Every AUM error above 1% raises an alarm, or the miss is listed as a silent error and filed as a story
 
 ## Implementation Notes
 
+Owned paths in practice (differ from `paths_owned`): `data/specimens/statements/**` (gold, scorer, results),
+and two fixes the measurement required, in `backend/src/pce/extraction/parsers.py` (table currency,
+larger printed total), `backend/src/pce/analysis.py` (the `printed_total:*` alarm) and
+`backend/tests/test_real_documents.py`. Labelling was done by this agent reading the public PDFs locally;
+Ale's instruction of 2026-11-12 ("use more reports, serious, professional and real") taken as the go-ahead.
+
 ## Outcome
+
+- **Status**: partial
+- 4 usable public statements (Fidelity US, Fidelity UK, AJ Bell, Edward Jones), 34 holdings and 13 account
+  totals hand-checked: `data/specimens/statements/RESULTS.md`. AC #1 asks for 30+ pages: not reachable from
+  public material (most public samples are blank or annotated reading guides); the pilot is the next source.
+- Silent AUM errors 1 of 4 before, 0 of 4 after (AC #2 met). Fixed: USD rows labelled CHF. Reader gaps filed
+  as SC-5.16.
 
 ## Issues Encountered
 
@@ -72,3 +85,4 @@ Public sample statements are cleaner than real ones; the pilot (SC-11.1) is the 
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-sdc7fx | ec7a352 | 2026-11-12 | Gold, scorer, results, currency fix, printed-total alarm |

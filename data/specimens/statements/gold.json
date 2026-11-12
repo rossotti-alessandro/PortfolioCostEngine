@@ -1,0 +1,82 @@
+{
+  "_about": "Hand-checked holdings on real public sample statements (SC-9.6). Values read from the page text and cross-checked against the statement's own printed account totals; where the sample is internally inconsistent, it says so. Labelled 2026-11-12 by an AI agent reading the public PDFs locally (no external service); spot-check before relying on it. Files: data/reference/specimen_corpus.csv, fetched with data/specimens/tools/fetch.py.",
+  "sample-fidelity-us-investment-report.pdf": {
+    "currency": "USD",
+    "clients": 1,
+    "holdings_total": "278922.20",
+    "holdings_total_note": "Sum of the three accounts' printed 'Total Holdings' (108,051.18 p9 + 142,413.12 p22 + 28,457.90 p25); each reconciles to its rows. The p2 'Total Portfolio' 274,222.20 is account value, net of a margin balance.",
+    "accounts": [
+      {"name": "Individual TOD 111-111111", "total": "108051.18", "page": 9},
+      {"name": "Traditional IRA 222-222222", "total": "142413.12", "page": 22},
+      {"name": "Education 333-333333", "total": "28457.90", "page": 25}
+    ],
+    "positions": [
+      {"page": 6, "label": "FDIC INSURED DEPOSIT AT FIFTH THIRD BANK", "value": "3500.50"},
+      {"page": 6, "label": "DOUBLELINE TOTAL RETURN BOND FD CL I", "value": "11361.52"},
+      {"page": 6, "label": "FIDELITY INSTL MMKT PORT CL I", "value": "5025.81"},
+      {"page": 6, "label": "SPDR SER TR BARCLAYS CAP HIGH YIELD BD", "value": "10165.00"},
+      {"page": 6, "label": "VANGUARD INTL EQUITY INDEX FDS MSCI", "value": "4297.00"},
+      {"page": 7, "label": "APPLE INC", "value": "13132.75"},
+      {"page": 7, "label": "AMERCO COM", "value": "6094.50"},
+      {"page": 7, "label": "ENSTAR GROUP LIMITED (short)", "value": "-13710.00"},
+      {"page": 7, "label": "BANK AMER CORP DEP SHS", "value": "3034.50"},
+      {"page": 7, "label": "MCITIGROUP INC DEP SH", "value": "7752.90"},
+      {"page": 7, "label": "FEDERAL NATL MTG ASSN", "value": "10000.00"},
+      {"page": 8, "label": "SABRATEK CORP NT CV", "value": "5062.50"},
+      {"page": 8, "label": "CALPINE CORP ESCROW", "value": "9950.00"},
+      {"page": 8, "label": "NEW YORK N Y CITY INDL DEV AGY REV", "value": "10744.20"},
+      {"page": 8, "label": "TXU SR NT-P", "value": "5000.00"},
+      {"page": 8, "label": "UNITED STATES TREAS BILLS", "value": "9900.00"},
+      {"page": 9, "label": "ADI NET LEASE INC & GROWTH LP XIX", "value": "1455.00"},
+      {"page": 9, "label": "MVENTAS INC", "value": "5285.00"},
+      {"page": 21, "label": "FIDELITY CASH RESERVES", "value": "2070.88"},
+      {"page": 21, "label": "APPLE INC", "value": "15759.30"},
+      {"page": 21, "label": "EXXON MOBILE", "value": "4398.00"},
+      {"page": 21, "label": "FACEBOOK", "value": "1509.60"},
+      {"page": 21, "label": "GENERAL MOTORS CO", "value": "7432.04"},
+      {"page": 21, "label": "SLM CORP CPI LKD NT", "value": "13859.10"},
+      {"page": 21, "label": "STANDARD PACIFIC CORP", "value": "47113.80"},
+      {"page": 21, "label": "WESTMORELAND COAL CO", "value": "9144.00"},
+      {"page": 22, "label": "SABRATEK CORP NT CV", "value": "10000.00"},
+      {"page": 22, "label": "DELPHI CORP JR SB NT", "value": "15375.00"},
+      {"page": 22, "label": "ESCROW GEN MOTORS CORP BOND", "value": "10100.00"},
+      {"page": 22, "label": "GENERAL MTRS CO WTS EXP 07/10/2016", "value": "2905.10"},
+      {"page": 22, "label": "GENERAL MTRS CO WTS EXP 07/10/2019", "value": "2008.30"},
+      {"page": 22, "label": "SOUTHWEST ROYALTIES INSTITUTIONAL", "value": "738.00"},
+      {"page": 25, "label": "NH Portfolio 2015", "value": "21221.14"},
+      {"page": 25, "label": "NH Moderate Growth Port", "value": "7236.76"}
+    ]
+  },
+  "sample-fidelity-uk-wealth-qpr.pdf": {
+    "currency": "GBP",
+    "clients": 1,
+    "holdings_total": "476312.87",
+    "holdings_total_note": "Sum of the six account values on p3; the page prints 476,312.88 (rounding in the sample).",
+    "accounts": [
+      {"name": "Investment ISA 0088", "total": "75898.41", "page": 5},
+      {"name": "Investment Account (C Yaxley)", "total": "398.41", "page": 5},
+      {"name": "Cash Management Account", "total": "0.00", "page": 3},
+      {"name": "Pension Drawdown 8673", "total": "374596.99", "page": 6},
+      {"name": "Pension Drawdown 8675", "total": "24409.75", "page": 7},
+      {"name": "Investment Account (RORYTHOMAS)", "total": "1009.31", "page": 8}
+    ]
+  },
+  "sample-investcentre-demo-client-report.pdf": {
+    "currency": "GBP",
+    "clients": 2,
+    "holdings_total": "618520.40",
+    "holdings_total_note": "Two different clients in one file: Mr M Thomas (SIPP 583,882.97 + ISA 34,637.43, p3) and Mr K Adams (GIA 41,753.05, p17). The gold AUM is the first client's; a correct tool either splits the file or refuses to merge two people. SIPP includes cash and off-panel Prudential policies (68,093.85 + 76,029.56, p4).",
+    "accounts": [
+      {"name": "Thomas SIPP", "total": "583882.97", "page": 4},
+      {"name": "Thomas ISA", "total": "34637.43", "page": 4},
+      {"name": "Adams GIA (second client)", "total": "41753.05", "page": 17, "other_client": true}
+    ]
+  },
+  "sample-edwardjones-releve-fr.pdf": {
+    "currency": "CAD",
+    "clients": 1,
+    "holdings_total": "25219.13",
+    "holdings_total_note": "Annotated sample statement inside a 'how to read' guide; 'Your Current Account Value' p1 (portfolio 24,889.73 + cash 329.40). Text layer is interleaved with callout numbers.",
+    "accounts": [{"name": "Investment account", "total": "25219.13", "page": 1}]
+  }
+}
