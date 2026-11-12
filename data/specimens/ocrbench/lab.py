@@ -51,7 +51,8 @@ def main() -> None:
             **{k: p[k] for k in ("id", "file", "page", "stratum", "document_type", "language", "issuer", "variant",
                                  "text_layer")},
             "w": W, "h": H,
-            "gt": [{"label": g["label"], "value": g["value"], "in_table": g["in_table"],
+            "round": p.get("round", 1),
+            "gt": [{"label": g["label"], "value": g["value"], "in_table": g["in_table"], "el": g.get("element"),
                     "b": [v * 2 for v in g["bbox"]] if g.get("bbox") else None} for g in items],
             "scores": scores["per_page"].get(p["id"], {}),
         })
@@ -65,18 +66,25 @@ def main() -> None:
                 "regions": [[x["label"], r1(x["b"]), x.get("s")] for x in r.get("regions", [])[:400]],
                 "tables": [{"b": r1(t.get("b")), "rows": [[(c or "")[:120] for c in row] for row in t["rows"][:80]]}
                            for t in r.get("tables", [])[:12]],
-                "fees": [[x["label"][:120], x["value"][:60], r1(x.get("b"))] for x in r.get("fees", [])],
+                "fees": [[x["label"][:120], (x["value"] or "")[:60], r1(x.get("b")), x.get("fee_code")]
+                         for x in r.get("fees", [])],
                 "text": (r.get("text") or "")[:6000],
                 "sec": r.get("seconds"),
                 "load": bool(r.get("includes_load")),
                 "err": r.get("error"),
             }
-    for key in ("engines", "engines_core"):
-        for k, e in scores[key].items():
+    for key in ("engines", "engines_core", "engines_mini"):
+        for k, e in scores.get(key, {}).items():
             e.update(meta_extra.get(k, {}))
-    data = {"pages": out_pages, "engines": scores["engines_core"], "engines_core": scores["engines_core"],
-            "engines_all": scores["engines"], "n_core": len(json.loads((HERE / "vlm_core.json").read_text())["pages"]),
-            "outputs": outputs, "models": meta_extra}
+    e2e = OCR / "e2e" / "e2e.json"
+    if e2e.exists():  # the SYNTHETIC prospects run through the app (app_e2e.py)
+        shutil.copytree(OCR / "e2e" / "img", LAB / "e2e" / "img")
+    arena = ROOT / "var" / "arena" / "arena.json"  # the workflow arena (data/specimens/arena/run.py)
+    data = {"pages": out_pages, "arena": json.loads(arena.read_text(encoding="utf-8")) if arena.exists() else None, "e2e": json.loads(e2e.read_text(encoding="utf-8")) if e2e.exists() else None,
+            "families": scores.get("families", {}), "engines": scores["engines_core"], "engines_core": scores["engines_core"],
+            "engines_all": scores["engines"], "engines_mini": scores.get("engines_mini", {}), "n_core": len(json.loads((HERE / "vlm_core.json").read_text())["pages"]),
+            "outputs": outputs, "models": meta_extra,
+            "verifier": json.loads(jev.read_text(encoding="utf-8")) if (jev := OCR / "jev" / "jev.json").exists() else None}
     # Some engines emit U+FFFD for glyphs they could not decode; show those as "?".
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("\ufffd", "?")
     (LAB / "data.json").write_text(blob, encoding="utf-8")

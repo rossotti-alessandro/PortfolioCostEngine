@@ -3,23 +3,54 @@
 Output is a list of ``Line`` objects per page, each made of ``Cell`` spans with a
 bounding box in PDF points, origin top-left (the coordinate system pdf.js uses
 after viewport scaling). Rotated text (watermarks, side notes) is ignored.
+
+Scanned pages are OCR'd on a small thread pool (SC-5.11): Tesseract runs as a subprocess, so threads
+overlap without the GIL; pdfium rendering is not thread safe and is serialised by a lock.
 """
 
 from __future__ import annotations
 
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pdfplumber
 import pypdfium2
 
 OCR_DPI = 300
 MIN_TEXT_CHARS = 25  # below this a page is treated as scanned
+MAX_OCR_WORKERS = 4  # each worker holds one ~26 MB page image plus a Tesseract process
+CGROUP_CPU_MAX = Path("/sys/fs/cgroup/cpu.max")
+_PDFIUM_LOCK = threading.Lock()
+
+
+def ocr_workers() -> int:
+    """Pages OCR'd at once: ``PCE_OCR_WORKERS``, else the CPU quota this process really has.
+
+    ``os.cpu_count()`` reports the host's cores; a container's quota (Render free: 0.15 CPU) is in
+    cgroup ``cpu.max``. Oversubscribing a fractional CPU only adds memory, so the floor is used."""
+    env = os.environ.get("PCE_OCR_WORKERS")
+    if env:
+        return max(1, int(env))
+    cpus = len(os.sched_getaffinity(0))
+    try:
+        quota, period = CGROUP_CPU_MAX.read_text().split()
+        if quota != "max":
+            cpus = min(cpus, int(quota) // int(period))
+    except (OSError, ValueError):
+        pass
+    return max(1, min(cpus, MAX_OCR_WORKERS))
 
 
 @dataclass
 class Cell:
     text: str
     bbox: tuple[float, float, float, float]
+    # word boxes inside the cell (start offset in text, box), when the reader gives them: lets a number
+    # inside a longer cell get its own exact box instead of an estimate
+    words: list[tuple[int, tuple[float, float, float, float]]] = field(default_factory=list)
 
 
 @dataclass
@@ -73,10 +104,18 @@ def _digital_lines(page: pdfplumber.page.Page, number: int) -> list[Line]:
                 cells[-1] = Cell(
                     prev.text + " " + w["text"],
                     (prev.bbox[0], min(prev.bbox[1], bb[1]), bb[2], max(prev.bbox[3], bb[3])),
+                    [*prev.words, (len(prev.text) + 1, bb)],
                 )
                 continue
-        cells.append(Cell(w["text"], bb))
-    cells = [Cell(c.text, tuple(round(v, 2) for v in c.bbox)) for c in cells]
+        cells.append(Cell(w["text"], bb, [(0, bb)]))
+    cells = [
+        Cell(
+            c.text,
+            tuple(round(v, 2) for v in c.bbox),
+            [(o, tuple(round(v, 2) for v in b)) for o, b in c.words],
+        )
+        for c in cells
+    ]
     return _group(cells, number, "pdfplumber-text", 1.0)
 
 
@@ -98,7 +137,8 @@ def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float 
 def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -> list[Line]:
     import pytesseract
 
-    img = pdf[index].render(scale=OCR_DPI / 72).to_pil()
+    with _PDFIUM_LOCK:
+        img = pdf[index].render(scale=OCR_DPI / 72).to_pil()
     data = pytesseract.image_to_data(img, lang=lang, output_type=pytesseract.Output.DICT, config="--psm 6")
     scale = 72.0 / OCR_DPI
     groups: dict[tuple[int, int, int], list[tuple[str, tuple[float, float, float, float], float]]] = {}
@@ -145,18 +185,24 @@ def read_pdf(path_or_bytes, ocr_lang: str = "eng+ita+deu+fra", max_pages: int = 
     with plumber:
         if len(plumber.pages) > max_pages:
             raise ValueError(f"PDF has {len(plumber.pages)} pages; limit is {max_pages}")
-        pdfium = None
-        pages = []
-        for i, page in enumerate(plumber.pages):
-            text = (page.extract_text() or "").strip()
-            if len(text) >= MIN_TEXT_CHARS:
-                lines, engine = _digital_lines(page, i + 1), "pdfplumber-text"
-            else:
-                pdfium = pdfium or pypdfium2.PdfDocument(data)
-                lines, engine = _ocr_lines(pdfium, i, i + 1, ocr_lang), "tesseract-ocr"
-            pages.append(
-                PageInfo(i + 1, round(float(page.width), 2), round(float(page.height), 2), engine, lines)
-            )
+        routes = [len((page.extract_text() or "").strip()) >= MIN_TEXT_CHARS for page in plumber.pages]
+        pdfium = None if all(routes) else pypdfium2.PdfDocument(data)
+        workers = min(ocr_workers(), routes.count(False)) or 1
+        with ThreadPoolExecutor(workers) as pool:
+            ocr = {
+                i: pool.submit(_ocr_lines, pdfium, i, i + 1, ocr_lang)
+                for i, digital in enumerate(routes)
+                if not digital
+            }
+            pages = []
+            for i, page in enumerate(plumber.pages):
+                if routes[i]:
+                    lines, engine = _digital_lines(page, i + 1), "pdfplumber-text"
+                else:
+                    lines, engine = ocr[i].result(), "tesseract-ocr"
+                pages.append(
+                    PageInfo(i + 1, round(float(page.width), 2), round(float(page.height), 2), engine, lines)
+                )
         if pdfium is not None:
             pdfium.close()
     return pages

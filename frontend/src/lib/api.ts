@@ -165,14 +165,14 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, "file not available");
     return res.arrayBuffer();
   },
-  downloadReport: async (id: number, code: string) => {
-    const res = await authFetch(`/api/prospects/${id}/report.pdf`);
+  downloadReport: async (id: number, code: string, lang: "en" | "it") => {
+    const res = await authFetch(`/api/prospects/${id}/report.pdf?lang=${lang}`);
     if (!res.ok) throw new ApiError(res.status, "report failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `cost-review-${code}.pdf`;
+    a.download = `cost-review-${code}-${lang}.pdf`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   },

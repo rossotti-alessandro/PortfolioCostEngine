@@ -2,6 +2,8 @@ import json
 import os
 import re
 import tempfile
+from decimal import Decimal
+from pathlib import Path
 
 os.environ["PCE_DATA_DIR"] = tempfile.mkdtemp(prefix="pce-test-")
 os.environ["PCE_DATABASE_URL"] = f"sqlite:///{os.environ['PCE_DATA_DIR']}/t.sqlite"
@@ -153,3 +155,83 @@ def test_document_pipeline_traces_every_stage():
     cat = client.get(f"/api/documents/{kid['id']}/pipeline", headers=A).json()["stages"][6]
     assert {"counted", "included_in_parent"} <= {a["role"] for a in cat["atoms"]}  # AMF inside OCF, once
     assert client.get(f"/api/documents/{kid['id']}/pipeline", headers=B).status_code == 404
+
+
+def test_every_counted_line_traces_to_its_source_inline():
+    pid = seeded()
+    r = client.get(f"/api/prospects/{pid}/analysis", headers=A).json()
+    counted = [a for a in r["current"]["atoms"] if a["role"] == "counted"]
+    assert counted and all(a["evidence"] for a in counted)
+    for a in counted:
+        for e in a["evidence"]:
+            assert e["filename"] and ((e["page"] and e["bbox"]) or (e["sheet"] and e["cell"]))
+    fund = next(a for a in counted if a["fee_code"] == "FUND_ONGOING" and a["basis_amount"])
+    roles = {e["role"]: e for e in fund["evidence"]}
+    assert set(roles) == {"value", "basis"}  # the rate from the KID and the holding value from the statement
+    assert Decimal(roles["basis"]["value"]) == Decimal(fund["basis_amount"])
+    assert r["review_points"] and r["review_points"][0]["severity"] == "high"
+    assert not re.search(r"min_margin_pct|servicing_cost|annual_contribution", json.dumps(r))
+
+
+def pdf_text(content: bytes) -> str:
+    import io
+
+    import pdfplumber
+
+    with pdfplumber.open(io.BytesIO(content)) as pdf:
+        return "\n".join(pg.extract_text() or "" for pg in pdf.pages)
+
+
+def test_report_pdf_italian_full_sources_and_read_status():
+    pid = seeded()
+    en = pdf_text(client.get(f"/api/prospects/{pid}/report.pdf", headers=A).content)
+    it = client.get(f"/api/prospects/{pid}/report.pdf?lang=it", headers=A)
+    assert it.headers["content-disposition"].endswith('-it.pdf"')
+    it_text = pdf_text(it.content)
+    assert "Analisi dei costi del portafoglio" in it_text and "Allegato" in it_text
+    assert "Portfolio cost review" in en and "Risparmio" not in en
+    # Every sourced appendix line names its full file and page (wrapped, never cut).
+    a = client.get(f"/api/prospects/{pid}/analysis", headers=A).json()
+    flat = re.sub(r"\s+", "", en)
+    for atom in a["scenarios"]["current_comparable"]["atoms"]:
+        if atom["role"] == "counted" and atom.get("evidence_sources"):
+            assert re.sub(r"\s+", "", atom["evidence_sources"][0]) in flat
+    assert re.search(r"\d+ values read from \d+ documents", en)
+    assert client.get(f"/api/prospects/{pid}/report.pdf?lang=xx", headers=A).status_code == 422
+
+
+def test_report_never_calls_a_dearer_proposal_a_saving():
+    from pce.report import saving_parts
+
+    assert saving_parts("-2588.07", "at_least") == (
+        False,
+        "Proposal costs more per year",
+        "at most",
+        "2588.07",
+    )
+    assert saving_parts("6520.10", "at_least") == (True, "Annual saving", "at least", "6520.10")
+    C = session_headers("firm-c", "cat", "analyst")
+    pid = client.post("/api/demo/seed", headers=C).json()["id"]
+    client.put(f"/api/prospects/{pid}/proposal", headers=C, json={"custody_bps": "200"})
+    a = client.get(f"/api/prospects/{pid}/analysis", headers=C).json()
+    assert Decimal(a["scenarios"]["same_holdings"]["comparison"]["annual_saving"]) < 0
+    text = pdf_text(client.get(f"/api/prospects/{pid}/report.pdf", headers=C).content)
+    assert "Proposal costs more per year" in text
+    assert "Annual saving" not in text and "CHF -" not in text.split("Annual cost by layer")[0]
+
+
+def test_report_without_statement_shows_no_total():
+    D = session_headers("firm-d", "dan", "analyst")
+    pid = client.post(
+        "/api/prospects", headers=D, json={"code": "P-KID", "label": "KID only", "domicile": "CH"}
+    )
+    pid = pid.json()["id"]
+    kid = Path(__file__).resolve().parents[2] / "data/synthetic/prospect_p1042/kid_ZZWLDIDX0014.pdf"
+    client.post(
+        f"/api/prospects/{pid}/documents",
+        headers=D,
+        files=[("files", (kid.name, kid.read_bytes(), "application/pdf"))],
+    )
+    text = pdf_text(client.get(f"/api/prospects/{pid}/report.pdf", headers=D).content)
+    assert "Costs are not calculated yet" in text
+    assert "CHF 0" not in text and "saving" not in text.lower()

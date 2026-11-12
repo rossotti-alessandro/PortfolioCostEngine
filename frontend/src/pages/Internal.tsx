@@ -1,5 +1,5 @@
 import { PageTitle } from "@/components/Shell";
-import { Badge, Card, CardHeader, Empty, ErrorBox, Kpi, Spinner } from "@/components/ui";
+import { Badge, Card, CardHeader, Empty, ErrorBox, Kpi, Spinner, StatGrid } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { BOUND_TEXT, chf } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -64,7 +64,7 @@ export default function InternalPage() {
           </Badge>
         }
       />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid>
         <Kpi label={t("Annual fee revenue")} value={chf(i.annual_revenue)} sub={t("Management fee, before VAT")} />
         <Kpi
           label={t("Servicing cost")}
@@ -83,7 +83,7 @@ export default function InternalPage() {
           tone="teal"
           sub={q.data.current_complete ? t("Complete evidence") : t("Lower bound: costs still unknown")}
         />
-      </div>
+      </StatGrid>
       <Card>
         <CardHeader title={t("Decision")} actions={<Badge tone={v.tone}>{t(v.label)}</Badge>} />
         <div className="space-y-2 p-5 text-[13.5px]">

@@ -25,6 +25,23 @@ heading, such as "Service costs → One-off → 0.00%". A bigger OCR model does 
     <p>Deciding which numbers are fees, and which fee type each one is, is the weakest link. The shared extractor that understands tables finds {{extract2_recall:hybrid_route}} of fees, but only {{extract2_precision:hybrid_route}} of what it keeps is a fee. This is where the next effort should go: a classifier per document type that uses row and column headings, run locally.</p></div></div>
 </div>
 
+<h2>Which layout elements to detect</h2>
+<p>Every hand-checked figure is tagged by where it sits: a table, a key-value list (label and value on one line, no grid), running text, or a footnote. The scores per element decide what the layout step has to find.</p>
+<ul>
+<li><b>Tables: detect them, and rebuild their rows and column headings.</b> This is where fees are lost. The best pipeline puts only {{table_pair_recall:hybrid_vlm}} of table figures on the row of their label. Layout models find the table itself almost every time ({{table_roi_recall:ppdoclayout3}} for PP-DocLayoutV3), so the gap is the structure inside it: merged headings, a label in a column heading, a value that applies to a band of rows.</li>
+<li><b>Key-value lists and text: no special model needed.</b> The text layer already pairs most of them with their label (above 90% for key-value lines). Running text needs sentence-level reading ("a minimum of EUR 10 per order"), which is a classification job, not a layout one.</li>
+<li><b>Footnotes: detect and attach to their table.</b> They hold minimums, caps and exceptions. They are few but change the cost.</li>
+<li>Page headers, page footers and logos only need to be recognised so that they are ignored.</li>
+</ul>
+<h2>Models added in this round</h2>
+<ul>
+<li><b>No new vision model beats PaddleOCR-VL.</b> On the 8 hard pages, Infinity-Parser2, LightOnOCR-3, MinerU 2.5, MiniCPM-OCR and Xiaomi-OCR all put 79% of figures on their label's row, exactly as PaddleOCR-VL does, and they are 2 to 6 times slower on this CPU. They all read every value; the misses are labels that sit in a column or row heading, which no reader fixes. FireRed-OCR scores a little lower and is the slowest.</li>
+<li><b>Layout and table structure:</b> Egret and Heron-101 find tables as well as PP-DocLayoutV3. SLANet gives table structure in a few seconds per page. EasyOCR is slower and weaker than RapidOCR.</li>
+<li><b>Not run:</b> 22 models, each with its reason in the Models tab (licence, size, or remote code).</li>
+</ul>
+<h2>What the app does today</h2>
+<p>The FeeLens app itself is now one of the engines in the lab. On the two SYNTHETIC prospects it gets every pinned number right from the original PDFs. When the same documents are scanned, it loses a holdings page, so the totals are wrong, but its own checks raise the alarm. On the real public pages it reads only {{pair_recall:app_baseline}} of the fee figures, because its parsers were written for the synthetic layouts. That gap, not the OCR, is the first thing to close.</p>
+<p>Scanned pages in the app were slow (minutes per page) because Tesseract's threads competed for the CPU. With one thread per call each page takes 4 to 9 seconds; that fix is its own story.</p>
 <h2>What we would not use</h2>
 <ul>
   <li><b>Asking a small general model for the fees directly</b> (Qwen3-VL-2B): {{pair_recall:qwen3vl}} of fees paired with their label, {{sec_per_page:qwen3vl}} s per page, and loose boxes. Its {{extract_precision:qwen3vl}} precision is not enough for a figure we must source.</li>
@@ -34,4 +51,4 @@ heading, such as "Service costs → One-off → 0.00%". A bigger OCR model does 
 </ul>
 
 <h2>Limits</h2>
-<p>There are 38 pages with 514 hand-checked figures, and the vision models ran on {{pages:paddleocr_vl}} of those pages ({{gt_items:paddleocr_vl}} figures). That is enough to rank the engines, not to quote an exact accuracy. All engines ran on a CPU with no GPU, and the speeds are for that machine. The documents are public; no client document was used. The simulated scans are marked as simulated in the Documents view.</p>
+<p>There are 54 pages with 813 hand-checked figures (63 pages with the simulated scans), and the vision models ran on {{pages:paddleocr_vl}} of those pages ({{gt_items:paddleocr_vl}} figures). That is enough to rank the engines, not to quote an exact accuracy. All engines ran on a CPU with no GPU, and the speeds are for that machine. The documents are public; no client document was used. The simulated scans are marked as simulated in the Documents view.</p>

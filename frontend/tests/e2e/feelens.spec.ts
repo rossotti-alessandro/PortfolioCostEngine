@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Page, expect, test } from "@playwright/test";
+import { E2E_ADMIN } from "../../playwright.config";
 
 /**
  * End-to-end: a real browser drives the real API on an empty database.
@@ -38,11 +39,22 @@ test("02 new prospect: upload statements, cost report and KIDs through the UI", 
   await page.getByRole("button", { name: "Create and upload documents" }).click();
   await expect(page).toHaveURL(/\/p\/\d+\/documents/);
   pid = Number(page.url().match(/\/p\/(\d+)/)?.[1]);
+  // Before any statement: no CHF 0 total and no green "all evidenced" badge, a clear first step instead.
+  await page.goto(`/p/${pid}/costs`);
+  await expect(page.getByText("Costs are not calculated yet")).toBeVisible();
+  await expect(page.getByText("No statement of assets yet")).toBeVisible();
+  await expect(page.getByText("All cost categories evidenced")).toHaveCount(0);
+  await page.getByRole("button", { name: "Upload documents" }).click();
+  await expect(page).toHaveURL(/\/documents$/);
   const files = readdirSync(P2077).map((f) => join(P2077, f));
   if (existsSync(REAL_KID)) files.push(REAL_KID);
   await page.getByLabel("Choose files to upload").setInputFiles(files);
-  await expect(page.getByText("Last upload")).toBeVisible({ timeout: 90_000 });
+  // Each file gets its own row with its result and the values read.
+  await expect(page.getByText("Upload finished")).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText(`${files.length} of ${files.length} files processed`)).toBeVisible();
   for (const f of files) await expect(page.getByText(f.split("/").pop() as string).first()).toBeVisible();
+  await expect(page.getByText(/^\d+ values read$/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review values" })).toBeVisible();
   await expect(page.getByText("unknown", { exact: true })).toHaveCount(0);
   await shot(page, "02-documents");
 });
@@ -80,7 +92,7 @@ test("06 demo prospect P-1042: costs, compare, report PDF", async ({ page }) => 
   const demo = rows.find((x) => x.code === "P-1042");
   expect(demo).toBeTruthy();
   await page.goto(`/p/${demo?.id}/costs`);
-  await expect(page.getByText("Cost ledger")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cost ledger" })).toBeVisible();
   await shot(page, "06-demo-costs");
   await page.goto(`/p/${demo?.id}/compare`);
   await expect(page.getByText("Cost by layer, today vs proposal")).toBeVisible();
@@ -89,11 +101,12 @@ test("06 demo prospect P-1042: costs, compare, report PDF", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Client report" })).toBeVisible();
   const [dl] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Download PDF" }).click(),
+    page.getByRole("button", { name: "PDF in Italian" }).click(),
   ]);
   const path = await dl.path();
   expect(path).toBeTruthy();
-  expect(dl.suggestedFilename()).toMatch(/\.pdf$/);
+  expect(dl.suggestedFilename()).toMatch(/-it\.pdf$/);
+  await expect(page.getByTestId("read-summary")).toContainText("values read from");
   await shot(page, "08-demo-report");
 });
 
@@ -176,4 +189,79 @@ test("10 pipeline: every processing step of a document, with details on demand",
   await page.getByRole("button", { name: "Italiano" }).click();
   await expect(page.getByRole("heading", { name: "Come è stato elaborato questo documento" })).toBeVisible();
   await page.getByRole("button", { name: "English" }).click();
+});
+
+test("11 trace: result → computation → line → highlighted source page", async ({ page }) => {
+  const rows: { id: number; code: string }[] = await (
+    await page.request.get("/api/prospects", { headers: { "X-Role": "analyst" } })
+  ).json();
+  const demo = rows.find((x) => x.code === "P-1042");
+  await page.goto(`/p/${demo?.id}/costs`);
+  await expect(page.getByRole("heading", { name: "Points to review" })).toBeVisible();
+  await shot(page, "11-costs-review-points");
+
+  // headline number → the lines that make it up
+  await page.getByTitle("How is this calculated?").first().click();
+  const dlg = page.getByRole("dialog");
+  await expect(dlg.getByText(/Sum of 14 counted lines/)).toBeVisible();
+  await expect(dlg.getByText(/not determined and are not counted as zero/)).toBeVisible();
+  await shot(page, "12-trace-total");
+
+  // a fund line → formula, both inputs (KID rate and holding value), page with the box
+  await dlg.getByRole("row", { name: /Global Equity Leaders Fund A CHF Fund ongoing/ }).click();
+  await expect(dlg.getByText("900,000.00 × 1.08%", { exact: false })).toBeVisible();
+  await expect(dlg.getByRole("button", { name: /Read from the document/ })).toBeVisible();
+  await expect(dlg.locator('.evidence-box[data-active="true"]')).toBeVisible();
+  // the panel is not modal: the cost page behind it stays usable
+  await expect(page.getByRole("heading", { name: "Current costs" })).toBeVisible();
+  // decision trail: how it was read, what the checks said, what a person did, where it is used
+  const trail = dlg.getByRole("region", { name: "Decision trail" });
+  await expect(trail.getByText("Read from digital text")).toBeVisible();
+  await expect(trail.getByText("Not yet checked by a person")).toBeVisible();
+  await expect(trail.getByText(/Known annual cost CHF/)).toBeVisible();
+  await shot(page, "13-trace-line-kid");
+  // full page: only the cited box is drawn until the analyst asks for all values
+  await dlg.getByRole("button", { name: "Show full page" }).click();
+  await expect(dlg.locator(".evidence-box")).toHaveCount(1);
+  await dlg.getByLabel("Show all values on this page").check();
+  await expect.poll(() => dlg.locator(".evidence-box").count()).toBeGreaterThan(1);
+  await dlg.getByRole("button", { name: "Show the row only" }).click();
+  // a person decision lands in the trail with who did it
+  await trail.getByRole("button", { name: "Accept this value" }).click();
+  await expect(trail.getByText(`Accepted by ${E2E_ADMIN}`)).toBeVisible();
+  await dlg.getByRole("button", { name: /Holding value used as basis/ }).click();
+  await expect(dlg.getByText(/alpha_statement_of_assets/).first()).toBeVisible();
+  await expect(dlg.locator('.evidence-box[data-active="true"]')).toBeVisible();
+  await shot(page, "14-trace-line-statement");
+
+  // breadcrumb back to the total
+  await dlg.getByRole("navigation").getByRole("button", { name: "Known annual cost" }).click();
+  await expect(dlg.getByText(/Sum of 14 counted lines/)).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // a review point opens its number
+  await page.getByRole("button", { name: /Show all \d+ points/ }).click();
+  await page.getByRole("button", { name: /Not yet checked: Bank Alpha \(Synthetic\) · Advisory mandate fee/ }).click();
+  await expect(page.getByRole("dialog").getByText("Calculation")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // the analyst can hide a section and it stays hidden
+  await page.getByText("Customise view").click();
+  await page.getByRole("checkbox", { name: "Positions" }).uncheck();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Current costs" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Positions/ })).toHaveCount(0);
+  await page.getByText("Customise view").click();
+  await page.getByRole("checkbox", { name: "Positions" }).check();
+
+  // compare: the saving opens today − proposal, each side opens its lines
+  await page.goto(`/p/${demo?.id}/compare`);
+  await page.getByTitle("How is this calculated?").nth(2).click();
+  await expect(page.getByRole("dialog").getByText("= Annual saving")).toBeVisible();
+  await shot(page, "15-trace-saving");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Today \(comparable\)/ })
+    .click();
+  await expect(page.getByRole("dialog").getByText(/counted lines/)).toBeVisible();
 });

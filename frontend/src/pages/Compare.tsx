@@ -1,8 +1,21 @@
-import { AtomEvidenceDialog } from "@/components/AtomEvidence";
+import { NotStarted } from "@/components/ReadSummary";
 import { PageTitle } from "@/components/Shell";
-import { Badge, Button, Card, CardHeader, ErrorBox, Field, Kpi, Spinner, StatusBadge, inputCls } from "@/components/ui";
+import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  ErrorBox,
+  Field,
+  Kpi,
+  Spinner,
+  StatGrid,
+  StatusBadge,
+  inputCls,
+} from "@/components/ui";
 import { api } from "@/lib/api";
-import { BOUND_TEXT, LAYER, chf, cn } from "@/lib/format";
+import { BOUND_TEXT, LAYER, chf, cn, savingParts } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { Analysis, Atom, Comparison, Ledger, ProposalConfig } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,13 +29,24 @@ export default function ComparePage() {
   const pid = Number(useParams().id);
   const q = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
   const [mode, setMode] = useState<"same" | "optimized">("same");
-  const [atom, setAtom] = useState<Atom | null>(null);
+  const [trace, setTrace] = useState<TraceTarget | null>(null);
   if (q.isLoading) return <Spinner label={t("Calculating")} />;
   if (q.error || !q.data) return <ErrorBox error={q.error ?? "no data"} />;
   const a = q.data;
+  if (a.holdings.length === 0)
+    return (
+      <div className="space-y-4">
+        <PageTitle title={t("Compare with the proposal")} />
+        <NotStarted pid={pid} docs={a.documents.length} />
+      </div>
+    );
   const sc = mode === "same" ? a.scenarios.same_holdings : a.scenarios.optimized;
   const cmp = sc.comparison;
+  const sv = savingParts(cmp.annual_saving, cmp.bound);
   const firm = a.proposal_inputs.firm_name;
+  const today = sumOf(t("Today (comparable)"), cmp.current_known, a.scenarios.current_comparable);
+  const withFirm = sumOf(t("With {firm}", { firm }), cmp.proposal_known, sc.ledger);
+  const pick = (x: Atom) => setTrace({ kind: "atom", atom: x, ledger: sc.ledger });
   return (
     <div className="space-y-4">
       <PageTitle
@@ -61,7 +85,7 @@ export default function ComparePage() {
       />
       {!cmp.like_for_like && (
         <div
-          className="flex gap-2.5 rounded-lg border border-amber-700/25 bg-amber-50 px-4 py-3 text-[13px] text-amber-700"
+          className="flex gap-2.5 rounded-[var(--radius-card)] border border-amber-700/25 bg-amber-50 px-4 py-3 text-[13px] text-amber-700"
           role="note"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -70,24 +94,36 @@ export default function ComparePage() {
           )}
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid>
         <Kpi
           label={t("Today (comparable)")}
           value={chf(cmp.current_known)}
+          onClick={() => setTrace(today)}
           sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
         />
         <Kpi
           label={t("With {firm}", { firm })}
           value={chf(cmp.proposal_known)}
+          onClick={() => setTrace(withFirm)}
           sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
         />
         <Kpi
-          label={t("Annual saving")}
-          tone="teal"
+          label={t(sv.label)}
+          tone={sv.saves ? "teal" : undefined}
+          onClick={() =>
+            setTrace({
+              kind: "diff",
+              title: t("Annual saving"),
+              amount: cmp.annual_saving,
+              prefix: t(BOUND_TEXT[cmp.bound]),
+              left: today,
+              right: withFirm,
+            })
+          }
           value={
             <>
-              <span className="mr-1 text-[14px] font-medium">{t(BOUND_TEXT[cmp.bound])}</span>
-              {chf(cmp.annual_saving)}
+              <span className="mr-1 text-[14px] font-medium">{t(sv.prefix)}</span>
+              {chf(sv.value)}
             </>
           }
           sub={
@@ -108,7 +144,7 @@ export default function ComparePage() {
               : t("Not paid back by the saving")
           }
         />
-      </div>
+      </StatGrid>
 
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <LayerCompare cur={a.scenarios.current_comparable} prop={sc.ledger} cmp={cmp} firm={firm} />
@@ -195,15 +231,16 @@ export default function ComparePage() {
         </Card>
       )}
 
-      <ProposalLines ledger={sc.ledger} onPick={setAtom} firm={firm} />
+      <ProposalLines ledger={sc.ledger} onPick={pick} firm={firm} />
       <ProposalEditor a={a} />
-      <AtomEvidenceDialog atom={atom} analysis={a} onClose={() => setAtom(null)} />
+      <TraceDialog root={trace} onClose={() => setTrace(null)} />
     </div>
   );
 }
 
 /** Paired bars per layer with values printed beside them (the numbers are the table twin). */
 function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp: Comparison; firm: string }) {
+  const sv = savingParts(cmp.annual_saving, cmp.bound);
   const unknown = new Set(cur.atoms.filter((x) => x.role === "unknown").map((x) => x.layer));
   const rows = COMPARE_LAYERS.map((k) => ({
     k,
@@ -230,8 +267,8 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
       <table className="w-full text-[13px]">
         <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
           <tr>
-            <th className="px-5 pt-3 pb-1 font-medium">{t("Layer")}</th>
-            <th className="w-[38%] px-2 pt-3 pb-1 font-medium" />
+            <th className="min-w-[170px] px-5 pt-3 pb-1 font-medium">{t("Layer")}</th>
+            <th className="w-[30%] px-2 pt-3 pb-1 font-medium" />
             <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Today")}</th>
             <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Proposal")}</th>
             <th className="px-5 pt-3 pb-1 text-right font-medium">{t("Difference")}</th>
@@ -275,11 +312,10 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
             </td>
             <td className="num px-2 py-2.5 text-right">{chf(cmp.current_known)}</td>
             <td className="num px-2 py-2.5 text-right">{chf(cmp.proposal_known)}</td>
-            <td className="num px-5 py-2.5 text-right text-teal-700">
-              {BOUND_TEXT[cmp.bound] && (
-                <span className="mr-1 text-[11.5px] font-normal">{t(BOUND_TEXT[cmp.bound])}</span>
-              )}
-              {chf(cmp.annual_saving)}
+            <td className={cn("num px-5 py-2.5 text-right", sv.saves && "text-teal-700")}>
+              {sv.prefix && <span className="mr-1 text-[11.5px] font-normal">{t(sv.prefix)}</span>}
+              {sv.saves ? "" : `${t("costs more")} `}
+              {chf(sv.value)}
             </td>
           </tr>
         </tbody>
