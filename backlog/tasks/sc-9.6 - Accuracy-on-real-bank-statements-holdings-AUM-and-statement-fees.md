@@ -85,3 +85,4 @@ Ale's instruction of 2026-11-12 ("use more reports, serious, professional and re
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-sdc7fx | ec7a352 | 2026-11-12 | Gold, scorer, results, currency fix, printed-total alarm |
