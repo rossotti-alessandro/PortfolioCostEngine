@@ -77,7 +77,10 @@ figures, real documents, small sample" and the source row.
 No one had tested the open PRs as one tree. Merged in order #17, #15, #16, #21, #27, #26, #29 on top of
 `main` 87f02a4: no conflicts; full gate (OCR tests included) 204 passed, 3 skipped; the one failure was a
 missing `qpdf` system package in the container, passing once installed. Accuracy protocol on the synthetic
-prospects, digital and scan, with and without `PCE_REVALIDATE=1`: see the PR for SC-11.10.
+prospects, digital and scan, with and without `PCE_REVALIDATE=1`, identical to `main`: P-1042 and P-2077
+digital 100% with exact totals and no wrong value; scanned copies 85.5% and 96.2% with no wrong value (the
+P-1042 holdings page is still lost on the scan, and the alarm still fires). So the stack introduces no
+regression, but the synthetic prospects no longer tell strategies apart: only real pages do.
 
 ### 3.4 More tests: which ones and why
 
