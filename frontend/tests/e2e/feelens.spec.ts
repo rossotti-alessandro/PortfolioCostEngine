@@ -246,6 +246,8 @@ test("11 trace: result → computation → line → highlighted source page", as
 
   // a review point opens its number
   await page.getByRole("button", { name: /Show all \d+ points/ }).click();
+  // extraction flags read in plain words, not codes
+  await expect(page.getByText(/Reasons: the readers disagree/).first()).toBeVisible();
   await page.getByRole("button", { name: /Not yet checked: Bank Alpha \(Synthetic\) · Advisory mandate fee/ }).click();
   await expect(page.getByRole("dialog").getByText("Calculation")).toBeVisible();
   await page.keyboard.press("Escape");

@@ -119,6 +119,7 @@ export interface ReviewPoint {
     | "list_price"
     | "rate_high"
     | "large_driver"
+    | "unused_mentions"
     | "check";
   severity: "high" | "medium" | "low";
   atom_id: string | null;
@@ -256,6 +257,7 @@ export interface Analysis {
   coverage: { institution: string; assets: string; jurisdiction: string | null; cells: Record<string, string> }[];
   checks: Check[];
   review_points: ReviewPoint[];
+  unused_mentions: EvidenceRef[];
   requests: MissingRequest[];
   comparison_exclusions: { fee_code: string; label: string; amount: string; reason: string }[];
   scenarios: {
