@@ -7,6 +7,7 @@ they cannot place lands as a warning for human review, never as a guessed value.
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from decimal import Decimal
@@ -16,6 +17,7 @@ from openpyxl.utils import get_column_letter
 
 from ..finance.isin import ISIN_RE, is_valid_isin
 from ..finance.money import parse_amount, parse_percent
+from . import finder, revalidate, verify
 from .layout import Line, PageInfo, read_pdf
 from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact
 from .vocab import (
@@ -295,6 +297,8 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
             ):
                 name, qty, price, mv = pos
                 sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+                if sym:  # US statements print "$" on a table's first row only: later rows inherit it
+                    ccy = _SYMBOL_CCY[sym]
                 facts.append(
                     Fact(
                         key=f"position:name:{name}",
@@ -302,7 +306,7 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                         field="market_value",
                         label=name,
                         value=str(mv),
-                        currency=_SYMBOL_CCY[sym] if sym else ccy,
+                        currency=ccy,
                         isin=None,
                         extra={"quantity": str(qty), "price": str(price), "no_isin": True},
                         evidence=_ev(ln, page),
@@ -390,7 +394,45 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                             evidence=_ev(ln, page),
                         )
                     )
+    facts.extend(_larger_printed_total(pages, facts))
     return facts
+
+
+_GRAND_TOTAL = re.compile(
+    r"^(?:grand )?total(?: portfolio| value| assets| account value)?$|^totale$|^gesamttotal$", re.I
+)
+
+
+def _larger_printed_total(pages: list[PageInfo], facts: list[Fact]) -> list[Fact]:
+    """A statement's overview often prints the account total including cash, policies held elsewhere or a
+    second account, while each holdings table adds up to its own smaller total (corpus: AJ Bell demo
+    report, SC-9.6). Returned only when the largest bare "Total" line exceeds the holdings read by more
+    than 1%, so the analysis can raise an alarm instead of trusting a reconciliation that passed."""
+    held = sum((Decimal(f.value) for f in facts if f.kind == "position" and f.value), Decimal(0))
+    best: tuple[Decimal, Line, PageInfo] | None = None
+    for page in pages:
+        for ln in page.lines:
+            amounts = _amount_cells(ln)
+            if not amounts or not _GRAND_TOTAL.match(ln.cells[0].text.strip().rstrip(":")):
+                continue
+            first = amounts[0][1]  # value column first; cost and change columns follow
+            if best is None or first > best[0]:
+                best = (first, ln, page)
+    if best is None or best[0] <= held * Decimal("1.01"):
+        return []
+    value, ln, page = best
+    sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+    return [
+        Fact(
+            key="total:largest_printed",
+            kind="doc_total",
+            field="printed_total",
+            label=ln.text,
+            value=str(value),
+            currency=_SYMBOL_CCY[sym] if sym else None,
+            evidence=_ev(ln, page),
+        )
+    ]
 
 
 def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
@@ -1109,6 +1151,73 @@ def _possible_misses(pages: list[PageInfo], facts: list[Fact], limit: int = 40) 
     return out
 
 
+REVIEWED_KINDS = {"fee_observed", "fee_rule", "product_cost", "cash_debit"}
+
+
+def _same_spot(a: Fact, b: Fact) -> bool:
+    ea, eb = a.evidence, b.evidence
+    if ea.page != eb.page or not ea.bbox or not eb.bbox:
+        return False
+    (ax0, ay0, ax1, ay1), (bx0, by0, bx1, by1) = ea.bbox, eb.bbox
+    return min(ax1, bx1) - max(ax0, bx0) > 0 and min(ay1, by1) - max(ay0, by0) > 0
+
+
+def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fact]:
+    """Two independent linkers, one verdict (SC-5.8).
+
+    The layout-generic finder runs on every document. Its values are verified (second reading of the
+    printed pixels, zero, range and separator checks). A type parser's fee fact at the same spot gets
+    the finder's review when both read the same value (the finder's twin is then dropped); when they
+    differ, both stay, both ``needs_review``, each naming the other reading. Finder values no parser
+    produced are returned as ``fee_mention`` facts: visible and clickable for the analyst, not in the
+    totals until accepted."""
+    verify.verify(found, [], verify.second_reading(data, found))
+    if os.environ.get("PCE_REVALIDATE") == "1":  # SC-5.14: page arithmetic may confirm, never change
+        revalidate.revalidate(found, revalidate.Specialists(checks=revalidate.BACKEND_CHECKS))
+    extra: list[Fact] = []
+    for g in found:
+        twin = next((f for f in parsed if f.kind in REVIEWED_KINDS and _same_spot(f, g)), None)
+        if twin is None and any(
+            _same_spot(f, g) and f.value is not None and Decimal(f.value) == Decimal(g.value or "0")
+            for f in parsed
+        ):
+            continue  # a parser already holds this exact value at this spot (a total, a rate): no twin
+        if (
+            twin is None
+            and verify.TOTAL_WORDS.search(g.label.split("|")[0].split("›")[-1])
+            and any(f.kind in REVIEWED_KINDS and f.evidence.page == g.evidence.page for f in parsed)
+        ):
+            continue  # a total row beside parser-read components is their sum: one more line double counts
+        if twin is None:
+            g.extra["review"] = g.review.model_dump() if g.review else None
+            extra.append(g)
+            continue
+        review = g.review.model_copy(deep=True) if g.review else verify.Review()
+        same = twin.value is not None and abs(Decimal(twin.value)) == abs(Decimal(g.value or "0"))
+        review.checks.append(verify.Check(name="linkers_agree", passed=same, detail=f"finder read {g.value}"))
+        if not same:  # both readings stay visible, both flagged: the analyst picks, the code does not
+            review.status = "needs_review"
+            review.reasons.append("linkers_disagree")
+            review.alternatives.append(
+                {"value": g.value, "engine": finder.FINDER_VERSION, "bbox": g.evidence.bbox}
+            )
+            if g.review is not None:
+                g.review.status = "needs_review"
+                g.review.reasons.append("linkers_disagree")
+                g.review.alternatives.append({"value": twin.value, "engine": EXTRACTOR_VERSION})
+                g.extra["review"] = g.review.model_dump()
+            extra.append(g)
+        twin.review = review
+        twin.extra["review"] = review.model_dump()
+        # The parser's label stays: replacing it with the finder's label turned 9 parser misreads into
+        # confident wrong values on the accuracy protocol (ocrbench, 2026-11-11). Shown as context only.
+        twin.extra["finder_label"] = g.label
+        for k in ("label_bbox", "row_bbox", "region"):
+            if getattr(twin.evidence, k) is None:
+                setattr(twin.evidence, k, getattr(g.evidence, k))
+    return extra
+
+
 def _ms(start: float, end: float | None = None) -> int:
     return round(((end if end is not None else time.perf_counter()) - start) * 1000)
 
@@ -1129,7 +1238,14 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
     t2 = time.perf_counter()
     parser = PARSERS.get(prof.doc_type)
     facts = parser(pages, prof) if parser else []
-    prof.timings_ms = {"read": _ms(t0, t1), "classify": _ms(t1, t2), "extract": _ms(t2)}
+    t3 = time.perf_counter()
+    facts += _cross_check(facts, finder.find_fees(pages), data)
+    prof.timings_ms = {
+        "read": _ms(t0, t1),
+        "classify": _ms(t1, t2),
+        "extract": _ms(t2, t3),
+        "find_and_verify": _ms(t3),
+    }
     prof.possible_misses = _possible_misses(pages, facts)
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None

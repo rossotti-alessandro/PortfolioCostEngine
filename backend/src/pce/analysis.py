@@ -207,9 +207,11 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             },
         )
         inst["documents"].append(d["id"])
-        pos_sum, total_fact = ZERO, None
+        pos_sum, total_fact, larger_total = ZERO, None, None
         for f in by_doc[d["id"]]:
-            if f["kind"] == "doc_total":
+            if f["kind"] == "doc_total" and f["key"] == "total:largest_printed":
+                larger_total = f
+            elif f["kind"] == "doc_total":
                 total_fact = f
             if f["kind"] != "position" or f["value"] is None:
                 continue
@@ -254,7 +256,18 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     [total_fact["id"]],
                 )
             )
-        else:
+        if larger_total:
+            checks.append(
+                Check(
+                    f"printed_total:{d['id']}",
+                    f"{ik}: the statement prints a larger total than the holdings read",
+                    "fail",
+                    f"Printed total {D(larger_total['value']):,.2f} vs holdings read {pos_sum:,.2f}. Look for"
+                    " cash, policies or accounts that were not read, or a second client in the same file.",
+                    [larger_total["id"]],
+                )
+            )
+        if not total_fact:
             checks.append(
                 Check(
                     f"reconcile:{d['id']}",

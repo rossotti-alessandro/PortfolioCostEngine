@@ -39,6 +39,26 @@ class Evidence(BaseModel):
     snippet: str = ""
     engine: str = ""
     confidence: float = 1.0
+    # Provenance for the evidence viewer (SC-5.8): where the label sits, the whole row, and the layout region.
+    label_bbox: list[float] | None = None
+    row_bbox: list[float] | None = None
+    region: str | None = None  # table | text | header | footnote
+
+
+class Check(BaseModel):
+    name: str  # e.g. "second_reader_agrees", "components_sum_to_total"
+    passed: bool
+    detail: str = ""
+
+
+class Review(BaseModel):
+    """Why a value can or cannot enter the totals without an analyst looking at it."""
+
+    status: str = "accepted"  # accepted | needs_review
+    reasons: list[str] = Field(default_factory=list)  # short codes, e.g. "engines_disagree"
+    engines: list[str] = Field(default_factory=list)  # readers that read the same value
+    alternatives: list[dict] = Field(default_factory=list)  # {value, engine, bbox} read differently
+    checks: list[Check] = Field(default_factory=list)
 
 
 class Fact(BaseModel):
@@ -55,6 +75,7 @@ class Fact(BaseModel):
     measurement: str | None = None
     extra: dict = Field(default_factory=dict)
     evidence: Evidence
+    review: Review | None = None
 
 
 class DocumentProfile(BaseModel):

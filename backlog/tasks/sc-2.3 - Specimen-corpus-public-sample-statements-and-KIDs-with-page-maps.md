@@ -9,7 +9,7 @@ progress: 90
 branch: "claude/project-thread-coe0g4"
 pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/7"
 created_date: "2026-11-06 15:05"
-updated_date: "2026-11-06 16:34"
+updated_date: "2026-11-11 14:30"
 labels:
   - research
 dependencies:
@@ -88,3 +88,4 @@ page, but there is no hand-written page map per specimen yet. Status stays In Pr
 | claude/project-thread-coe0g4 | 82e2948 | 2026-11-06 15:56 | Specimen corpus manifest, fetch, evaluation and results |
 | claude/project-thread-coe0g4 | 56fd4e1 | 2026-11-06 16:34 | Grow corpus to 395 PDFs, client document guide, coverage, re-run |
 | claude/project-thread-coe0g4 | c9bd736 | 2026-11-06 16:55 | Filled specimens, relabel, re-run on 0972cc3 |
+| claude/project-thread-coe0g4 | 29f2d35 | 2026-11-06 17:33 | Re-run specimens on 3c48b20, fix a non-ISIN in manifest; merged in PR #7 on 2026-11-11 |
