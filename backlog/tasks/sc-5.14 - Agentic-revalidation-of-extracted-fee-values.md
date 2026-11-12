@@ -7,9 +7,9 @@ owner: "Add agentic revalidation of extracted values"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-wc8huq"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/27"
 created_date: "2026-11-12 17:50"
-updated_date: "2026-11-12 19:17"
+updated_date: "2026-11-12 19:19"
 labels:
   - extraction
 dependencies:
