@@ -350,3 +350,38 @@ def test_one_person_on_every_page_raises_no_alarm(tmp_path):
         d.page += 1
     d.save()
     assert not [c for c in run(folder)["checks"] if c["key"].startswith("second_person")]
+
+
+def test_account_breakdown_adds_cash_and_policies_once(tmp_path):
+    # AJ Bell demo report (corpus): the overview's "Cash | Assets | Total" breakdown carries the cash of
+    # every account and off-panel policies that no holdings table lists, while the "Assets" of the dealing
+    # accounts are the holdings tables read on later pages. AUM was 20% short.
+    from pce.demo.generate import Doc
+    from pce.demo.offline import run
+
+    folder = tmp_path / "pack"
+    folder.mkdir()
+    d = Doc(folder / "uk4.pdf", "Client valuation")
+    d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client valuation", "Valuation breakdown")
+    cols = [(50, "l"), (250, "r"), (310, "r"), (370, "r"), (430, "r"), (490, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    row("Pension", "Cash", "Assets", "Total")
+    row("Pension cash", "£1,500.00", "-", "£1,500.00")
+    row("Dealing account", "£500.00", "£8,000.00", "£8,500.00")
+    row("INSURANCE POLICY", "-", "£3,000.00", "£3,000.00")
+    row("Total", "£13,000.00")
+    row("Holding name", "Quantity", "Price (£)", "Value (£)", "Cost (£)", "Change (%)")
+    row("ALPHA EQUITY I ACC", "1,000.00000", "5.00000", "5,000.00", "4,000.00", "25.00")
+    row("BETA BOND FUND INC", "600.00000", "5.00000", "3,000.00", "3,100.00", "-3.23")
+    row("Total", "8,000.00", "7,100.00", "12.68")
+    d.save()
+    a = run(folder)
+    checks = {c["key"]: c for c in a["checks"]}
+    assert checks["reconcile:1"]["status"] == "pass", checks["reconcile:1"]["detail"]
+    assert "printed_total:1" not in checks
+    res, _ = extract("uk4.pdf", (folder / "uk4.pdf").read_bytes())  # GBP: no FX rate, so not in a["holdings"]
+    values = sorted(Dec(f.value) for f in res.facts if f.kind == "position")
+    assert values == [Dec(v) for v in ("500.00", "1500.00", "3000.00", "3000.00", "5000.00")]
