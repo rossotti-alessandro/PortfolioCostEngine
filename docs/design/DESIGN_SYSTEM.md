@@ -77,6 +77,9 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 | `StatusChip` | evidence status with icon + label + colour from § 1 |
 | `EvidenceLink` | wraps any number; click opens `SourceViewer` at page + bbox or sheet + cell |
 | `SourceViewer` | PDF.js page + highlight rectangle (accent-soft fill, accent 2px border), zoom, page nav; sheet grid for XLSX |
+| `EvidencePanel` | right side panel opened by any number (`components/Trace.tsx`), non-modal: the page stays usable and another click replaces the content. Formula → inputs → `SourceCrop` → `DecisionTrail` |
+| `SourceCrop` | the cited row cropped from the page at readable size, context dimmed, one box with the value tag; "Show full page" opens `SourceViewer` in focus mode (only the cited box until "Show all values") |
+| `DecisionTrail` | read (text, OCR or cell, engine, confidence) → automatic checks (fact review: readers, checks, reasons) → person (accept / correct old → new / reject, who, when) → used in. A step with no data says so; never an invented check (`lib/trail.ts`) |
 | `CoverageMeter` | "82% of expected cost categories evidenced"; mandatory next to every headline total |
 | `GapCard` | an unknown cost + the document that would resolve it + "Add to request letter" |
 | `CostWaterfall` | stacked/waterfall by layer with unknown hatched; table twin toggle |
