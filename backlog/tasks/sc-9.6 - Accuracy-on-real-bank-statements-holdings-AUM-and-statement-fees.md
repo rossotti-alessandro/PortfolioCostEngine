@@ -1,15 +1,15 @@
 ---
 id: SC-9.6
 title: Accuracy on real bank statements: holdings, AUM and statement fees
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Audit production readiness and close gaps"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-sdc7fx"
 pr: ""
 created_date: "2026-11-12 21:05"
-updated_date: "2026-11-12 21:05"
+updated_date: "2026-11-12 21:24"
 labels:
   - evaluation
   - extraction
