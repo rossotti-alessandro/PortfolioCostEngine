@@ -83,7 +83,8 @@ def main() -> None:
     data = {"pages": out_pages, "arena": json.loads(arena.read_text(encoding="utf-8")) if arena.exists() else None, "e2e": json.loads(e2e.read_text(encoding="utf-8")) if e2e.exists() else None,
             "families": scores.get("families", {}), "engines": scores["engines_core"], "engines_core": scores["engines_core"],
             "engines_all": scores["engines"], "engines_mini": scores.get("engines_mini", {}), "n_core": len(json.loads((HERE / "vlm_core.json").read_text())["pages"]),
-            "outputs": outputs, "models": meta_extra}
+            "outputs": outputs, "models": meta_extra,
+            "verifier": json.loads(jev.read_text(encoding="utf-8")) if (jev := OCR / "jev" / "jev.json").exists() else None}
     # Some engines emit U+FFFD for glyphs they could not decode; show those as "?".
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("\ufffd", "?")
     (LAB / "data.json").write_text(blob, encoding="utf-8")
