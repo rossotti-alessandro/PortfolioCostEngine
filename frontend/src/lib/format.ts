@@ -102,6 +102,27 @@ export const BOUND_TEXT: Record<string, string> = {
   indeterminate: "known costs only",
 };
 
+/**
+ * How a saving reads to a person. A negative "saving" is never shown as a saving: it becomes
+ * "the proposal costs more", and the bound flips with the sign (saving at least -X means
+ * the proposal costs at most X more). Untranslated strings; callers pass them through t().
+ */
+export function savingParts(
+  amount: string,
+  bound: string,
+): { saves: boolean; label: string; prefix: string; value: string } {
+  const saves = Number(amount) > 0;
+  if (saves || Number(amount) === 0)
+    return { saves, label: "Annual saving", prefix: BOUND_TEXT[bound] ?? "", value: amount };
+  const flip: Record<string, string> = { at_least: "at_most", at_most: "at_least" };
+  return {
+    saves: false,
+    label: "Proposal costs more per year",
+    prefix: BOUND_TEXT[flip[bound] ?? bound] ?? "",
+    value: amount.replace(/^-/, ""),
+  };
+}
+
 export const DOC_TYPES: Record<string, string> = {
   portfolio_statement: "Statement of assets",
   cost_report: "Costs & charges report",

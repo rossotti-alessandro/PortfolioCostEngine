@@ -1,8 +1,9 @@
+import { NotStarted } from "@/components/ReadSummary";
 import { PageTitle } from "@/components/Shell";
 import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Kpi, Spinner, StatusBadge, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
-import { BOUND_TEXT, LAYER, chf, cn } from "@/lib/format";
+import { BOUND_TEXT, LAYER, chf, cn, savingParts } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { Analysis, Atom, Comparison, Ledger, ProposalConfig } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,8 +21,16 @@ export default function ComparePage() {
   if (q.isLoading) return <Spinner label={t("Calculating")} />;
   if (q.error || !q.data) return <ErrorBox error={q.error ?? "no data"} />;
   const a = q.data;
+  if (a.holdings.length === 0)
+    return (
+      <div className="space-y-4">
+        <PageTitle title={t("Compare with the proposal")} />
+        <NotStarted pid={pid} docs={a.documents.length} />
+      </div>
+    );
   const sc = mode === "same" ? a.scenarios.same_holdings : a.scenarios.optimized;
   const cmp = sc.comparison;
+  const sv = savingParts(cmp.annual_saving, cmp.bound);
   const firm = a.proposal_inputs.firm_name;
   const today = sumOf(t("Today (comparable)"), cmp.current_known, a.scenarios.current_comparable);
   const withFirm = sumOf(t("With {firm}", { firm }), cmp.proposal_known, sc.ledger);
@@ -87,8 +96,8 @@ export default function ComparePage() {
           sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
         />
         <Kpi
-          label={t("Annual saving")}
-          tone="teal"
+          label={t(sv.label)}
+          tone={sv.saves ? "teal" : undefined}
           onClick={() =>
             setTrace({
               kind: "diff",
@@ -101,8 +110,8 @@ export default function ComparePage() {
           }
           value={
             <>
-              <span className="mr-1 text-[14px] font-medium">{t(BOUND_TEXT[cmp.bound])}</span>
-              {chf(cmp.annual_saving)}
+              <span className="mr-1 text-[14px] font-medium">{t(sv.prefix)}</span>
+              {chf(sv.value)}
             </>
           }
           sub={
@@ -219,6 +228,7 @@ export default function ComparePage() {
 
 /** Paired bars per layer with values printed beside them (the numbers are the table twin). */
 function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp: Comparison; firm: string }) {
+  const sv = savingParts(cmp.annual_saving, cmp.bound);
   const unknown = new Set(cur.atoms.filter((x) => x.role === "unknown").map((x) => x.layer));
   const rows = COMPARE_LAYERS.map((k) => ({
     k,
@@ -290,11 +300,10 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
             </td>
             <td className="num px-2 py-2.5 text-right">{chf(cmp.current_known)}</td>
             <td className="num px-2 py-2.5 text-right">{chf(cmp.proposal_known)}</td>
-            <td className="num px-5 py-2.5 text-right text-teal-700">
-              {BOUND_TEXT[cmp.bound] && (
-                <span className="mr-1 text-[11.5px] font-normal">{t(BOUND_TEXT[cmp.bound])}</span>
-              )}
-              {chf(cmp.annual_saving)}
+            <td className={cn("num px-5 py-2.5 text-right", sv.saves && "text-teal-700")}>
+              {sv.prefix && <span className="mr-1 text-[11.5px] font-normal">{t(sv.prefix)}</span>}
+              {sv.saves ? "" : `${t("costs more")} `}
+              {chf(sv.value)}
             </td>
           </tr>
         </tbody>
