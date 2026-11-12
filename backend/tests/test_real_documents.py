@@ -307,3 +307,46 @@ def test_section_subtotals_are_not_the_account_total(tmp_path):
     res, _ = extract("us3.pdf", (tmp_path / "us3.pdf").read_bytes())
     assert {f.key: f.value for f in res.facts}["total:assets"] == "2500.00"
     assert sorted(f.value for f in res.facts if f.kind == "position") == ["1000.00", "1500.00"]
+
+
+def test_a_second_person_in_the_file_raises_an_alarm(tmp_path):
+    # AJ Bell demo report (corpus): one PDF holds Mr M Thomas's report, then Mr K Adams's from page 16.
+    # Adding both people's holdings into one prospect's AUM must not pass silently.
+    from pce.demo.generate import Doc
+    from pce.demo.offline import run
+
+    folder = tmp_path / "pack"
+    folder.mkdir()
+    d = Doc(folder / "two.pdf", "Client valuation")
+    cols = [(50, "l"), (250, "r"), (310, "r"), (370, "r"), (430, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    for person, holding in (("Mr A Alpha", "ALPHA EQUITY I ACC"), ("Mrs B Beta", "BETA BOND FUND INC")):
+        d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client valuation", person)
+        row("Holding name", "Quantity", "Price (£)", "Value (£)", "Cost (£)")
+        row(holding, "1,000.00000", "5.00000", "5,000.00", "4,000.00")
+        row("Total", "5,000.00", "4,000.00")
+        d.c.showPage()
+        d.page += 1
+    d.save()
+    checks = {c["key"]: c for c in run(folder)["checks"]}
+    assert checks["second_person:1"]["status"] == "fail"
+    assert "page 2" in checks["second_person:1"]["detail"]
+    assert "Beta" not in checks["second_person:1"]["detail"]  # names stay in the document, not in checks
+
+
+def test_one_person_on_every_page_raises_no_alarm(tmp_path):
+    from pce.demo.generate import Doc
+    from pce.demo.offline import run
+
+    folder = tmp_path / "pack"
+    folder.mkdir()
+    d = Doc(folder / "one.pdf", "Client valuation")
+    for _ in range(2):
+        d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client valuation", "Mr A Alpha")
+        d.c.showPage()
+        d.page += 1
+    d.save()
+    assert not [c for c in run(folder)["checks"] if c["key"].startswith("second_person")]

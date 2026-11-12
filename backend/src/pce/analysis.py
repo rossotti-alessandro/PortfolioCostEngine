@@ -209,7 +209,18 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         inst["documents"].append(d["id"])
         pos_sum, total_fact, larger_total = ZERO, None, None
         for f in by_doc[d["id"]]:
-            if f["kind"] == "doc_total" and f["key"] == "total:largest_printed":
+            if f["key"] == "meta:second_person":
+                checks.append(
+                    Check(
+                        f"second_person:{d['id']}",
+                        f"{ik}: the file holds statements of more than one person",
+                        "fail",
+                        f"{f['label']}. Their holdings are added together here. Upload only the prospect's"
+                        " pages, or split the file.",
+                        [f["id"]],
+                    )
+                )
+            elif f["kind"] == "doc_total" and f["key"] == "total:largest_printed":
                 larger_total = f
             elif f["kind"] == "doc_total":
                 total_fact = f

@@ -430,12 +430,38 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                         )
                     )
     facts.extend(_larger_printed_total(pages, facts))
+    facts.extend(_second_person(pages))
     return facts
 
 
-_GRAND_TOTAL = re.compile(
-    r"^(?:grand )?total(?: portfolio| value| assets| account value)?$|^totale$|^gesamttotal$", re.I
-)
+# A page header naming the client: "Mr M Thomas", "Sig.ra Bianchi", "Frau Müller", "Mme Dupont".
+_PERSON = re.compile(r"^(?:mr|mrs|ms|miss|dr|sig\.?|sig\.ra|signora|herr|frau|mme|mlle)\.? [\w.' -]+$", re.I)
+
+
+def _second_person(pages: list[PageInfo]) -> list[Fact]:
+    """Advisers' demo packs and family files bundle several people's statements in one PDF (corpus: AJ Bell
+    demo report, Mr M Thomas then Mr K Adams on p16). Their holdings must not be added into one prospect,
+    so the first page header naming a different person is returned for the analysis to raise an alarm. The
+    fact carries no name: the evidence points at the line."""
+    first: str | None = None
+    for page in pages:
+        for ln in page.lines[:6]:  # the page header
+            name = ln.text.strip()
+            if len(ln.cells) != 1 or not _PERSON.match(name):
+                continue
+            if first is None:
+                first = name.lower()
+            elif name.lower() != first:
+                return [
+                    Fact(
+                        key="meta:second_person",
+                        kind="meta",
+                        field="second_person",
+                        label=f"A different client is named from page {page.number}",
+                        evidence=_ev(ln, page),
+                    )
+                ]
+    return []
 
 
 _ACCOUNT_TOTAL = re.compile(
@@ -455,7 +481,7 @@ def _larger_printed_total(pages: list[PageInfo], facts: list[Fact]) -> list[Fact
     for page in pages:
         for ln in page.lines:
             amounts = _amount_cells(ln)
-            if not amounts or not _GRAND_TOTAL.match(ln.cells[0].text.strip().rstrip(":")):
+            if not amounts or not _ACCOUNT_TOTAL.match(ln.cells[0].text.strip().rstrip(":")):
                 continue
             first = amounts[0][1]  # value column first; cost and change columns follow
             if best is None or first > best[0]:
