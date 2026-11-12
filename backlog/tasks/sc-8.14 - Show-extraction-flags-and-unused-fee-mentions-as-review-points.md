@@ -1,11 +1,11 @@
 ---
 id: SC-8.14
 title: Show extraction flags and unused fee mentions as review points
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Trace numbers back to source documents"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-6txgxv"
 pr: ""
 created_date: "2026-11-12 21:25"
@@ -72,7 +72,8 @@ No measurable impact: one more list built from facts already loaded.
 
 ## Outcome
 
-- **Status**:
+- **Status**: completed
+- Flags on any ledger line and unused fee mentions now reach Points to review, reasons in plain EN/IT words.
 
 ## Issues Encountered
 
@@ -80,3 +81,4 @@ No measurable impact: one more list built from facts already loaded.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-6txgxv | 1693643 | 2026-11-12 | Extraction flags and unused fee mentions in review points |
