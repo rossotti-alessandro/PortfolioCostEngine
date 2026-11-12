@@ -35,8 +35,8 @@ heading, such as "Service costs → One-off → 0.00%". A bigger OCR model does 
 </ul>
 <h2>Models added in this round</h2>
 <ul>
-<li><b>Worth keeping:</b> Infinity-Parser2 and FireRed-OCR read hard tables best of all vision models on the 8 hard pages, but take 3 to 4 minutes per page on this CPU. They are candidates for a GPU machine, not for this one. Egret and Heron-101 (layout) find tables as well as PP-DocLayoutV3; SLANet gives table structure in a few seconds.</li>
-<li><b>Not practical here:</b> LightOnOCR-3 and Xiaomi-OCR need GPU kernels; on CPU they took about 10 minutes per page and often produced empty rows. EasyOCR is slower and weaker than RapidOCR.</li>
+<li><b>No new vision model beats PaddleOCR-VL.</b> On the 8 hard pages, Infinity-Parser2, LightOnOCR-3, MinerU 2.5, MiniCPM-OCR and Xiaomi-OCR all put 79% of figures on their label's row, exactly as PaddleOCR-VL does, and they are 2 to 6 times slower on this CPU. They all read every value; the misses are labels that sit in a column or row heading, which no reader fixes. FireRed-OCR scores a little lower and is the slowest.</li>
+<li><b>Layout and table structure:</b> Egret and Heron-101 find tables as well as PP-DocLayoutV3. SLANet gives table structure in a few seconds per page. EasyOCR is slower and weaker than RapidOCR.</li>
 <li><b>Not run:</b> 22 models, each with its reason in the Models tab (licence, size, or remote code).</li>
 </ul>
 <h2>What the app does today</h2>
