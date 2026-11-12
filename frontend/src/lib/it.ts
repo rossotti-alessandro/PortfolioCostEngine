@@ -972,4 +972,16 @@ export const IT: Record<string, string> = {
   "Found on the page but not matched to a cost. Open them, then accept or reject each in evidence review.":
     "Trovati sulla pagina ma non collegati a un costo. Aprili, poi accetta o respingi ciascuno nella verifica delle evidenze.",
   "Found in {file}, not used": "Trovato in {file}, non usato",
+  "Documents to ask for": "Documenti da richiedere",
+  "Known annual cost today": "Costo annuo noto oggi",
+  "{pct} ({bps}) of {aum} across {banks} banks and {positions} positions.":
+    "{pct} ({bps}) di {aum} su {banks} banche e {positions} posizioni.",
+  "{n} costs are not determined yet, so the real figure is higher. Nothing unknown is counted as zero.":
+    "{n} costi non sono ancora determinati, quindi la cifra reale è più alta. Nulla di ignoto è contato come zero.",
+  "Every cost category is evidenced.": "Ogni categoria di costo è documentata.",
+  "Debited from the accounts": "Addebitato sui conti",
+  "Inside fund and product prices": "Incluso nei prezzi di fondi e prodotti",
+  "Costs that are not determined yet, ranked by how much of the portfolio they affect. Each request names the exact document that would close the gap.":
+    "Costi non ancora determinati, ordinati per quota di portafoglio interessata. Ogni richiesta indica il documento esatto che colma la lacuna.",
+  "{n} documents to ask for": "{n} documenti da richiedere",
 };
