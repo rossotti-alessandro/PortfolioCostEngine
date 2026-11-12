@@ -69,7 +69,9 @@ body {
 }
 .evidence-box[data-active="true"] {
   border: 2px solid var(--color-accent);
-  background: rgb(227 242 240 / 0.6);
+  /* multiply keeps the source text under the highlight fully legible */
+  background: var(--color-accent-soft);
+  mix-blend-mode: multiply;
   box-shadow: 0 0 0 4px rgb(15 118 110 / 0.18);
 }
 .evidence-box[data-status="rejected"] {
@@ -86,4 +88,11 @@ body {
 .hatch {
   background-image: repeating-linear-gradient(135deg, var(--color-danger) 0 1.5px, transparent 1.5px 6px);
   background-color: var(--color-danger-soft);
+}
+
+/* Evidence side panel (components/Trace.tsx): on wide screens the page makes room instead of being covered. */
+@media (min-width: 1280px) {
+  body[data-evidence="open"] main {
+    padding-right: 600px;
+  }
 }

@@ -2,12 +2,15 @@ import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, chf, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { Atom, EvidenceRef, Ledger } from "@/lib/types";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight, ExternalLink, Maximize2, Minimize2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { DecisionTrail } from "./DecisionTrail";
 import { PdfEvidence, SheetEvidence } from "./EvidenceViewer";
-import { Badge, Button, Dialog, Fold, Spinner, StatusBadge } from "./ui";
+import { SourceCrop } from "./SourceCrop";
+import { Badge, Button, Fold, Spinner, StatusBadge } from "./ui";
 
 /** What a click on a number opens. The amounts shown are always the API's; the frontend only selects lines. */
 export type TraceTarget =
@@ -31,7 +34,8 @@ function fmtValue(x: EvidenceRef): string {
   return x.currency ? chf(x.value, 2, `${x.currency} `) : x.value;
 }
 
-/** Result → computation → line → source page, with a breadcrumb back up. */
+/** Result → computation → line → source page, with a breadcrumb back up.
+ *  A side panel, not a modal: the page stays usable and clicking another number replaces the content. */
 export function TraceDialog({ root, onClose }: { root: TraceTarget | null; onClose: () => void }) {
   return root ? <TraceStack key={titleOf(root)} root={root} onClose={onClose} /> : null;
 }
@@ -44,36 +48,66 @@ function TraceStack({ root, onClose }: { root: TraceTarget; onClose: () => void 
   const [stack, setStack] = useState<TraceTarget[]>([root]);
   const top = stack[stack.length - 1];
   const push = (x: TraceTarget) => setStack([...stack, x]);
+  useEffect(() => {
+    // Leave room for the panel on wide screens so it does not cover the numbers (index.css).
+    document.body.dataset.evidence = "open";
+    return () => {
+      delete document.body.dataset.evidence;
+    };
+  }, []);
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title={titleOf(top)} description={describe(top)} wide>
-      {stack.length > 1 && (
-        <nav
-          aria-label={t("Where this number comes from")}
-          className="-mt-1 mb-3 flex flex-wrap items-center gap-1 text-[12.5px]"
+    <DialogPrimitive.Root open modal={false} onOpenChange={(o) => !o && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          onInteractOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="no-print fixed inset-y-0 right-0 z-50 flex w-full max-w-[600px] flex-col border-l border-line bg-surface shadow-[-8px_0_24px_rgb(11_37_69/0.08)]"
         >
-          {stack.map((x, i) => (
-            <span key={`${titleOf(x)}-${i}`} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-subtle" />}
-              {i < stack.length - 1 ? (
-                <button
-                  type="button"
-                  className="text-teal-700 hover:underline"
-                  onClick={() => setStack(stack.slice(0, i + 1))}
-                >
-                  {titleOf(x)}
-                </button>
-              ) : (
-                <span className="text-muted">{titleOf(x)}</span>
-              )}
-            </span>
-          ))}
-        </nav>
-      )}
-      {top.kind === "sum" && <SumView x={top} onPick={push} />}
-      {top.kind === "diff" && <DiffView x={top} onPick={push} />}
-      {top.kind === "atom" && <AtomView atom={top.atom} ledger={top.ledger} onPick={push} />}
-      {top.kind === "source" && <SourcePane evidence={top.evidence} />}
-    </Dialog>
+          <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+            <div className="min-w-0">
+              <div className="text-[11.5px] font-semibold uppercase tracking-wider text-subtle">{t("Evidence")}</div>
+              <DialogPrimitive.Title className="mt-0.5 text-base font-semibold text-navy-900">
+                {titleOf(top)}
+              </DialogPrimitive.Title>
+              <p className="mt-0.5 text-[13px] text-muted">{describe(top)}</p>
+            </div>
+            <DialogPrimitive.Close className="rounded p-1 text-muted hover:bg-paper" aria-label={t("Close")}>
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {stack.length > 1 && (
+              <nav
+                aria-label={t("Where this number comes from")}
+                className="-mt-1 mb-3 flex flex-wrap items-center gap-1 text-[12.5px]"
+              >
+                {stack.map((x, i) => (
+                  <span key={`${titleOf(x)}-${i}`} className="flex items-center gap-1">
+                    {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-subtle" />}
+                    {i < stack.length - 1 ? (
+                      <button
+                        type="button"
+                        className="text-teal-700 hover:underline"
+                        onClick={() => setStack(stack.slice(0, i + 1))}
+                      >
+                        {titleOf(x)}
+                      </button>
+                    ) : (
+                      <span className="text-muted">{titleOf(x)}</span>
+                    )}
+                  </span>
+                ))}
+              </nav>
+            )}
+            {top.kind === "sum" && <SumView x={top} onPick={push} />}
+            {top.kind === "diff" && <DiffView x={top} onPick={push} />}
+            {top.kind === "atom" && <AtomView atom={top.atom} ledger={top.ledger} onPick={push} />}
+            {top.kind === "source" && <SourcePane evidence={top.evidence} />}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -199,8 +233,17 @@ function AtomView({ atom, ledger, onPick }: { atom: Atom; ledger: Ledger; onPick
   const related = ledger.atoms.filter((a) => a.included_in === atom.id || a.corroborates === atom.id);
   const parent = ledger.atoms.find((a) => a.id === (atom.included_in ?? atom.corroborates));
   const go = (a: Atom) => onPick({ kind: "atom", atom: a, ledger });
+  const usedIn =
+    atom.role === "counted"
+      ? [
+          `${LAYER[atom.layer] ? t(LAYER[atom.layer].name) : atom.layer} ${chf(ledger.by_layer[atom.layer], 0)}`,
+          `${t("Known annual cost")} ${chf(ledger.total_known, 0)}`,
+        ]
+      : parent
+        ? [t("Part of: {label}", { label: parent.label })]
+        : [t("Shown, not added to the total")];
   return (
-    <div className="grid gap-4 md:grid-cols-[300px_1fr]">
+    <div className="space-y-5">
       <div className="space-y-3 text-[13px]">
         <div>
           <div className="text-[12px] text-subtle">{t("Annual amount")}</div>
@@ -266,9 +309,9 @@ function AtomView({ atom, ledger, onPick }: { atom: Atom; ledger: Ledger; onPick
         )}
       </div>
       {atom.evidence?.length ? (
-        <SourcePane evidence={atom.evidence} />
+        <SourcePane evidence={atom.evidence} usedIn={usedIn} />
       ) : (
-        <div className="flex h-[300px] items-center justify-center rounded-md border border-line p-6 text-center text-[13px] text-muted">
+        <div className="rounded-md border border-dashed border-line-strong p-5 text-center text-[13px] text-muted">
           {atom.measurement === "unknown"
             ? t("No document contains this cost yet. See the document request list for what would resolve it.")
             : t("This value comes from proposal inputs, not from a client document.")}
@@ -278,97 +321,100 @@ function AtomView({ atom, ledger, onPick }: { atom: Atom; ledger: Ledger; onPick
   );
 }
 
-/** The inputs of a number and the original page (or sheet) with the value boxed. */
-export function SourcePane({ evidence }: { evidence: EvidenceRef[] }) {
+/** The inputs of a number: a readable crop of where each is written, the full page on demand, and its decision trail. */
+export function SourcePane({ evidence, usedIn }: { evidence: EvidenceRef[]; usedIn?: string[] }) {
   const pid = Number(useParams().id);
   const [idx, setIdx] = useState(0);
+  const [full, setFull] = useState(false);
   const e = evidence[Math.min(idx, evidence.length - 1)];
-  const facts = useQuery({ queryKey: ["facts", e.document_id], queryFn: () => api.facts(e.document_id) });
+  const facts = useQuery({
+    queryKey: ["facts", e.document_id],
+    queryFn: () => api.facts(e.document_id),
+    enabled: full || !!e.sheet,
+  });
   return (
-    <div className="min-w-0 space-y-2">
-      <ul className="space-y-1.5" aria-label={t("Inputs")}>
-        {evidence.map((x, i) => (
-          <li key={`${x.fact_id}-${x.role}`}>
+    <div className="min-w-0 space-y-4">
+      {evidence.length > 1 && (
+        <ul className="space-y-1.5" aria-label={t("Inputs")}>
+          {evidence.map((x, i) => (
+            <li key={`${x.fact_id}-${x.role}`}>
+              <button
+                type="button"
+                aria-pressed={i === idx}
+                onClick={() => setIdx(i)}
+                className={cn(
+                  "w-full rounded-md border px-3 py-2 text-left text-[12.5px]",
+                  i === idx ? "border-teal-700/50 bg-teal-50" : "border-line hover:bg-paper",
+                )}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-subtle">{t(ROLE_LABEL[x.role])}</span>
+                  <span className="num font-medium text-ink">{fmtValue(x)}</span>
+                </div>
+                <div className="truncate text-muted">
+                  {x.where} · {x.label}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <section aria-label={t("Where it is written")} className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-subtle">
+            {t("Where it is written")}
+          </h4>
+          {!e.sheet && e.page && (
             <button
               type="button"
-              aria-pressed={i === idx}
-              onClick={() => setIdx(i)}
-              className={cn(
-                "w-full rounded-md border px-3 py-2 text-left text-[12.5px]",
-                i === idx ? "border-teal-700/50 bg-teal-50" : "border-line hover:bg-paper",
-              )}
+              onClick={() => setFull(!full)}
+              className="flex items-center gap-1 text-[12.5px] text-teal-700 hover:underline"
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-subtle">{t(ROLE_LABEL[x.role])}</span>
-                <span className="num font-medium text-ink">{fmtValue(x)}</span>
-              </div>
-              <div className="truncate text-muted">
-                {x.where} · {x.label}
-              </div>
+              {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              {full ? t("Show the row only") : t("Show full page")}
             </button>
-          </li>
-        ))}
-      </ul>
-      <div className="h-[380px] overflow-hidden rounded-md border border-line">
-        {!facts.data ? (
-          <Spinner label={t("Locating source")} />
-        ) : e.sheet ? (
-          <SheetEvidence docId={e.document_id} facts={facts.data} activeId={e.fact_id} />
+          )}
+        </div>
+        <div className="truncate text-[12.5px]">
+          <span className="font-medium text-ink">{e.filename}</span>
+          <span className="text-muted"> · {e.where}</span>
+        </div>
+        {e.sheet ? (
+          <div className="h-[260px] overflow-hidden rounded-md border border-line">
+            {facts.data ? (
+              <SheetEvidence docId={e.document_id} facts={facts.data} activeId={e.fact_id} />
+            ) : (
+              <Spinner label={t("Locating source")} />
+            )}
+          </div>
+        ) : full ? (
+          <div className="h-[560px] overflow-hidden rounded-md border border-line">
+            {facts.data ? (
+              <PdfEvidence docId={e.document_id} facts={facts.data} activeId={e.fact_id} page={e.page ?? 1} focus />
+            ) : (
+              <Spinner label={t("Locating source")} />
+            )}
+          </div>
+        ) : e.page && e.bbox ? (
+          <SourceCrop key={e.fact_id} docId={e.document_id} page={e.page} bbox={e.bbox} tag={fmtValue(e)} />
         ) : (
-          <PdfEvidence docId={e.document_id} facts={facts.data} activeId={e.fact_id} page={e.page ?? 1} compact />
+          <p className="text-[12.5px] text-muted">{t("No position on the page was recorded for this value.")}</p>
         )}
-      </div>
-      <SourceFacts e={e} />
+        {e.snippet && (
+          <p className="break-words font-mono text-[12px] text-ink" title={e.snippet}>
+            “{e.snippet}”
+          </p>
+        )}
+        {e.status === "corrected" && e.value_extracted && (
+          <p className="text-[12px] text-muted">{t("read as {v}", { v: e.value_extracted })}</p>
+        )}
+      </section>
+      <DecisionTrail e={e} usedIn={e.role === "value" ? usedIn : undefined} />
       <Link to={`/p/${pid}/review?doc=${e.document_id}&fact=${e.fact_id}`}>
         <Button variant="outline" size="sm">
           <ExternalLink className="h-3.5 w-3.5" /> {t("Open in evidence review")}
         </Button>
       </Link>
     </div>
-  );
-}
-
-const STATUS_TEXT: Record<string, string> = {
-  extracted: "Not yet checked by an analyst",
-  accepted: "Checked by an analyst",
-  corrected: "Corrected by an analyst",
-  manual: "Entered by an analyst",
-  rejected: "Rejected by an analyst",
-};
-
-function SourceFacts({ e }: { e: EvidenceRef }) {
-  const conf = e.confidence === null ? null : Math.round(e.confidence * 100);
-  return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[12px]">
-      {e.snippet && (
-        <>
-          <dt className="text-subtle">{t("Text on the page")}</dt>
-          <dd className="truncate font-mono text-ink" title={e.snippet}>
-            “{e.snippet}”
-          </dd>
-        </>
-      )}
-      <dt className="text-subtle">{t("Read by")}</dt>
-      <dd className="text-muted">
-        {e.engine ?? "–"}
-        {conf !== null && (
-          <span className={cn(conf < 90 && "font-medium text-amber-700")}>
-            {" "}
-            · {t("confidence {pct}%", { pct: conf })}
-          </span>
-        )}
-      </dd>
-      <dt className="text-subtle">{t("Review")}</dt>
-      <dd className={cn(e.status === "extracted" ? "text-amber-700" : "text-muted")}>
-        {t(STATUS_TEXT[e.status] ?? e.status)}
-        {e.status === "corrected" && e.value_extracted && ` (${t("read as {v}", { v: e.value_extracted })})`}
-        {e.review?.status === "needs_review" && (
-          <span className="text-red-700">
-            {" "}
-            · {t("flagged at extraction: {reasons}", { reasons: (e.review.reasons ?? []).join(", ") })}
-          </span>
-        )}
-      </dd>
-    </dl>
   );
 }
