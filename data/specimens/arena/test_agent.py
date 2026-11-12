@@ -47,3 +47,9 @@ def test_flag_only_never_drops_a_figure() -> None:
     out = flag_only(CANDS, log)
     assert [p["value"] for p in out] == [c["value"] for c in CANDS]
     assert [p["needs_review"] for p in out] == [False, True, True]
+
+
+def test_flag_only_can_ignore_the_model_on_zero_charges() -> None:
+    cands = [*CANDS, {"label": "Exit cost", "value": "0", "bbox": [10, 70, 40, 80], "needs_review": False}]
+    out = flag_only(cands, [{"decisions": {"c2": "not_fee", "c4": "not_fee"}}], trust_zeros=True)
+    assert [p["needs_review"] for p in out] == [False, True, False, False]

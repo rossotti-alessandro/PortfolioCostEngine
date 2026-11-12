@@ -84,11 +84,17 @@ the runner rejects any value not present in a tool output at the cited box.
 
 ## Outcome
 
-- **Status**: Done. 7 workflows on 63 pages (899 hand-checked fees); see `data/specimens/arena/RESULTS.md`.
+- **Status**: Done. 10 workflows on 63 pages (899 hand-checked fees); see `data/specimens/arena/RESULTS.md`.
 - Finder + verify stays the best trade-off: P 82%, R 90%, 5.9% wrong values accepted, 1.5 s/page.
 - Agentic review (drop mode): P 90%, R 71%. It removes false figures but also 175 real fees, a third of
   them zero charges. Flag-only mode keeps recall at 90% and lowers wrong accepted values to 4.5%, but sends
   39% of figures to review (18% without the agent) and costs about 40 s/page on CPU.
+- Ensembles (`ensembles.py`): when finder + verify and the independent vision reader must agree on value and
+  spot, 0 wrong values were accepted on the 23 pages both ran (finder + verify alone: 3.1%), recall 91%; adding
+  vision-only figures for review lifts recall to 94%. Cost: 62-65% of figures go to review, because the vision
+  reader finds only 64% of fees. A faster, stronger second reader (table structure) is the next lever.
+- Validation in RESULTS.md: 95% bootstrap intervals over pages, held-out scores without the 3 pages used to
+  tune the agent prompt (agent recall 70% vs 71% overall), and recall by document type.
 - Recommendation: do not put the agent in the app now. If used, only in flag mode, after zero-charge
   handling is fixed in the prompt or by rule.
 - Whole-portfolio results (SYNTHETIC P-1042, P-2077) are identical before and after SC-5.8, because finder

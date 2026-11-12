@@ -111,13 +111,22 @@ def apply_decisions(cands: list[dict], decisions: dict[str, str]) -> list[dict]:
     return out
 
 
-def flag_only(cands: list[dict], log: list[dict]) -> list[dict]:
+def flag_only(cands: list[dict], log: list[dict], trust_zeros: bool = False) -> list[dict]:
     """Replay a logged agent run with "not_fee" downgraded to "unsure": the model may send a figure to review
-    but never remove it. Scored in the arena as its own workflow."""
+    but never remove it. With ``trust_zeros`` the model's opinion on zero charges is ignored, because the
+    arena showed it mistakes "0 USD" entry or exit costs for "no fee"."""
     decisions = {
         k: ("unsure" if v == "not_fee" else v) for step in log for k, v in step.get("decisions", {}).items()
     }
+    if trust_zeros:
+        decisions = {k: v for k, v in decisions.items() if not _is_zero(cands, k)}
     return apply_decisions(cands, decisions)
+
+
+def _is_zero(cands: list[dict], cid: str) -> bool:
+    m = re.fullmatch(r"c(\d+)", cid)
+    i = int(m.group(1)) - 1 if m else -1
+    return 0 <= i < len(cands) and cands[i].get("value") not in (None, "") and float(cands[i]["value"]) == 0
 
 
 def parse_json(text: str) -> dict:
