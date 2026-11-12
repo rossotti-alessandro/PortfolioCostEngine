@@ -7,9 +7,9 @@ owner: "Read document pages in parallel"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-ch9r5h"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/21"
 created_date: "2026-11-12 14:30"
-updated_date: "2026-11-12 14:35"
+updated_date: "2026-11-12 14:37"
 labels:
   - extraction
   - performance
