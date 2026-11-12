@@ -1,15 +1,15 @@
 ---
 id: SC-8.10
 title: Simple upload-to-report flow, live processing, honest results, report
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Simplify upload-to-report user flow"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-3ahesb"
 pr: ""
 created_date: "2026-11-12 13:30"
-updated_date: "2026-11-12 13:30"
+updated_date: "2026-11-12 13:08"
 labels:
   - ui
   - report
