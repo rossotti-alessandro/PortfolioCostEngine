@@ -13,7 +13,7 @@ specialists that need the model lab, so their effect can be measured before any 
 
 Every variant starts from the facts of finder + verify (the production path of PR #15), recomputed here
 so the graph sees real ``Fact`` objects, and writes ``var/arena/revalidate/<variant>.json`` (predictions)
-and ``seconds.json`` for ``run.py``.
+and ``seconds.json`` (the graph's own time per page, specialists included) for ``run.py``.
 
 Backend env of a checkout with the finder:
     cd backend && uv run python ../data/specimens/arena/revalidate_lab.py
@@ -174,7 +174,7 @@ def main() -> None:
     for p in pages:
         if (p.get("gt_from") or p["id"]) not in gold:
             continue
-        facts, base_s = finder_verify(p)
+        facts, _ = finder_verify(p)
         # same candidates, same order as the dump the agent reviewed: the critic replay depends on it
         assert [f.value for f in facts] == [d["value"] for d in base[p["id"]]], p["id"]
         for name, build in VARIANTS.items():
@@ -193,7 +193,7 @@ def main() -> None:
             extra = sum((S.stored(e, p["id"]) or {}).get("seconds", 0.0) for e in used)
             extra += critic_seconds(p["id"]) if sp.critic else 0.0
             dumps[name][p["id"]] = [S._pred(f) for f in out]
-            secs[name][p["id"]] = round(base_s + graph_s + extra, 2)
+            secs[name][p["id"]] = round(graph_s + extra, 2)  # run.py adds finder + verify's own time
             for f in out:
                 key = "→".join(f.extra["revalidation_path"])
                 paths[name][key] = paths[name].get(key, 0) + 1

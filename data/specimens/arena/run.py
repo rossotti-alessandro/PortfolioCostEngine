@@ -135,8 +135,10 @@ def seconds() -> dict[str, dict[str, float]]:
                 "median": round(sum(secs.get(k, {}).get("median", 0.0) for k in DERIVED_FROM[key]), 2)
             }
         elif dump.startswith("revalidate:") and (f := OUT / "revalidate" / "seconds.json").exists():
-            if per_page := json.loads(f.read_text(encoding="utf-8")).get(dump[11:]):
-                secs[key] = {"median": round(statistics.median(per_page.values()), 2)}
+            # the graph runs after finder + verify: its own time (specialists included) adds up
+            if (per_page := json.loads(f.read_text(encoding="utf-8")).get(dump[11:])) and "finder_verify" in secs:
+                graph = statistics.median(per_page.values())
+                secs[key] = {"median": round(secs["finder_verify"]["median"] + graph, 2)}
         elif dump.startswith("agent") and "finder_verify" in secs:  # the agent runs after finder + verify
             run_dir = OUT / "agent" / dump.partition(":")[2]
             agent = [json.loads(f.read_text())["seconds"] for f in run_dir.glob("*.json")]
