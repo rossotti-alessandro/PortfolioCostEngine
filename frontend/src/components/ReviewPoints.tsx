@@ -1,5 +1,6 @@
 import { chf, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { reasonText } from "@/lib/trail";
 import type { ReviewPoint } from "@/lib/types";
 import { AlertTriangle, Info, OctagonAlert } from "lucide-react";
 import { useState } from "react";
@@ -27,7 +28,17 @@ function text(p: ReviewPoint): { title: string; detail: string } {
         detail: t("The value was read with {confidence} confidence. Compare it with the page.", v),
       };
     case "extraction_flag":
-      return { title: t("Flagged at extraction: {label}", v), detail: t("Reasons: {reasons}.", v) };
+      return {
+        title: t("Flagged at extraction: {label}", v),
+        detail: t("Reasons: {reasons}.", { reasons: (v.reasons ?? "").split(",").map(reasonText).join("; ") }),
+      };
+    case "unused_mentions":
+      return {
+        title: t("{n} fee amounts in {file} are not used in any total", v),
+        detail: t(
+          "Found on the page but not matched to a cost. Open them, then accept or reject each in evidence review.",
+        ),
+      };
     case "corrected":
       return { title: t("Corrected by an analyst: {label}", v), detail: t("Read as {old}, now {new}.", v) };
     case "unreviewed":

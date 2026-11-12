@@ -105,7 +105,14 @@ export default function CostsPage() {
             const x = p.atom_id && L.atoms.find((y) => y.id === p.atom_id);
             if (x) return pick(x);
             const c = a.checks.find((y) => `check:${y.key}` === p.key);
-            if (c?.evidence?.length) setTrace({ kind: "source", title: c.title, evidence: c.evidence });
+            if (c?.evidence?.length) return setTrace({ kind: "source", title: c.title, evidence: c.evidence });
+            const found = a.unused_mentions.filter((m) => p.fact_ids.includes(m.fact_id));
+            if (found.length)
+              setTrace({
+                kind: "source",
+                title: t("Found in {file}, not used", { file: p.vars.file }),
+                evidence: found,
+              });
           }}
         />
       )}

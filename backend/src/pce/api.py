@@ -241,6 +241,9 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     for chk in result["checks"]:
         chk["sources"] = sources(chk["fact_ids"])
         chk["evidence"] = [provenance(i, "value") for i in chk["fact_ids"] if i in fmap]
+    result["unused_mentions"] = [
+        provenance(f.id, "value") for f in facts if f.kind == "fee_mention" and f.status != "rejected"
+    ]
     result["review_points"] = review_points(result)
     result["documents"] = [
         {"id": d.id, "filename": d.filename, "doc_type": d.doc_type_override or d.doc_type} for d in docs
