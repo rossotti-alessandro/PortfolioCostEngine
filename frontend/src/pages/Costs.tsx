@@ -3,15 +3,15 @@ import { ReviewPoints } from "@/components/ReviewPoints";
 import { PageTitle } from "@/components/Shell";
 import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { ViewMenu, useHidden } from "@/components/ViewMenu";
-import { Badge, Button, Card, CardHeader, Empty, ErrorBox, Fold, Kpi, Spinner, StatusBadge } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { Analysis, Atom, Check, MissingRequest } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Copy, FileText, Info, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Copy, Info, XCircle } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const COST_SECTIONS = [

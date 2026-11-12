@@ -1,15 +1,15 @@
 ---
 id: SC-8.10
 title: Simple upload-to-report flow, live processing, honest results, report
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Simplify upload-to-report user flow"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-3ahesb"
 pr: ""
 created_date: "2026-11-12 13:30"
-updated_date: "2026-11-12 13:08"
+updated_date: "2026-11-12 13:21"
 labels:
   - ui
   - report
@@ -76,16 +76,33 @@ visible after the first file. No backend extraction change.
 
 ## Acceptance Criteria
 
-- [ ] #1 Uploading several files shows one row per file with its own state and the values found, before all files finish.
-- [ ] #2 A prospect with no statement of assets never shows "CHF 0" as its cost nor a green "all evidenced" badge.
-- [ ] #3 A proposal dearer than today is never shown as a saving (screen and PDF), tested in pytest and Vitest.
-- [ ] #4 Costs, report and PDF state values read, values checked by a person, and points open.
-- [ ] #5 PDF: no truncated names, a page for every sourced line, `?lang=it` gives an Italian report; internal margin still absent (existing test stays green).
+- [x] #1 Uploading several files shows one row per file with its own state and the values found, before all files finish.
+- [x] #2 A prospect with no statement of assets never shows "CHF 0" as its cost nor a green "all evidenced" badge.
+- [x] #3 A proposal dearer than today is never shown as a saving (screen and PDF), tested in pytest and Vitest.
+- [x] #4 Costs, report and PDF state values read, values checked by a person, and points open.
+- [x] #5 PDF: no truncated names, a page for every sourced line, `?lang=it` gives an Italian report; internal margin still absent (existing test stays green).
 
 ## Implementation Notes
 
+- Also edited (declared): `frontend/src/components/ReadSummary.tsx` (new: read-status line and the no-statement state),
+  `frontend/src/lib/api.ts` (report `lang`), `frontend/src/lib/it.ts` (Italian strings).
+- No `finance/` change: the empty state is decided in the UI and in `report.py` from `holdings`.
+- `savingParts` (frontend) and `saving_parts` (report.py) carry the same rule; both are unit-tested.
+- E2E fix outside the new flow: test 06 looked up "Cost ledger" by text, which also matches the view menu
+  label since PR #13; it now uses the heading role.
+
 ## Outcome
 
-- **Status**: 
+- **Status**: completed
+- Upload: one request per file, live rows (waiting, reading, type + values read), progress bar, next step.
+- Empty prospect: "Costs are not calculated yet" on costs, compare, report and PDF; header says
+  "No statement of assets yet". Dearer proposal: "Proposal costs more per year", bound flipped.
+- Costs, report and PDF: values read, checked by a person, points open.
+- PDF rebuilt on platypus: wrapped names, full source file + page, EN/IT (`?lang=it`).
+- Gate: GATE PASSED (pytest 133, vitest 9, Playwright 17).
+
+## Branch & Commits
+
+- Branch `claude/project-thread-3ahesb`: 5b2d300 (UI), c77bca0 (report), plus this close commit.
 
 ## Issues Encountered

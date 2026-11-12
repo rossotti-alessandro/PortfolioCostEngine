@@ -1,5 +1,5 @@
 import { PageTitle } from "@/components/Shell";
-import { Badge, Button, Card, CardHeader, Empty, ErrorBox, Spinner } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, Empty, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, chf, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
