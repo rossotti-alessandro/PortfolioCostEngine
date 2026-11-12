@@ -7,7 +7,7 @@ A supervisor routes it to specialists, and a decision node turns their opinions 
        └──────────────reading confirmed─────────┘    (optional)
 
 - **triage** (supervisor, deterministic): a value whose reading is in doubt (the second reader disagreed
-  or saw nothing, low OCR confidence) goes to the readers; the others skip them.
+  or saw nothing) goes to the readers; the others skip them.
 - **readers**: more independent readers of the value's box, cheapest first. The first one that reads the
   same number at the same place confirms the reading, and the escalation stops there.
 - **reconcile**: arithmetic the page itself states. Rows that add up to the printed total, and a KID cost
@@ -38,8 +38,10 @@ from enum import StrEnum
 from .models import Check, Fact, Review
 from .verify import TOTAL_WORDS
 
-# Doubts about what is printed: a reader that sees the same number at the same place resolves them.
-READING_DOUBTS = {"engines_disagree", "not_confirmed", "ocr_low_confidence"}
+# Doubts about the number printed: a reader that sees the same number at the same place resolves them.
+# Low OCR confidence is not one of them: it covers the whole line, so the label may be misread too
+# (on the benchmark, readers "confirmed" such numbers under the wrong label).
+READING_DOUBTS = {"engines_disagree", "not_confirmed"}
 # A thousands separator ("1.250") is resolved only by arithmetic, not by another reader of the same digits.
 ARITHMETIC_DOUBTS = READING_DOUBTS | {"separator_ambiguous"}
 INVESTMENT = re.compile(r"(?<![\d.,'’])10[ '’.,]?000(?![\d])")  # PRIIPs cost examples use 10 000

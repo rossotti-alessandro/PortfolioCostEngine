@@ -7,6 +7,7 @@ they cannot place lands as a warning for human review, never as a guessed value.
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from decimal import Decimal
@@ -16,7 +17,7 @@ from openpyxl.utils import get_column_letter
 
 from ..finance.isin import ISIN_RE, is_valid_isin
 from ..finance.money import parse_amount, parse_percent
-from . import finder, verify
+from . import finder, revalidate, verify
 from .layout import Line, PageInfo, read_pdf
 from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact
 from .vocab import (
@@ -1131,6 +1132,8 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
     produced are returned as ``fee_mention`` facts: visible and clickable for the analyst, not in the
     totals until accepted."""
     verify.verify(found, [], verify.second_reading(data, found))
+    if os.environ.get("PCE_REVALIDATE") == "1":  # SC-5.14: page arithmetic may confirm, never change
+        revalidate.revalidate(found, revalidate.Specialists(checks=revalidate.BACKEND_CHECKS))
     extra: list[Fact] = []
     for g in found:
         twin = next((f for f in parsed if f.kind in REVIEWED_KINDS and _same_spot(f, g)), None)

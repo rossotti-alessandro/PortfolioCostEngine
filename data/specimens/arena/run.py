@@ -31,7 +31,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-WT = ROOT / "var" / "arena" / "wt"
+# The finder harness (PR #15): this checkout once it has it, else a separate checkout of that branch.
+WT = ROOT if (ROOT / "data" / "specimens" / "strategies").exists() else ROOT / "var" / "arena" / "wt"
 sys.path.insert(0, str(WT / "data" / "specimens" / "strategies"))
 sys.path.insert(0, str(HERE))
 import score  # noqa: E402  (the harness scorer, read-only)
@@ -66,6 +67,22 @@ for d in sorted((OUT / "agent").glob("*/")):  # one agentic workflow per local m
     WORKFLOWS.append(
         (f"agentic_zero:{d.name}", f"Agent flags, zeros kept ({d.name})", f"agentzero:{d.name}", ZERO_HOW)
     )
+WORKFLOWS += [  # the revalidation graph (SC-5.14, revalidate_lab.py): finder + verify, then specialists
+    ("reval_arith_only", "Revalidation: arithmetic only", "revalidate:arithmetic",
+     "Finder + verify, then page arithmetic only: rows that add up to the printed total, and a KID amount "
+     "that matches its % on 10 000, confirm each other. No model; what the app runs with PCE_REVALIDATE=1."),
+    ("reval_readers", "Revalidation: more readers", "revalidate:readers",
+     "Finder + verify; a value whose reading is in doubt goes to RapidOCR, then docTR, then the vision "
+     "reader's table row, stopping at the first that reads the same number there."),
+    ("reval_arith", "Revalidation: readers + arithmetic", "revalidate:readers_arithmetic",
+     "As above, plus page arithmetic: rows that add up to the printed total, and a KID amount that matches "
+     "its % on 10 000, confirm each other."),
+    ("reval_full", "Revalidation: full graph", "revalidate:full",
+     "As above, plus the local language model as critic (Qwen3-4B): it may only flag a value, never "
+     "confirm, drop or change one."),
+    ("reval_full_zeros", "Revalidation: full, zeros kept", "revalidate:full_zeros",
+     "The full graph, with the critic's opinion on zero charges ignored."),
+]  # fmt: skip
 WORKFLOWS += [  # ensembles of readers that already ran (ensembles.py)
     ("consensus", "Two readers must agree", "derived:consensus",
      "Finder + verify and the vision reader read the page independently; a figure the vision reader did not "
@@ -92,6 +109,9 @@ def predictions() -> dict[str, dict[str, list[dict]]]:
                 f.stem: flag_only(cands[f.stem], json.loads(f.read_text(encoding="utf-8"))["log"], zero)
                 for f in runs
             }
+        elif dump.startswith("revalidate:"):
+            if (f := OUT / "revalidate" / f"{dump[11:]}.json").exists():
+                out[key] = json.loads(f.read_text(encoding="utf-8"))
         elif (f := DUMPS / f"{dump}.json").exists():
             out[key] = json.loads(f.read_text(encoding="utf-8"))
     # Only the vision reader is independent of the finder (the layout variant and the app reuse it), so the
@@ -114,6 +134,9 @@ def seconds() -> dict[str, dict[str, float]]:
             secs[key] = {
                 "median": round(sum(secs.get(k, {}).get("median", 0.0) for k in DERIVED_FROM[key]), 2)
             }
+        elif dump.startswith("revalidate:") and (f := OUT / "revalidate" / "seconds.json").exists():
+            if per_page := json.loads(f.read_text(encoding="utf-8")).get(dump[11:]):
+                secs[key] = {"median": round(statistics.median(per_page.values()), 2)}
         elif dump.startswith("agent") and "finder_verify" in secs:  # the agent runs after finder + verify
             run_dir = OUT / "agent" / dump.partition(":")[2]
             agent = [json.loads(f.read_text())["seconds"] for f in run_dir.glob("*.json")]

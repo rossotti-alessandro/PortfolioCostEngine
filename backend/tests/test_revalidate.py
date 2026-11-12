@@ -135,3 +135,47 @@ def test_no_specialists_leaves_review_as_verify_set_it():
     assert [(f.review.status, f.review.reasons) for f in out] == [
         (f.review.status, f.review.reasons) for f in facts
     ]
+
+
+def _schedule(tmp_path):
+    from conftest import write_text_pdf
+
+    pdf = tmp_path / "synthetic_cost_report.pdf"
+    write_text_pdf(
+        pdf,
+        [
+            (50, 780, 12, "SYNTHETIC Bank - Costs and charges 2026"),
+            (50, 740, 10, "Costs and charges"),
+            (300, 740, 9, "CHF"),
+            (50, 720, 9, "Custody fee"),
+            (300, 720, 9, "1'250.00"),
+            (50, 708, 9, "Brokerage fees"),
+            (300, 708, 9, "300.00"),
+            (50, 696, 9, "Total costs"),
+            (300, 696, 9, "1'550.00"),
+        ],
+    )
+    return pdf
+
+
+def test_app_extract_unchanged_when_revalidation_is_off(tmp_path, monkeypatch):
+    from pce.extraction.parsers import extract
+
+    pdf = _schedule(tmp_path)
+    monkeypatch.delenv("PCE_REVALIDATE", raising=False)
+    res, _ = extract(pdf.name, pdf.read_bytes())
+    checks = [c.name for f in res.facts if f.review for c in f.review.checks]
+    assert checks and not any(c.startswith("revalidate:") for c in checks)
+
+
+def test_app_extract_runs_page_arithmetic_when_on(tmp_path, monkeypatch):
+    from pce.extraction.parsers import extract
+
+    pdf = _schedule(tmp_path)
+    monkeypatch.setenv("PCE_REVALIDATE", "1")
+    res, _ = extract(pdf.name, pdf.read_bytes())
+    fees = [f for f in res.facts if f.label in ("Custody fee", "Brokerage fees")]
+    assert len(fees) == 2
+    assert all(
+        any(c.name == "revalidate:reconcile_totals" and c.passed for c in f.review.checks) for f in fees
+    )
