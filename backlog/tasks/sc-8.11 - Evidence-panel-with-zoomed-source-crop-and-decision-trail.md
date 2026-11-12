@@ -102,10 +102,10 @@ opened value (`/api/facts/{id}/history`). No backend change.
 
 ## Branch & Commits
 
-- Branch `claude/project-thread-bj3sap`
-- 16e5134 chore(backlog): add SC-8.11 evidence panel story
-- 8b45f1d chore(backlog): claim sc-8.11
-- 3b776cb feat(ui): evidence side panel, source crop and decision trail (SC-8.11)
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | 16e5134 | 2026-11-12 | Story file |
+| claude/project-thread-bj3sap | 3b776cb | 2026-11-12 | Evidence side panel, source crop, decision trail, tests |
 
 ## Issues Encountered
 
