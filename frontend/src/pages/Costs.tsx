@@ -1,8 +1,9 @@
+import { NotStarted, ReadSummary } from "@/components/ReadSummary";
 import { ReviewPoints } from "@/components/ReviewPoints";
 import { PageTitle } from "@/components/Shell";
 import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { ViewMenu, useHidden } from "@/components/ViewMenu";
-import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatusBadge } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatGrid, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -47,46 +48,55 @@ export default function CostsPage() {
         )}
         actions={<ViewMenu sections={COST_SECTIONS} hidden={hidden} onChange={setHidden} />}
       />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi
-          label={t("Assets reviewed")}
-          value={chf(a.aum.total)}
-          sub={t("{banks} banks · {positions} positions", {
-            banks: a.institutions.length,
-            positions: a.holdings.length,
-          })}
-        />
-        <Kpi
-          label={t("Known annual cost")}
-          value={chf(L.total_known)}
-          onClick={() => setTrace(sumOf(t("Known annual cost"), L.total_known, L))}
-          sub={
-            <>
-              {L.total_bps ? `${pct(String(Number(L.total_bps) / 100), 2)} (${bps(L.total_bps)})` : "–"}
-              {!L.is_complete && <span className="text-amber-700"> · {t("at least, incomplete")}</span>}
-            </>
-          }
-        />
-        <Kpi
-          label={t("Debited vs inside products")}
-          value={`${chf(L.billed_known)}`}
-          onClick={() =>
-            setTrace(sumOf(t("Debited from account"), L.billed_known, L, (x) => x.incidence !== "embedded"))
-          }
-          sub={
-            <button
-              type="button"
-              className="text-left decoration-dotted underline-offset-4 hover:underline"
-              onClick={() =>
-                setTrace(sumOf(t("Inside product price (NAV)"), L.embedded_known, L, (x) => x.incidence === "embedded"))
+      {a.holdings.length === 0 ? (
+        <NotStarted pid={id} docs={a.documents.length} />
+      ) : (
+        <>
+          <StatGrid>
+            <Kpi
+              label={t("Assets reviewed")}
+              value={chf(a.aum.total)}
+              sub={t("{banks} banks · {positions} positions", {
+                banks: a.institutions.length,
+                positions: a.holdings.length,
+              })}
+            />
+            <Kpi
+              label={t("Known annual cost")}
+              value={chf(L.total_known)}
+              onClick={() => setTrace(sumOf(t("Known annual cost"), L.total_known, L))}
+              sub={
+                <>
+                  {L.total_bps ? `${pct(String(Number(L.total_bps) / 100), 2)} (${bps(L.total_bps)})` : "–"}
+                  {!L.is_complete && <span className="text-amber-700"> · {t("at least, incomplete")}</span>}
+                </>
               }
-            >
-              {t("plus {amount} inside fund and product prices", { amount: chf(L.embedded_known) })}
-            </button>
-          }
-        />
-        <CoverageMeter ledger={L} />
-      </div>
+            />
+            <Kpi
+              label={t("Debited vs inside products")}
+              value={`${chf(L.billed_known)}`}
+              onClick={() =>
+                setTrace(sumOf(t("Debited from account"), L.billed_known, L, (x) => x.incidence !== "embedded"))
+              }
+              sub={
+                <button
+                  type="button"
+                  className="text-left decoration-dotted underline-offset-4 hover:underline"
+                  onClick={() =>
+                    setTrace(
+                      sumOf(t("Inside product price (NAV)"), L.embedded_known, L, (x) => x.incidence === "embedded"),
+                    )
+                  }
+                >
+                  {t("plus {amount} inside fund and product prices", { amount: chf(L.embedded_known) })}
+                </button>
+              }
+            />
+            <CoverageMeter ledger={L} />
+          </StatGrid>
+          <ReadSummary a={a} />
+        </>
+      )}
 
       {show("review") && (
         <ReviewPoints
@@ -99,9 +109,9 @@ export default function CostsPage() {
           }}
         />
       )}
-      {show("layers") && <LayerBreakdown a={a} onPick={pick} onLayer={layer} />}
+      {a.holdings.length > 0 && show("layers") && <LayerBreakdown a={a} onPick={pick} onLayer={layer} />}
       {show("requests") && <Requests a={a} />}
-      {show("ledger") && (
+      {a.holdings.length > 0 && show("ledger") && (
         <LedgerTable
           a={a}
           onPick={pick}
@@ -123,12 +133,12 @@ export default function CostsPage() {
           />
         </Fold>
       )}
-      {show("coverage") && (
+      {a.holdings.length > 0 && show("coverage") && (
         <Fold title={t("Evidence coverage by bank")} summary={t("Strongest evidence for each cost layer")}>
           <CoverageMatrix a={a} />
         </Fold>
       )}
-      {show("positions") && (
+      {a.holdings.length > 0 && show("positions") && (
         <Fold
           title={t("Positions")}
           summary={t("{n} positions from {banks} banks", { n: a.holdings.length, banks: a.institutions.length })}
@@ -145,16 +155,16 @@ function CoverageMeter({ ledger }: { ledger: Analysis["current"] }) {
   const share = Number(ledger.verified_share ?? 0);
   const n = ledger.unknown.length;
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3.5">
-      <div className="text-[12px] font-medium uppercase tracking-wide text-subtle">{t("Evidence coverage")}</div>
-      <div className="num mt-1 text-[22px] font-semibold leading-tight text-navy-900">
+    <div className="flex min-h-[116px] flex-col rounded-[var(--radius-card)] border border-line bg-surface px-5 py-4">
+      <div className="truncate text-[12.5px] font-medium text-muted">{t("Evidence coverage")}</div>
+      <div className="money num mt-2 text-[26px] font-semibold leading-none tracking-tight text-navy-900">
         {t("{pct}% observed", { pct: (share * 100).toFixed(0) })}
       </div>
-      <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-paper" aria-hidden>
+      <div className="mt-3 flex h-1.5 overflow-hidden rounded-[2px] bg-paper" aria-hidden>
         <div className="bg-green-700" style={{ width: `${share * 100}%` }} />
         <div className="hatch flex-1" />
       </div>
-      <div className="mt-1.5 text-[12.5px] text-muted">
+      <div className="mt-auto pt-2 text-[12.5px] text-muted">
         {n === 0 ? (
           t("All cost categories evidenced")
         ) : (
@@ -214,7 +224,7 @@ function LayerBreakdown({
               <BarChart
                 data={rows}
                 layout="vertical"
-                margin={{ left: 0, right: 120, top: 4, bottom: 4 }}
+                margin={{ left: 0, right: 190, top: 4, bottom: 4 }}
                 barCategoryGap={10}
               >
                 <XAxis type="number" hide />
@@ -646,7 +656,7 @@ function Requests({ a }: { a: Analysis }) {
           <div
             key={r.key}
             className={cn(
-              "rounded-lg border p-3.5",
+              "rounded-[var(--radius-card)] border p-3.5",
               r.status === "open" ? "border-amber-700/25 bg-amber-50/60" : "border-line bg-paper opacity-75",
             )}
           >

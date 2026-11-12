@@ -235,7 +235,6 @@ export default function ReviewPage() {
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 size="sm"
-                variant="accent"
                 onClick={() => review.mutate({ id: active.id, action: "accept" })}
                 disabled={active.status === "accepted"}
               >
@@ -283,17 +282,19 @@ export default function ReviewPage() {
                     f.id === activeId ? "border-[#d99a00] bg-amber-50" : "border-transparent",
                   )}
                 >
-                  <span className="min-w-0">
+                  <span className="min-w-[35%] flex-1">
                     <span className={cn("block truncate", f.status === "rejected" && "text-subtle line-through")}>
                       {f.label}
                     </span>
                     {f.fee_label && <span className="block truncate text-[11px] text-subtle">{f.fee_label}</span>}
                   </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="num font-medium text-ink">{displayValue(f)}</span>
+                  <span className="flex min-w-0 max-w-[60%] items-center gap-2">
+                    <span className="num truncate font-medium text-ink" title={displayValue(f)}>
+                      {displayValue(f)}
+                    </span>
                     <span
                       className={cn(
-                        "h-2 w-2 rounded-full",
+                        "h-2 w-2 shrink-0 rounded-full",
                         f.status === "accepted"
                           ? "bg-teal-700"
                           : f.status === "corrected"

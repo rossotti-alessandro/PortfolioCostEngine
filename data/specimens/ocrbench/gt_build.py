@@ -22,7 +22,10 @@ import fees  # noqa: E402
 HERE = Path(__file__).parent
 ROOT = HERE.parents[2]
 PAGES = ROOT / "var" / "ocrbench" / "pages"
-NO_BOX = {"tariff-bcv-clientele-privee-fr-p12"}  # text layer differs from the printed page
+ELEMENT = {"T": "table", "K": "key_value", "N": "text", "F": "footnote"}
+NO_BOX = {
+    "tariff-bcv-clientele-privee-fr-p12"
+}  # text layer differs from the printed page
 
 
 def parse(txt: str) -> dict[str, list[dict]]:
@@ -32,15 +35,25 @@ def parse(txt: str) -> dict[str, list[dict]]:
         if ln.startswith("## "):
             cur = ln[3:].strip()
             out[cur] = []
-        elif cur and ln[:2] in ("T|", "N|"):
+        elif cur and ln[:2] in ("T|", "K|", "N|", "F|"):
             kind, label, value = ln.split("|", 2)
-            out[cur].append({"label": label.strip(), "value": value.strip(), "in_table": kind == "T"})
+            out[cur].append(
+                {
+                    "label": label.strip(),
+                    "value": value.strip(),
+                    "in_table": kind == "T",
+                    "element": ELEMENT[kind],
+                }
+            )
     return out
 
 
 def main() -> None:
     gt = parse((HERE / "groundtruth.txt").read_text(encoding="utf-8"))
-    meta = {p["id"]: p for p in json.loads((HERE / "pages.json").read_text(encoding="utf-8"))}
+    meta = {
+        p["id"]: p
+        for p in json.loads((HERE / "pages.json").read_text(encoding="utf-8"))
+    }
     missing = set(k for k, p in meta.items() if p["variant"] == "original") - set(gt)
     if missing:
         print("pages without ground truth:", sorted(missing))
@@ -58,7 +71,10 @@ def main() -> None:
         for i, w in enumerate(words):
             lines.setdefault(round(w["top"] / 3), []).append(i)
         line_of = {i: k for k, idx in lines.items() for i in idx}
-        line_tokens = {k: fees.label_tokens(" ".join(words[i]["text"] for i in idx)) for k, idx in lines.items()}
+        line_tokens = {
+            k: fees.label_tokens(" ".join(words[i]["text"] for i in idx))
+            for k, idx in lines.items()
+        }
         used: set[int] = set()
         for it in items:
             total += 1
@@ -66,32 +82,55 @@ def main() -> None:
             need = fees.label_tokens(it["label"])
             cands = []
             for i, w in enumerate(words):
-                if i in used or not any(fees.same_number(key, n) for n in fees.numbers(w["text"])):
+                if i in used or not any(
+                    fees.same_number(key, n) for n in fees.numbers(w["text"])
+                ):
                     continue
                 # a number split over words ("1 767") is matched on its last word
-                cands.append((-len(need & line_tokens[line_of[i]]), w["top"], w["x0"], i))
+                cands.append(
+                    (-len(need & line_tokens[line_of[i]]), w["top"], w["x0"], i)
+                )
             if not cands and key:
                 for k, idx in lines.items():  # number split over several words
                     txt = " ".join(words[i]["text"] for i in idx)
                     if any(fees.same_number(key, n) for n in fees.numbers(txt)):
-                        hits = [i for i in idx if any(c.isdigit() for c in words[i]["text"]) and i not in used]
+                        hits = [
+                            i
+                            for i in idx
+                            if any(c.isdigit() for c in words[i]["text"])
+                            and i not in used
+                        ]
                         if hits:
-                            cands.append((-len(need & line_tokens[k]), words[hits[-1]]["top"], 0, hits[-1]))
+                            cands.append(
+                                (
+                                    -len(need & line_tokens[k]),
+                                    words[hits[-1]]["top"],
+                                    0,
+                                    hits[-1],
+                                )
+                            )
             if cands:
                 i = sorted(cands)[0][3]
                 used.add(i)
                 w = words[i]
-                it["bbox"] = [round(w["x0"], 1), round(w["top"], 1), round(w["x1"], 1), round(w["bottom"], 1)]
+                it["bbox"] = [
+                    round(w["x0"], 1),
+                    round(w["top"], 1),
+                    round(w["x1"], 1),
+                    round(w["bottom"], 1),
+                ]
                 boxed += 1
             else:
                 it["bbox"] = None
                 print(f"no box: {pid} | {it['label']} | {it['value']}")
     out = {
         "about": "Hand-checked fee figures per benchmark page. bbox: PDF points, top-left origin, from the "
-                 "text layer; null when the page has no trustworthy text layer. See groundtruth.txt for rules.",
+        "text layer; null when the page has no trustworthy text layer. See groundtruth.txt for rules.",
         "pages": {pid: {"items": items} for pid, items in gt.items()},
     }
-    (HERE / "groundtruth.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    (HERE / "groundtruth.json").write_text(
+        json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     print(f"{len(gt)} pages, {total} fee figures, {boxed} with a box")
 
 

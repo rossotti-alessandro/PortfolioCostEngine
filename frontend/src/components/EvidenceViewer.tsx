@@ -11,36 +11,14 @@ import { Button, Spinner } from "./ui";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-/** Renders the original PDF page with pdf.js and overlays every extracted value's rectangle.
- *  Coordinates are PDF points with a top-left origin, scaled to the rendered viewport. */
-export function PdfEvidence({
-  docId,
-  facts,
-  activeId,
-  onSelect,
-  page: pageProp,
-  compact,
-}: {
-  docId: number;
-  facts: Fact[];
-  activeId?: number | null;
-  onSelect?: (f: Fact) => void;
-  page?: number;
-  compact?: boolean;
-}) {
+/** The document's PDF, fetched once per document (react-query cache) and opened with pdf.js. */
+export function usePdf(docId: number): pdfjs.PDFDocumentProxy | null {
   const file = useQuery({
     queryKey: ["file", docId],
     queryFn: () => api.fetchFile(docId),
     staleTime: Number.POSITIVE_INFINITY,
   });
   const [pdf, setPdf] = useState<pdfjs.PDFDocumentProxy | null>(null);
-  const [page, setPage] = useState(pageProp ?? 1);
-  const [zoom, setZoom] = useState(1);
-  const [size, setSize] = useState<{ w: number; h: number; scale: number } | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const activeRef = useRef<HTMLButtonElement>(null);
-
   useEffect(() => {
     if (!file.data) return;
     let cancelled = false;
@@ -51,6 +29,37 @@ export function PdfEvidence({
       cancelled = true;
     };
   }, [file.data]);
+  return pdf;
+}
+
+/** Renders the original PDF page with pdf.js and overlays every extracted value's rectangle.
+ *  Coordinates are PDF points with a top-left origin, scaled to the rendered viewport. */
+export function PdfEvidence({
+  docId,
+  facts,
+  activeId,
+  onSelect,
+  page: pageProp,
+  compact,
+  focus,
+}: {
+  docId: number;
+  facts: Fact[];
+  activeId?: number | null;
+  onSelect?: (f: Fact) => void;
+  page?: number;
+  compact?: boolean;
+  /** Draw only the active box (the cited value) unless the analyst asks for all values on the page. */
+  focus?: boolean;
+}) {
+  const pdf = usePdf(docId);
+  const [page, setPage] = useState(pageProp ?? 1);
+  const [zoom, setZoom] = useState(1);
+  const [showAll, setShowAll] = useState(!focus);
+  const [size, setSize] = useState<{ w: number; h: number; scale: number } | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (pageProp) setPage(pageProp);
@@ -87,7 +96,10 @@ export function PdfEvidence({
     activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [activeId, size]);
 
-  const onPage = useMemo(() => facts.filter((f) => f.evidence.page === page && f.evidence.bbox), [facts, page]);
+  const onPage = useMemo(
+    () => facts.filter((f) => f.evidence.page === page && f.evidence.bbox && (showAll || f.id === activeId)),
+    [facts, page, showAll, activeId],
+  );
   const n = pdf?.numPages ?? 1;
 
   return (
@@ -114,6 +126,12 @@ export function PdfEvidence({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        {focus && (
+          <label className="flex items-center gap-1.5 text-[12px] text-muted">
+            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+            {t("Show all values on this page")}
+          </label>
+        )}
         {!compact && (
           <div className="flex items-center gap-1">
             <Button
