@@ -1,15 +1,15 @@
 ---
 id: SC-5.13
 title: Test newer Hugging Face document models and an OCR verifier in the lab
-status: "To Do"
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Compare complete extraction workflows"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-rfm5yy"
 pr: ""
 created_date: "2026-11-12 15:25"
-updated_date: "2026-11-12 15:25"
+updated_date: "2026-11-12 15:18"
 labels:
   - extraction
   - qa
