@@ -1,15 +1,15 @@
 ---
 id: SC-8.11
 title: Evidence panel with zoomed source crop and decision trail
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-12 20:20"
-updated_date: "2026-11-12 20:04"
+updated_date: "2026-11-12 20:11"
 labels:
   - ui
   - traceability
@@ -77,18 +77,36 @@ opened value (`/api/facts/{id}/history`). No backend change.
 
 ## Acceptance Criteria
 
-- [ ] #1 Clicking a number opens a side panel that does not block the page; clicking another number replaces its content; Escape closes it
-- [ ] #2 A line with a PDF source shows a zoomed crop where only the cited row is highlighted, and a full page on demand with only the cited box drawn
-- [ ] #3 The decision trail lists read, automatic checks, person decisions (from history) and the totals the line feeds; unknown and missing steps say so, never invent a check
-- [ ] #4 Trail building is unit-tested (OCR vs text vs sheet, needs_review reasons, checks, corrections)
-- [ ] #5 E2E trace test passes; EN and IT strings present
+- [x] #1 Clicking a number opens a side panel that does not block the page; clicking another number replaces its content; Escape closes it
+- [x] #2 A line with a PDF source shows a zoomed crop where only the cited row is highlighted, and a full page on demand with only the cited box drawn
+- [x] #3 The decision trail lists read, automatic checks, person decisions (from history) and the totals the line feeds; unknown and missing steps say so, never invent a check
+- [x] #4 Trail building is unit-tested (OCR vs text vs sheet, needs_review reasons, checks, corrections)
+- [x] #5 E2E trace test passes; EN and IT strings present
 
 ## Implementation Notes
 
+- Owned paths as listed. No backend change: the panel reads `review` (fact.extra.review) already exposed by
+  the analysis payload and the existing `/api/facts/{id}/history` endpoint.
+- `PdfEvidence` gained `focus` and a shared `usePdf` hook; the Review page keeps its current behaviour.
+- The active highlight uses `mix-blend-mode: multiply` so the text under it stays legible everywhere.
+
 ## Outcome
 
-- **Status**: 
+- **Status**: completed
+- Any number on Costs and Compare opens a non-modal right panel; the page reflows on screens ≥ 1280 px.
+- Line view: amount, status, formula, inputs, a crop of the cited row (context dimmed, value tag), full page
+  on demand with only the cited box (toggle for all values), the text on the page, then the decision trail
+  with "Accept this value" when nobody has reviewed it yet.
+- Tests: `lib/trail.test.ts` (6 cases); E2E test 11 extended (non-modal, trail steps, focus mode, accept
+  shows "Accepted by <user>"). Full E2E 17/17 passed locally; `local-gate.sh` GATE PASSED.
 
 ## Branch & Commits
 
+- Branch `claude/project-thread-bj3sap`
+- 16e5134 chore(backlog): add SC-8.11 evidence panel story
+- 8b45f1d chore(backlog): claim sc-8.11
+- 3b776cb feat(ui): evidence side panel, source crop and decision trail (SC-8.11)
+
 ## Issues Encountered
+
+- Cloud container lacked tesseract, ghostscript and qpdf (bootstrap packages); installed with apt for the gate.
