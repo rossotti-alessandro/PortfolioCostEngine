@@ -32,6 +32,7 @@ from .metrics import Scores, score
 from .strategies import Prediction, resolve
 
 ROOT = G.ROOT
+MENTION = "fee_mention"
 CORPORA = ("synthetic-p1042", "synthetic-p2077", "ocrbench", "specimen_corpus")
 
 # A strategy becomes the default only if it passes all of these on the synthetic corpora (digital).
@@ -131,6 +132,7 @@ def evaluate(corpus: G.Corpus, strategy_name: str, variant: str) -> dict:
     strategy = resolve(strategy_name)
     cls_ok = cls_n = 0
     totals = Scores()
+    mention_totals = Scores()
     prov: Counter = Counter()
     seconds, review, per_doc, documents, facts = [], 0, [], [], []
     fid = 0
@@ -154,15 +156,20 @@ def evaluate(corpus: G.Corpus, strategy_name: str, variant: str) -> dict:
         if gd.doc_type:
             cls_n += 1
             cls_ok += pred.doc_type == gd.doc_type
+        # A fee_mention is a candidate the ledger does not use yet: scored apart, never against precision.
+        mentions = [f for f in pred.facts if f.get("kind") == MENTION]
+        ledger = [f for f in pred.facts if f.get("kind") != MENTION]
         scoped = [
             f
-            for f in pred.facts
+            for f in ledger
             if (gd.kinds is None or f.get("kind") in gd.kinds)
             and (gd.pages is None or (f.get("evidence") or {}).get("page") in gd.pages)
             and not (f.get("kind") == "meta" and f.get("value") is None)  # institution names: not a value
         ]
         s = score(gd.items, scoped, exhaustive=gd.exhaustive)
         totals.add(s)
+        if mentions:
+            mention_totals.add(score(gd.items, mentions, exhaustive=False))
         p = provenance.check(gd.file, data, scoped)
         prov.update(p)
         per_doc.append(
@@ -186,7 +193,7 @@ def evaluate(corpus: G.Corpus, strategy_name: str, variant: str) -> dict:
             }
         )
         documents.append({"id": i, "filename": gd.file, "doc_type": pred.doc_type, "profile": pred.profile})
-        for f in pred.facts:
+        for f in ledger:
             fid += 1
             facts.append({**f, "id": fid, "document_id": i, "status": "extracted"})
 
@@ -197,6 +204,7 @@ def evaluate(corpus: G.Corpus, strategy_name: str, variant: str) -> dict:
         "documents": len(documents),
         "classification_accuracy": round(cls_ok / cls_n, 4) if cls_n else None,
         **totals.summary(),
+        "mention_recall": mention_totals.summary()["recall"] if mention_totals.gold else None,
         "provenance": dict(prov),
         "provenance_mismatch": prov["mismatch"],
         "needs_review_share": round(review / len(documents), 4) if documents else None,
@@ -269,6 +277,7 @@ def report(rows: list[dict], stamp: str) -> str:
         ("wrong_value_rate", "wrong %"),
         ("missing_as_zero", "missing→0"),
         ("value_recall", "value recall"),
+        ("mention_recall", "mention recall"),
         ("bbox_hit_rate", "bbox hit"),
         ("provenance_mismatch", "prov. bad"),
         ("portfolio_mismatches", "total errs"),
