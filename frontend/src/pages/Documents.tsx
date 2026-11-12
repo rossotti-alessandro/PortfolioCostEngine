@@ -7,10 +7,13 @@ import type { Analysis, DocumentRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   CircleDashed,
+  Clock,
   FileSpreadsheet,
   FileText,
+  Loader2,
   ScanLine,
   UploadCloud,
   XCircle,
@@ -23,14 +26,27 @@ export default function DocumentsPage() {
   const qc = useQueryClient();
   const docs = useQuery({ queryKey: ["documents", pid], queryFn: () => api.documents(pid) });
   const analysis = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
-  const [results, setResults] = useState<{ filename: string; status: string; error?: string; doc_type?: string }[]>([]);
-  const upload = useMutation({
-    mutationFn: (files: File[]) => api.upload(pid, files),
-    onSuccess: (r) => {
-      setResults(r.results);
-      qc.invalidateQueries();
-    },
-  });
+  const [rows, setRows] = useState<UploadRow[]>([]);
+  const busy = rows.some((r) => r.state === "waiting" || r.state === "reading");
+  // One request per file, in order: the analyst sees each document finish instead of one long spinner.
+  const uploadAll = async (files: File[]) => {
+    const start = rows.length;
+    setRows((r) => [...r, ...files.map((f) => ({ filename: f.name, state: "waiting" as const }))]);
+    for (const [i, f] of files.entries()) {
+      const at = start + i;
+      const set = (patch: Partial<UploadRow>) =>
+        setRows((r) => r.map((row, j) => (j === at ? { ...row, ...patch } : row)));
+      set({ state: "reading" });
+      try {
+        const res = (await api.upload(pid, [f])).results[0];
+        set({ state: "done", ...res });
+      } catch (e) {
+        set({ state: "done", status: "rejected", error: e instanceof Error ? e.message : String(e) });
+      }
+      await qc.invalidateQueries({ queryKey: ["documents", pid] });
+    }
+    qc.invalidateQueries();
+  };
   const setType = useMutation({
     mutationFn: ({ id, t }: { id: number; t: string }) => api.setDocType(id, t),
     onSuccess: () => qc.invalidateQueries(),
@@ -50,33 +66,8 @@ export default function DocumentsPage() {
       />
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <div className="space-y-4">
-          <Dropzone onFiles={(f) => upload.mutate(f)} busy={upload.isPending} />
-          {upload.error && <ErrorBox error={upload.error} />}
-          {results.length > 0 && (
-            <Card>
-              <CardHeader title={t("Last upload")} />
-              <ul className="divide-y divide-line text-[13px]">
-                {results.map((r) => (
-                  <li key={r.filename} className="flex items-center justify-between gap-3 px-5 py-2">
-                    <span className="truncate">{r.filename}</span>
-                    {r.status === "rejected" ? (
-                      <Badge tone="red">{r.error}</Badge>
-                    ) : r.status === "duplicate" ? (
-                      <Badge>{t("Already uploaded (same SHA-256)")}</Badge>
-                    ) : r.status === "needs_review" ? (
-                      <Badge tone="amber">
-                        {t("Needs review")} · {t(DOC_TYPES[r.doc_type ?? "unknown"])}
-                      </Badge>
-                    ) : (
-                      <Badge tone="teal">
-                        {t("Extracted")} · {t(DOC_TYPES[r.doc_type ?? "unknown"])}
-                      </Badge>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
+          <Dropzone onFiles={uploadAll} busy={busy} />
+          {rows.length > 0 && <UploadProgress rows={rows} docs={docs.data ?? []} pid={pid} busy={busy} />}
           <Card>
             <CardHeader
               title={t("Uploaded documents")}
@@ -98,6 +89,98 @@ export default function DocumentsPage() {
         <Checklist analysis={analysis.data} docs={docs.data ?? []} />
       </div>
     </div>
+  );
+}
+
+type UploadRow = {
+  filename: string;
+  state: "waiting" | "reading" | "done";
+  status?: string;
+  error?: string;
+  doc_type?: string;
+  document_id?: number;
+};
+
+/** Live list of the files in this upload: each row moves waiting → reading → result, then a next step. */
+function UploadProgress({
+  rows,
+  docs,
+  pid,
+  busy,
+}: { rows: UploadRow[]; docs: DocumentRow[]; pid: number; busy: boolean }) {
+  const done = rows.filter((r) => r.state === "done").length;
+  const facts = (id?: number) => docs.find((d) => d.id === id)?.fact_count;
+  const toCheck = rows.filter((r) => r.status === "needs_review").length;
+  return (
+    <Card>
+      <CardHeader
+        title={busy ? t("Reading documents…") : t("Upload finished")}
+        subtitle={t("{done} of {n} files processed", { done, n: rows.length })}
+      />
+      <div className="mx-5 mb-1 h-1.5 overflow-hidden rounded-full bg-paper" aria-hidden>
+        <div className="h-full bg-teal-600 transition-all" style={{ width: `${(done / rows.length) * 100}%` }} />
+      </div>
+      <ul className="divide-y divide-line text-[13px]" aria-live="polite">
+        {rows.map((r, i) => (
+          <li key={i} className="flex items-center justify-between gap-3 px-5 py-2">
+            <span className="flex min-w-0 items-center gap-2">
+              {r.state === "waiting" ? (
+                <Clock className="h-4 w-4 shrink-0 text-subtle" />
+              ) : r.state === "reading" ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-teal-700" />
+              ) : r.status === "rejected" ? (
+                <XCircle className="h-4 w-4 shrink-0 text-red-700" />
+              ) : r.status === "needs_review" ? (
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-700" />
+              )}
+              <span className="truncate">{r.filename}</span>
+            </span>
+            <span className="shrink-0">
+              {r.state === "waiting" ? (
+                <span className="text-subtle">{t("Waiting")}</span>
+              ) : r.state === "reading" ? (
+                <span className="text-teal-700">{t("Reading, classifying, extracting…")}</span>
+              ) : r.status === "rejected" ? (
+                <Badge tone="red">{r.error}</Badge>
+              ) : r.status === "duplicate" ? (
+                <Badge>{t("Already uploaded (same SHA-256)")}</Badge>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Badge tone={r.status === "needs_review" ? "amber" : "teal"}>
+                    {t(DOC_TYPES[r.doc_type ?? "unknown"])}
+                  </Badge>
+                  <span className="num text-muted">{t("{n} values read", { n: facts(r.document_id) ?? "…" })}</span>
+                  {r.status === "needs_review" && <span className="text-amber-700">· {t("check type")}</span>}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {!busy && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
+          <span className="text-[12.5px] text-muted">
+            {toCheck
+              ? t("{n} documents need a quick check. Next: confirm the values read, each shown on its page.", {
+                  n: toCheck,
+                })
+              : t("Next: confirm the values read, each shown on its page.")}
+          </span>
+          <span className="flex gap-2">
+            <Link to={`/p/${pid}/review`}>
+              <Button variant="accent">
+                {t("Review values")} <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to={`/p/${pid}/costs`}>
+              <Button>{t("See costs")}</Button>
+            </Link>
+          </span>
+        </div>
+      )}
+    </Card>
   );
 }
 

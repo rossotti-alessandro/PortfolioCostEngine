@@ -249,7 +249,9 @@ export function ProspectLayout() {
               <span>{t("{n} banks", { n: data.institutions.length })}</span>
               <span>·</span>
               <span>{t("Domicile {code}", { code: data.client_domicile })}</span>
-              {data.current.is_complete ? (
+              {data.holdings.length === 0 ? (
+                <Badge tone="amber">{t("No statement of assets yet")}</Badge>
+              ) : data.current.is_complete ? (
                 <Badge tone="green">{t("All cost categories evidenced")}</Badge>
               ) : (
                 <Badge tone="red">{t("{n} costs not determined", { n: data.current.unknown.length })}</Badge>
