@@ -429,9 +429,74 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                             evidence=_ev(ln, page),
                         )
                     )
+    facts = _account_breakdown(pages, facts)
     facts.extend(_larger_printed_total(pages, facts))
     facts.extend(_second_person(pages))
     return facts
+
+
+_BREAKDOWN = re.compile(r"^cash \| assets \| total$", re.I)
+
+
+def _account_breakdown(pages: list[PageInfo], facts: list[Fact]) -> list[Fact]:
+    """An overview "<account> | Cash | Assets | Total" breakdown (corpus: AJ Bell demo report) holds the cash
+    of every account and assets no holdings table lists, such as off-panel insurance policies. Each row's
+    cash becomes a cash holding; its assets become a holding only when no holdings table already closes
+    with that amount ("Total | 388,714.25"), so nothing is counted twice. The rows' totals then replace the
+    sum of the holdings tables' totals as the statement total."""
+    table_totals = {
+        a
+        for page in pages
+        for ln in page.lines
+        if re.match(r"total\b", ln.text, re.I)
+        for _, a in _amount_cells(ln)[:1]
+    }
+    out: list[Fact] = []
+    grand = Decimal(0)
+    for page in pages:
+        account: str | None = None
+        for li, ln in enumerate(page.lines):
+            texts = [c.text.strip() for c in ln.cells]
+            if len(texts) == 4 and _BREAKDOWN.match(" | ".join(texts[1:])):
+                account = texts[0]
+                continue
+            if account is None or len(texts) not in (3, 4) or texts[0].lower().startswith("total"):
+                continue
+            label = texts[0] if len(texts) == 4 else account
+            try:
+                cash, assets, total = (
+                    None if t in ("-", "–") else parse_amount(_CCY_SYMBOL.sub(r"\1", t)) for t in texts[-3:]
+                )
+            except (ValueError, ArithmeticError):
+                continue
+            if total is None or (cash or 0) + (assets or 0) != total:
+                continue
+            sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
+            grand += total
+            for kind, value in (("cash", cash), ("other", assets)):
+                if not value or (kind == "other" and value in table_totals):
+                    continue
+                out.append(
+                    Fact(
+                        key=f"position:{kind}:{page.number}:{li}",
+                        kind="position",
+                        field="market_value",
+                        label=f"{label} cash" if kind == "cash" and "cash" not in label.lower() else label,
+                        value=str(value),
+                        currency=_SYMBOL_CCY[sym] if sym else None,
+                        extra={"asset_class": "CASH"} if kind == "cash" else {},
+                        evidence=_ev(ln, page),
+                    )
+                )
+    if not out:
+        return facts
+    total_fact = next((f for f in facts if f.key == "total:assets"), None)
+    if total_fact:
+        facts = [f for f in facts if f is not total_fact]
+        out.append(
+            total_fact.model_copy(update={"value": str(grand), "label": "Sum of account breakdown totals"})
+        )
+    return facts + out
 
 
 # A page header naming the client: "Mr M Thomas", "Sig.ra Bianchi", "Frau Müller", "Mme Dupont".
