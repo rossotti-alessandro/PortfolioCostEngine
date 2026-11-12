@@ -13,8 +13,8 @@ operating rules that follow from it. Update it in the same PR as any change to a
   pages (899 hand-checked fees) the best workflow finds 90% of fees, and about 5 to 6% of the figures it does
   not flag are wrong (section 3). A cost report uses dozens of figures, so an unchecked report would almost
   certainly contain an error. Hence the analyst review protocol (section 5) is mandatory, not optional.
-- What `main` ships today finds about 4% of fees on real documents. The finder + verify work that raises this
-  to about 90% is in open PRs (#15, #17, #21, #27) waiting for Ale's merge decision.
+- Until 2026-11-12 `main` found about 4% of fees on real documents. The finder + verify work that raises this
+  to about 90% (#15, #17, #21, #27) was merged on 2026-11-12 on Ale's instruction.
 - The two things that drive every client percentage, holdings and AUM, are measured only on synthetic
   prospects. Real statement layouts are untested (SC-9.6). This is the largest open accuracy risk.
 - Privacy controls that the plan requires before the first real upload (named users with MFA, deletion on
@@ -27,7 +27,7 @@ decision or signature, not code.
 
 | # | Gate | Owner | Status 2026-11-12 | Closes with |
 |---|---|---|---|---|
-| G1 | Extraction stack merged: #17, then #15, #16, #21, #27 (#26 independent) | Ale (rule 9) | Open. All six plus #29 merge without conflicts and the full gate passes on the combined tree (section 3.3) | Merge decisions |
+| G1 | Extraction stack merged: #17, then #15, #16, #21, #27 (#26 independent) | Ale (rule 9) | **Closed 2026-11-12**: all merged on Ale's instruction, after the combined tree passed the full gate (section 3.3) | Done |
 | G2 | Accuracy on real statements measured (holdings, AUM, statement fees) | Engineering + Ale (who labels) | Open, no story before today | SC-9.6 |
 | G3 | Where the pilot runs: Safe Capital machine (recommended) or Swiss host | Ale + Massimo | Open decision | SC-11.6 (local) or SC-11.2 (hosted) |
 | G4 | Named users with MFA and roles; no shared admin password | Engineering, Ale approves (rule 9) | Open. Only one env-seeded admin exists | SC-11.7 |
@@ -148,7 +148,7 @@ Applies to every real document from the first upload. Engineering notes; Safe Ca
 
 | # | Decision | Who | Unblocks |
 |---|---|---|---|
-| D1 | Merge the extraction PRs (#17 first, then #15, #16, #21, #27) and whether page arithmetic (`PCE_REVALIDATE`) is on by default | Ale | G1 |
+| D1 | Whether page arithmetic (`PCE_REVALIDATE`) is on by default (the PRs themselves were merged 2026-11-12) | Ale | accuracy |
 | D2 | Who labels statement pages, and whether an external AI may draft labels on public documents; keep the two Raiffeisen Locarno files | Ale | G2, corpus |
 | D3 | Pilot on a Safe Capital machine or on a Swiss host; does Safe Capital use Microsoft 365 (sign-in choice) | Ale + Massimo | G3, G4 |
 | D4 | Who at Safe Capital owns and signs the DPIA, consent text and retention period | Massimo | G9, G6 |
