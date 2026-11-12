@@ -1,15 +1,15 @@
 ---
 id: SC-5.10
 title: Workflow arena - compare complete extraction workflows end to end
-status: "To Do"
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Compare complete extraction workflows"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-rfm5yy"
 pr: ""
 created_date: "2026-11-12 13:10"
-updated_date: "2026-11-12 13:10"
+updated_date: "2026-11-12 13:04"
 labels:
   - extraction
   - qa
