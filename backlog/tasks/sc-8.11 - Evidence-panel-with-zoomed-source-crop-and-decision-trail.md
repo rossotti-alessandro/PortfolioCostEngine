@@ -106,6 +106,7 @@ opened value (`/api/facts/{id}/history`). No backend change.
 | ------ | ---- | ---- | ----------- |
 | claude/project-thread-bj3sap | 16e5134 | 2026-11-12 | Story file |
 | claude/project-thread-bj3sap | 3b776cb | 2026-11-12 | Evidence side panel, source crop, decision trail, tests |
+| claude/project-thread-bj3sap | bd6178f | 2026-11-12 | Name the source file once |
 
 ## Issues Encountered
 
