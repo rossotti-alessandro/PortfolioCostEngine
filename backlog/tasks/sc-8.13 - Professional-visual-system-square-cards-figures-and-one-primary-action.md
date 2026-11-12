@@ -1,11 +1,11 @@
 ---
 id: SC-8.13
 title: Professional visual system: square cards, figures and one primary action
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "local/sc-8.13"
 pr: ""
 created_date: "2026-11-12 20:45"
@@ -73,18 +73,30 @@ None: styling and markup only. No new dependency, no backend change.
 
 ## Acceptance Criteria
 
-- [ ] #1 KPI and report figures render on one line with a small currency code at 1280 and 1440 px, also with the evidence panel open
-- [ ] #2 Every screen shows at most one filled primary button; other actions are outlined
-- [ ] #3 Buttons, inputs, badges and cards use the square radius tokens; no pill badges remain in `ui.tsx`
-- [ ] #4 Documents table has no horizontal scroll at 1440 px; existing E2E tests keep passing
+- [x] #1 KPI and report figures render on one line with a small currency code at 1280 and 1440 px, also with the evidence panel open
+- [x] #2 Every screen shows at most one filled primary button; other actions are outlined
+- [x] #3 Buttons, inputs, badges and cards use the square radius tokens; no pill badges remain in `ui.tsx`
+- [x] #4 Documents table has no horizontal scroll at 1440 px; existing E2E tests keep passing
 
 ## Implementation Notes
 
+- Owned paths as listed. No backend change. Built on SC-8.11 (evidence panel, PR #28).
+
 ## Outcome
+
+- **Status**: completed
+- Radius tokens 4 px controls / 6 px cards, square badges, no card shadows. `Money` and `StatGrid` in
+  `ui.tsx`; `Kpi`, the coverage card and the report figures share one card shape with figures on one line.
+- One filled primary per screen: Documents "Review extracted values", Pipeline "Review its values", Review
+  "Accept", Report PDF in the current language, empty state "Upload documents"; partners outlined.
+- Documents table: issuer and date in one column, read-with badge and short fingerprint under the file
+  name, no horizontal scroll at 1440 px. Compare layer names on one line; chart labels no longer cut.
+- Full E2E 17/17 passed locally; `local-gate.sh` GATE PASSED.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| local/sc-8.13 | 9748f1a | 2026-11-12 | Square visual system, figure cards, one primary action |
 
 ## Issues Encountered
