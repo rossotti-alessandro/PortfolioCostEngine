@@ -7,9 +7,9 @@ owner: "Audit production readiness and close gaps"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-sdc7fx"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/36"
 created_date: "2026-11-12 21:55"
-updated_date: "2026-11-12 23:26"
+updated_date: "2026-11-12 23:29"
 labels:
   - extraction
 dependencies: []
