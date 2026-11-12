@@ -103,6 +103,9 @@ visible after the first file. No backend extraction change.
 
 ## Branch & Commits
 
-- Branch `claude/project-thread-3ahesb`: 5b2d300 (UI), c77bca0 (report), plus this close commit.
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-3ahesb | 5b2d300 | 2026-11-12 | Live upload rows, empty state, no negative savings, read status |
+| claude/project-thread-3ahesb | c77bca0 | 2026-11-12 | PDF report on platypus, full sources, Italian, tests |
 
 ## Issues Encountered
