@@ -233,7 +233,9 @@ def run_doclayout_yolo(img: Image.Image, **_: Any) -> Result:
 
     if _yolo is None:
         _yolo = YOLOv10(
-            hf_hub_download("juliozhao/DocLayout-YOLO-DocStructBench", "doclayout_yolo_docstructbench_imgsz1024.pt")
+            hf_hub_download(
+                "juliozhao/DocLayout-YOLO-DocStructBench", "doclayout_yolo_docstructbench_imgsz1024.pt"
+            )
         )
     r = _yolo.predict(img.convert("RGB"), imgsz=1024, conf=0.3, device="cpu", verbose=False)[0]
     out = empty()
@@ -276,8 +278,12 @@ def run_tatr_pipeline(img: Image.Image, words: list[dict] | None = None, **_: An
         regs = _hf_detector("microsoft/table-transformer-structure-recognition-v1.1-all", crop, 0.6)
         for r in regs:
             r["b"] = [r["b"][0] + box[0], r["b"][1] + box[1], r["b"][2] + box[0], r["b"][3] + box[1]]
-        inside = [w for w in words if x0 - pad <= (w["b"][0] + w["b"][2]) / 2 <= x1 + pad
-                  and y0 - pad <= (w["b"][1] + w["b"][3]) / 2 <= y1 + pad]
+        inside = [
+            w
+            for w in words
+            if x0 - pad <= (w["b"][0] + w["b"][2]) / 2 <= x1 + pad
+            and y0 - pad <= (w["b"][1] + w["b"][3]) / 2 <= y1 + pad
+        ]
         out["tables"].append({"b": d["b"], "rows": _cells_from_structure(regs, inside)})
     out["text"] = "\n".join(" | ".join(r) for t in out["tables"] for r in t["rows"])
     return out
@@ -299,7 +305,9 @@ def run_docling(img: Image.Image, pdf_page: str | None = None, **_: Any) -> Resu
         from docling.datamodel.pipeline_options import TesseractCliOcrOptions
 
         # OCR only where the page has no text layer (bitmap areas), as Docling does by default.
-        opts = PdfPipelineOptions(do_ocr=True, ocr_options=TesseractCliOcrOptions(lang=["eng", "deu", "fra", "ita"]))
+        opts = PdfPipelineOptions(
+            do_ocr=True, ocr_options=TesseractCliOcrOptions(lang=["eng", "deu", "fra", "ita"])
+        )
         opts.table_structure_options.mode = TableFormerMode.ACCURATE
         _docling = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
     doc = _docling.convert(pdf_page).document
@@ -321,8 +329,14 @@ def run_docling(img: Image.Image, pdf_page: str | None = None, **_: Any) -> Resu
         out["tables"].append({"b": px(t.prov[0].bbox) if t.prov else None, "rows": rows})
         for cell in t.data.table_cells:  # every cell keeps its own box: provenance for each fee value
             if cell.bbox is not None and cell.text:
-                b = cell.bbox if cell.bbox.coord_origin.value == "TOPLEFT" else cell.bbox.to_top_left_origin(page_height=ph)
-                out["words"].append({"t": cell.text, "b": [b.l * SCALE, b.t * SCALE, b.r * SCALE, b.b * SCALE], "c": 1.0})
+                b = (
+                    cell.bbox
+                    if cell.bbox.coord_origin.value == "TOPLEFT"
+                    else cell.bbox.to_top_left_origin(page_height=ph)
+                )
+                out["words"].append(
+                    {"t": cell.text, "b": [b.l * SCALE, b.t * SCALE, b.r * SCALE, b.b * SCALE], "c": 1.0}
+                )
     return out
 
 
@@ -339,16 +353,22 @@ def _load_vlm(repo: str, **kw: Any):
 
     if repo not in _vlm:
         proc = AutoProcessor.from_pretrained(repo, **kw)
-        # LightOnOCR-2's config says mistral3, but its weights use LightOnOCR names: the Auto class
+        # LightOnOCR-2 and 3-1B say mistral3, but their weights use LightOnOCR names: the Auto class
         # silently leaves the vision tower random (the model then "sees" a blank page).
-        cls = transformers.LightOnOcrForConditionalGeneration if "LightOnOCR" in repo else AutoModelForImageTextToText
+        # LightOnOCR-3-0.8B is a plain qwen3_5 checkpoint and loads with the Auto class.
+        cls = (
+            transformers.LightOnOcrForConditionalGeneration
+            if "LightOnOCR" in repo and "0.8B" not in repo
+            else AutoModelForImageTextToText
+        )
         model = cls.from_pretrained(repo, dtype=torch.bfloat16, **kw).eval()
         _vlm[repo] = (proc, model)
     return _vlm[repo]
 
 
-def _chat(repo: str, img: Image.Image, prompt: str | None, max_new: int, keep_special: bool = False,
-          **kw: Any) -> str:
+def _chat(
+    repo: str, img: Image.Image, prompt: str | None, max_new: int, keep_special: bool = False, **kw: Any
+) -> str:
     torch = _torch()
     proc, model = _load_vlm(repo, **kw)
     content: list[dict] = [{"type": "image", "image": img.convert("RGB")}]
@@ -356,14 +376,21 @@ def _chat(repo: str, img: Image.Image, prompt: str | None, max_new: int, keep_sp
         content.append({"type": "text", "text": prompt})
     msgs = [{"role": "user", "content": content}]
     inputs = proc.apply_chat_template(
-        msgs, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
+        msgs,
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt",
+        enable_thinking=False,  # Qwen3.5-based OCR models think by default; other templates ignore it
     )
     inputs = {k: (v.to(torch.bfloat16) if v.dtype.is_floating_point else v) for k, v in inputs.items()}
     with torch.inference_mode():
         # Some repos ship use_cache=false in generation_config: 8x slower decoding on CPU.
         # max_time caps one call on CPU; a cut-off answer is scored as it stands, never padded.
-        gen = model.generate(**inputs, max_new_tokens=max_new, do_sample=False, use_cache=True, max_time=MAX_TIME)
-    return proc.decode(gen[0][inputs["input_ids"].shape[1]:], skip_special_tokens=not keep_special)
+        gen = model.generate(
+            **inputs, max_new_tokens=max_new, do_sample=False, use_cache=True, max_time=MAX_TIME
+        )
+    return proc.decode(gen[0][inputs["input_ids"].shape[1] :], skip_special_tokens=not keep_special)
 
 
 def _fit(img: Image.Image, longest: int) -> Image.Image:
@@ -393,9 +420,15 @@ def run_got(img: Image.Image, **_: Any) -> Result:
     inputs = proc(img.convert("RGB"), return_tensors="pt", format=True)
     inputs = {k: (v.to(torch.bfloat16) if v.dtype.is_floating_point else v) for k, v in inputs.items()}
     with torch.inference_mode():
-        gen = model.generate(**inputs, do_sample=False, tokenizer=proc.tokenizer,
-                             stop_strings="<|im_end|>", max_new_tokens=2048, max_time=MAX_TIME)
-    text = proc.decode(gen[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+        gen = model.generate(
+            **inputs,
+            do_sample=False,
+            tokenizer=proc.tokenizer,
+            stop_strings="<|im_end|>",
+            max_new_tokens=2048,
+            max_time=MAX_TIME,
+        )
+    text = proc.decode(gen[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
     return _vlm_text_result(text)
 
 
@@ -407,7 +440,9 @@ def run_paddleocr_vl(img: Image.Image, **_: Any) -> Result:
     parts = []
     for r in regs:
         lab = r["label"].lower()
-        if any(k in lab for k in ("image", "seal", "chart", "figure", "number", "header_image", "footer_image")):
+        if any(
+            k in lab for k in ("image", "seal", "chart", "figure", "number", "header_image", "footer_image")
+        ):
             continue
         task = "Table Recognition:" if "table" in lab else "OCR:"
         x0, y0, x1, y1 = r["b"]
@@ -445,7 +480,9 @@ def _otsl_to_html(s: str) -> str:
 
 def run_granite_docling(img: Image.Image, **_: Any) -> Result:
     # DocTags (<text>, <loc_n>, <otsl>…) are special tokens: skipping them would return an empty page.
-    text = _chat("ibm-granite/granite-docling-258M", img, "Convert this page to docling.", 4096, keep_special=True)
+    text = _chat(
+        "ibm-granite/granite-docling-258M", img, "Convert this page to docling.", 4096, keep_special=True
+    )
     text = re.sub(r"<end_of_utterance>|<\|end_of_text\|>", "", text)
     out = empty()
     W, H = img.size
@@ -580,7 +617,9 @@ def run_layoutlm_docqa(img: Image.Image, **_: Any) -> Result:
         kw = {"word_boxes": words} if words else {}
         ans = _docqa(image=img.convert("RGB"), question=q, top_k=1, **kw)
         if ans and ans[0]["score"] > 0.3:
-            out["fees"].append({"label": key, "value": ans[0]["answer"], "b": None, "s": round(ans[0]["score"], 3)})
+            out["fees"].append(
+                {"label": key, "value": ans[0]["answer"], "b": None, "s": round(ans[0]["score"], 3)}
+            )
     out["text"] = "\n".join(f"{f['label']}: {f['value']}" for f in out["fees"])
     return out
 
@@ -600,12 +639,18 @@ def run_pdfplumber(img: Image.Image, pdf_page: str | None = None, **_: Any) -> R
             lines.setdefault(round(w["top"] / 3), []).append(w)
         for ws in lines.values():
             ws.sort(key=lambda w: w["x0"])
-            out["words"].append({
-                "t": " ".join(w["text"] for w in ws),
-                "b": [min(w["x0"] for w in ws) * SCALE, min(w["top"] for w in ws) * SCALE,
-                      max(w["x1"] for w in ws) * SCALE, max(w["bottom"] for w in ws) * SCALE],
-                "c": 1.0,
-            })
+            out["words"].append(
+                {
+                    "t": " ".join(w["text"] for w in ws),
+                    "b": [
+                        min(w["x0"] for w in ws) * SCALE,
+                        min(w["top"] for w in ws) * SCALE,
+                        max(w["x1"] for w in ws) * SCALE,
+                        max(w["bottom"] for w in ws) * SCALE,
+                    ],
+                    "c": 1.0,
+                }
+            )
         for t in p.find_tables():
             rows = [[(c or "").replace("\n", " ") for c in r] for r in t.extract()]
             out["tables"].append({"b": [v * SCALE for v in t.bbox], "rows": rows})
@@ -613,25 +658,496 @@ def run_pdfplumber(img: Image.Image, pdf_page: str | None = None, **_: Any) -> R
     return out
 
 
+# ---------------------------------------------------------------- SC-5.7: models added in the second round
+
+
+def _grid_box(b: list[float], img: Image.Image, grid: float) -> list[float]:
+    W, H = img.size
+    return [b[0] / grid * W, b[1] / grid * H, b[2] / grid * W, b[3] / grid * H]
+
+
+def _blocks_result(blocks: list[tuple[str, list[float] | None, str]]) -> Result:
+    """(label, box in pixels or None, content) blocks -> Result. Tables keep their rows."""
+    out = empty()
+    parts = []
+    for label, b, content in blocks:
+        content = content.strip()
+        if b is not None:
+            out["regions"].append({"label": label, "b": b, "s": 1.0})
+        if "table" in label.lower() or "<table" in content or "<fcel>" in content:
+            html_t = _otsl_to_html(content)
+            for t in parse_tables(html_t) or []:
+                out["tables"].append({"b": b, "rows": t["rows"]})
+            content = strip_markup(html_t)
+        if content:
+            if b is not None:
+                out["words"].append({"t": content, "b": b, "c": 1.0})
+            parts.append(content)
+    out["text"] = "\n\n".join(parts)
+    if not out["words"]:
+        out["tables"] = out["tables"] or parse_tables("\n".join(parts))
+    return out
+
+
+def run_lighton3(img: Image.Image, repo: str = "lightonai/LightOnOCR-3-0.8B", **_: Any) -> Result:
+    """LightOnOCR-3 in grounding mode: each block comes as ![label](x0,y0,x1,y1) on a 0-1000 grid."""
+    return _lighton3_parse(_chat(repo, _fit(img, 1540), "grounding", 4096), img)
+
+
+def _lighton3_parse(text: str, img: Image.Image) -> Result:
+    """Each block starts with ![label](x0,y0,x1,y1); its content follows on the same line and the next ones."""
+    blocks, cur = [], None
+    for line in text.splitlines():
+        m = re.match(r"!\[(\w+)\]\((\d+),(\d+),(\d+),(\d+)\)\s*(.*)$", line.strip())
+        if m:
+            cur = [m.group(1), _grid_box([float(v) for v in m.groups()[1:5]], img, 1000), m.group(6) + "\n"]
+            blocks.append(cur)
+        elif cur is not None:
+            cur[2] += line + "\n"
+        else:
+            blocks.append(cur := ["text", None, line + "\n"])
+    out = _blocks_result([tuple(b) for b in blocks])
+    out["raw"] = text
+    return out
+
+
+XIAOMI_PROMPT = (
+    "Extract all information from the main body of the document image and represent it in markdown format, "
+    "ignoring headers and footers. Tables should be expressed in OTSL format, formulas in the document should "
+    "be represented using LATEX format, and the parsing should be organized according to the reading order."
+)
+
+
+def run_xiaomi_ocr(img: Image.Image, **_: Any) -> Result:
+    text = _chat("xiaomi-research/Xiaomi-OCR-0", _fit(img, 1540), XIAOMI_PROMPT, 4096, keep_special=True)
+    text = re.sub(r"<\|im_end\|>|<\|endoftext\|>", "", text)
+    return _vlm_text_result(_otsl_to_html_all(text))
+
+
+def _otsl_to_html_all(text: str) -> str:
+    """Convert every OTSL table in a markdown answer (<otsl>...</otsl> or bare cell tags) to HTML."""
+    text = re.sub(r"<otsl>(.*?)</otsl>", lambda m: _otsl_to_html(m.group(1)), text, flags=re.S)
+    return "\n".join(
+        _otsl_to_html(ln) if "<fcel>" in ln or "<ecel>" in ln else ln for ln in text.splitlines()
+    )
+
+
+def _layout_then_read(img: Image.Image, repo: str, prompts: dict[str, str], max_new: int = 1024) -> Result:
+    """PP-DocLayoutV3 regions, then the VLM reads each crop with the element's own prompt."""
+    blocks = []
+    regs = sorted(
+        _hf_detector("PaddlePaddle/PP-DocLayoutV3_safetensors", img, 0.5),
+        key=lambda r: (r["b"][1], r["b"][0]),
+    )
+    for r in regs:
+        lab = r["label"].lower()
+        if any(
+            k in lab for k in ("image", "seal", "chart", "figure", "number", "header_image", "footer_image")
+        ):
+            continue
+        x0, y0, x1, y1 = r["b"]
+        if (x1 - x0) < 8 or (y1 - y0) < 8:
+            continue
+        crop = img.crop((max(0, x0 - 4), max(0, y0 - 4), x1 + 4, y1 + 4))
+        prompt = prompts["table"] if "table" in lab else prompts["text"]
+        blocks.append((r["label"], r["b"], _chat(repo, crop, prompt, max_new)))
+    return _blocks_result(blocks)
+
+
+def run_minicpm_ocr(img: Image.Image, **_: Any) -> Result:
+    """MiniCPM-OCR 1.0 as its SDK runs it: PP-DocLayoutV3 crops, element prompts from minicpm-ocr's prompt map."""
+    return _layout_then_read(
+        img, "openbmb/MiniCPM-OCR-1.0", {"text": "Text Recognition:", "table": "Table Recognition:"}
+    )
+
+
+_mineru = None
+
+
+def run_mineru25(img: Image.Image, **_: Any) -> Result:
+    """MinerU2.5-Pro via mineru-vl-utils (Apache-2.0): the model finds the layout, then reads each block."""
+    global _mineru
+    if _mineru is None:
+        from mineru_vl_utils import MinerUClient
+
+        repo = "opendatalab/MinerU2.5-Pro-2605-1.2B"
+        proc, model = _load_vlm(repo)
+        _mineru = MinerUClient(backend="transformers", model=model, processor=proc)
+    blocks = _mineru.two_step_extract(img.convert("RGB"))
+    W, H = img.size
+    return _blocks_result(
+        [
+            (
+                b.type,
+                [b.bbox[0] * W, b.bbox[1] * H, b.bbox[2] * W, b.bbox[3] * H] if b.bbox else None,
+                b.content or "",
+            )
+            for b in blocks
+        ]
+    )
+
+
+def run_kosmos25(img: Image.Image, **_: Any) -> Result:
+    """Kosmos-2.5 <ocr>: text lines with boxes."""
+    torch = _torch()
+    from transformers import AutoProcessor, Kosmos2_5ForConditionalGeneration
+
+    repo = "microsoft/kosmos-2.5"
+    if repo not in _vlm:
+        _vlm[repo] = (
+            AutoProcessor.from_pretrained(repo),
+            Kosmos2_5ForConditionalGeneration.from_pretrained(repo, dtype=torch.bfloat16).eval(),
+        )
+    proc, model = _vlm[repo]
+    inputs = proc(text="<ocr>", images=img.convert("RGB"), return_tensors="pt")
+    h, w = inputs.pop("height"), inputs.pop("width")
+    sy, sx = img.size[1] / float(h), img.size[0] / float(w)
+    inputs["flattened_patches"] = inputs["flattened_patches"].to(torch.bfloat16)
+    with torch.inference_mode():
+        gen = model.generate(**inputs, max_new_tokens=4096, max_time=MAX_TIME)
+    y = proc.batch_decode(gen, skip_special_tokens=True)[0].replace("<ocr>", "")
+    out = empty()
+    pat = r"<bbox><x_(\d+)><y_(\d+)><x_(\d+)><y_(\d+)></bbox>"
+    parts = re.split(pat, y)
+    for i in range(1, len(parts) - 4, 5):
+        x0, y0, x1, y1 = (int(v) for v in parts[i : i + 4])
+        t = parts[i + 4].strip()
+        if t and x1 > x0 and y1 > y0:
+            out["words"].append({"t": t, "b": [x0 * sx, y0 * sy, x1 * sx, y1 * sy], "c": 1.0})
+    out["text"] = "\n".join(w["t"] for w in out["words"])
+    return out
+
+
+FIRERED_PROMPT = (
+    "You are an AI assistant specialized in converting PDF images to Markdown format. Accurately recognize all text "
+    "content in the PDF image without guessing or inferring. Convert the recognized text into Markdown format and keep "
+    "the original structure. Convert tables to HTML format wrapped in <table> and </table>. Ignore figures. Output "
+    "only the Markdown, without extra explanations or comments."
+)
+
+
+def run_firered_ocr(img: Image.Image, **_: Any) -> Result:
+    return _vlm_text_result(_chat("FireRedTeam/FireRed-OCR", _fit(img, 1540), FIRERED_PROMPT, 4096))
+
+
+INFINITY_PROMPT = """- Extract layout information from the provided PDF image.
+- For each layout element, output its bbox, category, and the text content within the bbox.
+- Bbox format: [x1, y1, x2, y2].
+- Allowed layout categories: ['header', 'title', 'text', 'figure', 'table', 'formula', 'figure_caption', 'table_caption', 'formula_caption', 'figure_footnote', 'table_footnote', 'page_footnote', 'footer'].
+- Text extraction and formatting:
+  1) For 'figure', the text field must be an empty string.
+  2) For 'formula', format text as LaTeX.
+  3) For 'table', format text as HTML.
+  4) For all other categories (e.g., text, title), format text as Markdown.
+- The output text must be exactly the original text from the image, with no translation or rewriting.
+- Sort all layout elements in human reading order.
+- Final output must be a single JSON object.
+"""
+
+
+def run_infinity_parser2(img: Image.Image, **_: Any) -> Result:
+    """Infinity-Parser2-Flash layout mode: JSON blocks with bbox in the pixels of the image it was given."""
+    small = _fit(img, 1540)
+    text = _chat("infly/Infinity-Parser2-Flash", small, INFINITY_PROMPT, 6144)
+    k = img.size[0] / small.size[0]
+    try:
+        js = json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M))
+        items = js if isinstance(js, list) else next((v for v in js.values() if isinstance(v, list)), [])
+        blocks = [
+            (
+                str(it.get("category", "text")),
+                [float(v) * k for v in it["bbox"]] if it.get("bbox") else None,
+                str(it.get("text", "")),
+            )
+            for it in items
+            if isinstance(it, dict)
+        ]
+        out = _blocks_result(blocks)
+    except (ValueError, KeyError, TypeError, StopIteration):
+        out = _vlm_text_result(text)  # unparseable JSON is still scored as text, never dropped
+    out["raw"] = text
+    return out
+
+
+def run_deepseek_ocr2(img: Image.Image, **_: Any) -> Result:
+    """DeepSeek-OCR-2 grounding mode: <|ref|>label<|/ref|><|det|>[[x0,y0,x1,y1]]<|/det|> on a 0-999 grid."""
+    torch = _torch()
+    from transformers import AutoModelForImageTextToText, AutoProcessor
+
+    repo = "deepseek-community/DeepSeek-OCR-2"
+    if repo not in _vlm:
+        _vlm[repo] = (
+            AutoProcessor.from_pretrained(repo),
+            AutoModelForImageTextToText.from_pretrained(repo, dtype=torch.bfloat16).eval(),
+        )
+    proc, model = _vlm[repo]
+    inputs = proc(
+        images=img.convert("RGB"),
+        text="<image>\n<|grounding|>Convert the document to markdown.",
+        return_tensors="pt",
+    )
+    inputs = {k: (v.to(torch.bfloat16) if v.dtype.is_floating_point else v) for k, v in inputs.items()}
+    with torch.inference_mode():
+        gen = model.generate(
+            **inputs, do_sample=False, max_new_tokens=4096, use_cache=True, max_time=MAX_TIME
+        )
+    text = proc.decode(gen[0, inputs["input_ids"].shape[1] :], skip_special_tokens=False)
+    blocks = []
+    pat = r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[(\d+), ?(\d+), ?(\d+), ?(\d+)\]\]<\|/det\|>"
+    parts = re.split(pat, text)
+    for i in range(1, len(parts) - 5, 6):
+        blocks.append(
+            (
+                parts[i],
+                _grid_box([float(v) for v in parts[i + 1 : i + 5]], img, 999),
+                re.sub(r"<[|｜][^>]*>", "", parts[i + 5]),
+            )
+        )
+    out = _blocks_result(blocks) if blocks else _vlm_text_result(text)
+    out["raw"] = text
+    return out
+
+
+def run_egret_large(img: Image.Image, **_: Any) -> Result:
+    out = empty()
+    out["regions"] = _hf_detector("docling-project/docling-layout-egret-large", img, 0.5)
+    return out
+
+
+def run_egret_xlarge(img: Image.Image, **_: Any) -> Result:
+    out = empty()
+    out["regions"] = _hf_detector("docling-project/docling-layout-egret-xlarge", img, 0.5)
+    return out
+
+
+def run_heron101(img: Image.Image, **_: Any) -> Result:
+    out = empty()
+    out["regions"] = _hf_detector("docling-project/docling-layout-heron-101", img, 0.5)
+    return out
+
+
+_easy = None
+
+
+def run_easyocr(img: Image.Image, **_: Any) -> Result:
+    global _easy
+    import numpy as np
+
+    if _easy is None:
+        import easyocr
+
+        _easy = easyocr.Reader(["en", "de", "fr", "it"], gpu=False, verbose=False)
+    out = empty()
+    for quad, t, c in _easy.readtext(np.array(img.convert("RGB")), paragraph=False):
+        xs, ys = [p[0] for p in quad], [p[1] for p in quad]
+        out["words"].append(
+            {"t": t, "b": [float(min(xs)), float(min(ys)), float(max(xs)), float(max(ys))], "c": float(c)}
+        )
+    out["text"] = "\n".join(w["t"] for w in out["words"])
+    return out
+
+
+_slanet = None
+
+
+def run_slanet(img: Image.Image, words: list[dict] | None = None, **_: Any) -> Result:
+    """PP-DocLayoutV3 table regions, then SLANet+ (RapidTable, ONNX) builds each table's cell grid."""
+    global _slanet
+    import numpy as np
+
+    if _slanet is None:
+        from rapid_table import ModelType, RapidTable, RapidTableInput
+
+        _slanet = RapidTable(RapidTableInput(model_type=ModelType.SLANETPLUS))
+    out = empty()
+    for r in _hf_detector("PaddlePaddle/PP-DocLayoutV3_safetensors", img, 0.5):
+        if "table" not in r["label"].lower():
+            continue
+        x0, y0, x1, y1 = (int(v) for v in r["b"])
+        res = _slanet(np.array(img.crop((x0, y0, x1, y1)).convert("RGB")))
+        html_t = res.pred_htmls[0] if getattr(res, "pred_htmls", None) else ""
+        out["regions"].append(r)
+        for t in parse_tables(html_t):
+            out["tables"].append({"b": r["b"], "rows": t["rows"]})
+        out["words"].append({"t": strip_markup(html_t), "b": r["b"], "c": 1.0})
+    out["text"] = "\n\n".join(w["t"] for w in out["words"])
+    return out
+
+
 MODELS: dict[str, dict[str, Any]] = {
     # key: fn, family, HF repo(s), licence, needs (pdf/words)
-    "pdfplumber": {"fn": run_pdfplumber, "family": "baseline", "repo": "(pdfplumber, no model)", "licence": "MIT"},
-    "tesseract": {"fn": run_tesseract, "family": "ocr", "repo": "tesseract-ocr 5 (eng,deu,fra,ita)", "licence": "Apache-2.0"},
-    "rapidocr": {"fn": run_rapidocr, "family": "ocr", "repo": "RapidOCR (PP-OCRv5 ONNX)", "licence": "Apache-2.0"},
-    "doctr": {"fn": run_doctr, "family": "ocr", "repo": "Felix92/doctr-torch-parseq-multilingual-v1", "licence": "Apache-2.0"},
-    "florence2": {"fn": run_florence2, "family": "ocr", "repo": "florence-community/Florence-2-large", "licence": "MIT"},
-    "heron": {"fn": run_heron, "family": "layout", "repo": "docling-project/docling-layout-heron", "licence": "Apache-2.0"},
-    "ppdoclayout3": {"fn": run_ppdoclayout, "family": "layout", "repo": "PaddlePaddle/PP-DocLayoutV3_safetensors", "licence": "Apache-2.0"},
-    "doclayout_yolo": {"fn": run_doclayout_yolo, "family": "layout", "repo": "juliozhao/DocLayout-YOLO-DocStructBench", "licence": "weights Apache-2.0, code AGPL-3.0"},
-    "tatr": {"fn": run_tatr_pipeline, "family": "table", "repo": "microsoft/table-transformer-detection + structure-recognition-v1.1-all", "licence": "MIT"},
-    "docling": {"fn": run_docling, "family": "table", "repo": "docling-project/docling-models (Heron + TableFormer)", "licence": "MIT / Apache-2.0 / CDLA-2.0"},
-    "granite_docling": {"fn": run_granite_docling, "family": "vlm", "repo": "ibm-granite/granite-docling-258M", "licence": "Apache-2.0"},
-    "paddleocr_vl": {"fn": run_paddleocr_vl, "family": "vlm", "repo": "PaddlePaddle/PaddleOCR-VL-1.6 (+PP-DocLayoutV3)", "licence": "Apache-2.0"},
+    "pdfplumber": {
+        "fn": run_pdfplumber,
+        "family": "baseline",
+        "repo": "(pdfplumber, no model)",
+        "licence": "MIT",
+    },
+    "tesseract": {
+        "fn": run_tesseract,
+        "family": "ocr",
+        "repo": "tesseract-ocr 5 (eng,deu,fra,ita)",
+        "licence": "Apache-2.0",
+    },
+    "rapidocr": {
+        "fn": run_rapidocr,
+        "family": "ocr",
+        "repo": "RapidOCR (PP-OCRv5 ONNX)",
+        "licence": "Apache-2.0",
+    },
+    "doctr": {
+        "fn": run_doctr,
+        "family": "ocr",
+        "repo": "Felix92/doctr-torch-parseq-multilingual-v1",
+        "licence": "Apache-2.0",
+    },
+    "florence2": {
+        "fn": run_florence2,
+        "family": "ocr",
+        "repo": "florence-community/Florence-2-large",
+        "licence": "MIT",
+    },
+    "heron": {
+        "fn": run_heron,
+        "family": "layout",
+        "repo": "docling-project/docling-layout-heron",
+        "licence": "Apache-2.0",
+    },
+    "ppdoclayout3": {
+        "fn": run_ppdoclayout,
+        "family": "layout",
+        "repo": "PaddlePaddle/PP-DocLayoutV3_safetensors",
+        "licence": "Apache-2.0",
+    },
+    "doclayout_yolo": {
+        "fn": run_doclayout_yolo,
+        "family": "layout",
+        "repo": "juliozhao/DocLayout-YOLO-DocStructBench",
+        "licence": "weights Apache-2.0, code AGPL-3.0",
+    },
+    "tatr": {
+        "fn": run_tatr_pipeline,
+        "family": "table",
+        "repo": "microsoft/table-transformer-detection + structure-recognition-v1.1-all",
+        "licence": "MIT",
+    },
+    "docling": {
+        "fn": run_docling,
+        "family": "table",
+        "repo": "docling-project/docling-models (Heron + TableFormer)",
+        "licence": "MIT / Apache-2.0 / CDLA-2.0",
+    },
+    "granite_docling": {
+        "fn": run_granite_docling,
+        "family": "vlm",
+        "repo": "ibm-granite/granite-docling-258M",
+        "licence": "Apache-2.0",
+    },
+    "paddleocr_vl": {
+        "fn": run_paddleocr_vl,
+        "family": "vlm",
+        "repo": "PaddlePaddle/PaddleOCR-VL-1.6 (+PP-DocLayoutV3)",
+        "licence": "Apache-2.0",
+    },
     "glm_ocr": {"fn": run_glm_ocr, "family": "vlm", "repo": "zai-org/GLM-OCR", "licence": "MIT"},
-    "lighton_ocr": {"fn": run_lighton, "family": "vlm", "repo": "lightonai/LightOnOCR-2-1B", "licence": "Apache-2.0"},
+    "lighton_ocr": {
+        "fn": run_lighton,
+        "family": "vlm",
+        "repo": "lightonai/LightOnOCR-2-1B",
+        "licence": "Apache-2.0",
+    },
     "got_ocr": {"fn": run_got, "family": "vlm", "repo": "stepfun-ai/GOT-OCR-2.0-hf", "licence": "Apache-2.0"},
-    "qwen3vl": {"fn": run_qwen3vl, "family": "vlm-extract", "repo": "Qwen/Qwen3-VL-2B-Instruct", "licence": "Apache-2.0"},
-    "layoutlm_docqa": {"fn": run_layoutlm_docqa, "family": "docqa", "repo": "impira/layoutlm-document-qa", "licence": "MIT"},
+    "qwen3vl": {
+        "fn": run_qwen3vl,
+        "family": "vlm-extract",
+        "repo": "Qwen/Qwen3-VL-2B-Instruct",
+        "licence": "Apache-2.0",
+    },
+    "layoutlm_docqa": {
+        "fn": run_layoutlm_docqa,
+        "family": "docqa",
+        "repo": "impira/layoutlm-document-qa",
+        "licence": "MIT",
+    },
+    # SC-5.7
+    "lighton3_08b": {
+        "fn": run_lighton3,
+        "family": "vlm",
+        "repo": "lightonai/LightOnOCR-3-0.8B",
+        "licence": "Apache-2.0",
+    },
+    "lighton3_1b": {
+        "fn": lambda img, **k: run_lighton3(img, repo="lightonai/LightOnOCR-3-1B"),
+        "family": "vlm",
+        "repo": "lightonai/LightOnOCR-3-1B",
+        "licence": "Apache-2.0",
+    },
+    "xiaomi_ocr": {
+        "fn": run_xiaomi_ocr,
+        "family": "vlm",
+        "repo": "xiaomi-research/Xiaomi-OCR-0",
+        "licence": "Apache-2.0",
+    },
+    "minicpm_ocr": {
+        "fn": run_minicpm_ocr,
+        "family": "vlm",
+        "repo": "openbmb/MiniCPM-OCR-1.0 (+PP-DocLayoutV3)",
+        "licence": "Apache-2.0",
+    },
+    "mineru25": {
+        "fn": run_mineru25,
+        "family": "vlm",
+        "repo": "opendatalab/MinerU2.5-Pro-2605-1.2B (mineru-vl-utils)",
+        "licence": "Apache-2.0",
+    },
+    "kosmos25": {"fn": run_kosmos25, "family": "ocr", "repo": "microsoft/kosmos-2.5", "licence": "MIT"},
+    "firered_ocr": {
+        "fn": run_firered_ocr,
+        "family": "vlm",
+        "repo": "FireRedTeam/FireRed-OCR",
+        "licence": "Apache-2.0",
+    },
+    "infinity_parser2": {
+        "fn": run_infinity_parser2,
+        "family": "vlm",
+        "repo": "infly/Infinity-Parser2-Flash",
+        "licence": "Apache-2.0",
+    },
+    "deepseek_ocr2": {
+        "fn": run_deepseek_ocr2,
+        "family": "vlm",
+        "repo": "deepseek-community/DeepSeek-OCR-2",
+        "licence": "Apache-2.0",
+    },
+    "egret_large": {
+        "fn": run_egret_large,
+        "family": "layout",
+        "repo": "docling-project/docling-layout-egret-large",
+        "licence": "Apache-2.0",
+    },
+    "egret_xlarge": {
+        "fn": run_egret_xlarge,
+        "family": "layout",
+        "repo": "docling-project/docling-layout-egret-xlarge",
+        "licence": "Apache-2.0",
+    },
+    "heron101": {
+        "fn": run_heron101,
+        "family": "layout",
+        "repo": "docling-project/docling-layout-heron-101",
+        "licence": "Apache-2.0",
+    },
+    "easyocr": {
+        "fn": run_easyocr,
+        "family": "ocr",
+        "repo": "JaidedAI EasyOCR (en, de, fr, it)",
+        "licence": "Apache-2.0 (python-bidi dep LGPL-3.0)",
+    },
+    "slanet": {
+        "fn": run_slanet,
+        "family": "table",
+        "repo": "PP-DocLayoutV3 + SLANet+ (rapid-table, ONNX)",
+        "licence": "Apache-2.0",
+    },
 }
 
 RUNNERS: dict[str, Callable[..., Result]] = {k: v["fn"] for k, v in MODELS.items()}
