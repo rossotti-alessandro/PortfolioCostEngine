@@ -235,6 +235,11 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <p class="muted" style="margin-top:0">Found on Hugging Face and checked against our rules (local only, no AGPL or non-commercial licences, runs on a normal office machine).</p>
       <div class="scroll"><table id="notrun"></table></div>
     </div>
+    <div class="panel" id="verifier" hidden>
+      <h2>Second check on what OCR read (MiniCPM-OCR-Jev)</h2>
+      <p class="muted" style="margin-top:0">A 2B model looks at the image region and the OCR text and scores whether they match. Measured on OCR lines that hold a fee figure; "misread" means the line's numbers differ from the PDF text layer. Compared with the OCR engine's own confidence.</p>
+      <div class="scroll"><table id="vtable"></table></div>
+    </div>
   </section>
 
   <section class="view prose" id="v-pipeline" hidden>
@@ -554,5 +559,8 @@ function cards() {
     <dt>Speed</dt><dd>${e.sec_per_page ?? "–"} s/page · ${e.peak_rss_gb ?? "–"} GB RAM</dd>
     <dt>Licence</dt><dd><span class="chip ${e.licence_risk === "high" ? "risk" : "ok"}">${esc(e.licence)}</span></dd></dl></div>`).join("");
   $("#notrun").innerHTML = `<tr><th>Model</th><th class="num">Size GB</th><th>Licence</th><th>Why not run here</th></tr>` + (M._not_run || []).map(m => `<tr><td class="mono">${esc(m.repo)}</td><td class="num">${m.size_gb}</td><td>${esc(m.licence)}</td><td>${esc(m.why)}</td></tr>`).join("");
+  const V = D.verifier;
+  $("#verifier").hidden = !V;
+  if (V) $("#vtable").innerHTML = `<tr><th>Lines</th><th class="num">Misread</th><th class="num">Separates right from wrong: Jev</th><th class="num">OCR's own confidence</th><th class="num">Misreads caught if 10% go to review: Jev</th><th class="num">OCR conf.</th></tr>` + Object.entries(V.by).map(([k, v]) => `<tr><td>${k === "all" ? "<b>All</b>" : k === "scans" ? "Simulated scans" : esc(k)}</td><td class="num">${v.jev.misread} / ${v.jev.n}</td><td class="num"><b>${v.jev.auroc?.toFixed(2) ?? "–"}</b></td><td class="num">${v.engine_conf.auroc?.toFixed(2) ?? "–"}</td><td class="num"><b>${pct(v.jev["caught@10%"])}</b></td><td class="num">${pct(v.engine_conf["caught@10%"])}</td></tr>`).join("");
 }
 </script>

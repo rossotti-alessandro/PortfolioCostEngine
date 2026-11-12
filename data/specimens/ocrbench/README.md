@@ -24,6 +24,7 @@ images, so it lives in `var/` and is not committed.
 | `lab.py`, `lab_template.html` | Builds the lab viewer in `var/ocrbench/lab/`. |
 | `models.json` | Facts per engine (size, licence, what it returns) and the models looked at but not run, with the reason. |
 | `vlm_core.json` | The 23-page core set the slow VLMs run on first, and the 8-page `mini` set for the slowest ones. |
+| `jev_verify.py`, `jev_render.mjs` | Measures MiniCPM-OCR-Jev as a misread detector on OCR lines that hold a fee figure (build, render, score, report). See "OCR verifier" below. |
 | `app_run.py` | Runs the FeeLens upload pipeline (`pce.extraction.parsers.extract`) on every page as one more engine. Backend env. |
 | `app_e2e.py` | Runs the SYNTHETIC prospects end to end through the app and the accuracy protocol, for the lab's "App end to end" view. Backend env. |
 
@@ -76,3 +77,27 @@ Weights download once from Hugging Face into the normal cache (about 20 GB for a
 
 Known limits: 54 pages with 813 fee figures is enough to rank engines, not to quote a precise accuracy;
 labels are short forms of what is printed; one annotator (Claude), spot-checked against the rendered page.
+
+## OCR verifier: MiniCPM-OCR-Jev (SC-5.13)
+
+Question: can a second model tell a misread fee line from a correct one, better than the OCR engine's own
+confidence? Sample: 1,000 random lines (seed 513) from tesseract, rapidocr, doctr and easyocr that hold a
+gold fee figure, on 52 pages. A line counts as misread when its numbers differ from the PDF text layer's
+numbers inside the same box; 143 of 1,000 are misread. Run on CPU, 3-8 s per line.
+
+| Lines | Misread | AUROC Jev | AUROC engine conf. | Misreads caught, 10% review: Jev / engine | 20% review: Jev / engine |
+|---|---|---|---|---|---|
+| All | 143 / 1000 | **0.91** | 0.68 | **48%** / 17% | **72%** / 29% |
+| Simulated scans | 45 / 92 | 0.85 | 0.53 | 18% / 11% | 29% / 20% |
+| tesseract | 57 / 233 | 0.90 | 0.72 | 35% / 19% | 58% / 30% |
+| rapidocr | 18 / 253 | 0.87 | 0.76 | 56% / 28% | 72% / 44% |
+| doctr | 31 / 246 | 0.89 | 0.80 | 55% / 42% | 68% / 65% |
+| easyocr | 37 / 268 | 0.91 | 0.50 | 43% / 27% | 70% / 30% |
+
+AUROC: chance that a correct line scores higher than a misread one (0.5 = coin flip). "Caught at 10%": share
+of misreads among the 10% lowest-scored lines. On scans half the lines are misread, so a 10-20% budget cannot
+catch most of them; AUROC is the fair number there. The candidate text is rendered with Chromium and the
+vendor's page CSS, not its exact font build, so scores may sit slightly off the published scale.
+
+Reproduce (lab venv): `jev_verify.py build`, `node jev_render.mjs`, `jev_verify.py score` (resumable),
+`jev_verify.py report` (writes `var/ocrbench/jev/jev.json`).

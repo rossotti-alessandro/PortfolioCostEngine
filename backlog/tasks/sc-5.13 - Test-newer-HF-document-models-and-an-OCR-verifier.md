@@ -1,11 +1,11 @@
 ---
 id: SC-5.13
 title: Test newer Hugging Face document models and an OCR verifier in the lab
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Compare complete extraction workflows"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-rfm5yy"
 pr: ""
 created_date: "2026-11-12 15:25"
@@ -62,15 +62,40 @@ Lab only. Models run on CPU in the separate lab venv, one at a time, with `OMP_T
 
 ## Acceptance Criteria
 
-- [ ] #1 Custom code of every `trust_remote_code` model reviewed before it runs (no network calls, no file writes outside the cache).
-- [ ] #2 Each runnable model scored on the core pages with the existing scorer; non-runnable ones recorded with the reason in `models.json`.
-- [ ] #3 Verifier measured: how well its score separates right from wrong figures, and the wrong-accepted rate at the arena's review budget.
-- [ ] #4 Lab and RESULTS updated; no third-party page images committed.
+- [x] #1 Custom code of every `trust_remote_code` model reviewed before it runs (no network calls, no file writes outside the cache).
+- [x] #2 Each runnable model scored on the core pages with the existing scorer; non-runnable ones recorded with the reason in `models.json`.
+- [x] #3 Verifier measured: how well its score separates right from wrong figures, and the wrong-accepted rate at the arena's review budget.
+- [x] #4 Lab and RESULTS updated; no third-party page images committed.
 
 ## Implementation Notes
 
+- Read the custom code of both `trust_remote_code` models first (no network calls, no writes outside the HF
+  cache); Ale approved running it locally on 2026-11-12.
+- Nemotron-3.5-Parse: adapter `run_nemotron_parse` in `adapters.py` (boxes, classes, LaTeX tables to rows).
+  At about 5 minutes per page on CPU it ran on the 8-page `mini` set, like the other slow VLMs.
+- Falcon-OCR: needs a Triton kernel and compiled FlexAttention. A CPU port (kernel in plain torch, eager
+  attention) still failed in FlexAttention's block mask, so it is recorded under `_not_run` in `models.json`.
+- MiniCPM-OCR-Jev: `jev_verify.py` + `jev_render.mjs`. Scored on OCR lines (tesseract, rapidocr, doctr,
+  easyocr) holding a gold fee figure, because a line-level crop is what the model was trained on; labels come
+  from the PDF text layer inside the same box. Checkpoint load and pooled-token position are asserted.
+- The two-reader ensemble in the arena was not rerun: Nemotron reads no better than PaddleOCR-VL and is 9x
+  slower, so it would not change the arena result.
+
 ## Outcome
+
+- Nemotron-3.5-Parse (8 hard pages): values read 100%, label + value on the same row 79%, table-aware extract
+  P58/R70, 295 s/page, 3.5 GB. Same tier as PaddleOCR-VL (34 s/page). Not adopted.
+- Falcon-OCR: not runnable without a GPU.
+- MiniCPM-OCR-Jev as a misread detector (1,000 lines, 143 misread): AUROC 0.91 against 0.68 for the OCR
+  engines' own confidence; sending the 10% lowest-scored lines to review catches 48% of misreads (engine
+  confidence 17%), 20% catches 72% (29%). 3-8 s per line on CPU. Worth a follow-up story: use it to rank
+  review points and to auto-accept only figures it confirms.
 
 ## Issues Encountered
 
 ## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-rfm5yy | ce6ec0e | 2026-11-12 | Nemotron adapter, Jev verifier scripts |
+| claude/project-thread-rfm5yy | c7d0ad8 | 2026-11-12 | Nemotron scores, Falcon-OCR recorded as GPU-only |
