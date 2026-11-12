@@ -1,15 +1,15 @@
 ---
 id: SC-8.14
 title: Show extraction flags and unused fee mentions as review points
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Trace numbers back to source documents"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-6txgxv"
 pr: ""
 created_date: "2026-11-12 21:25"
-updated_date: "2026-11-12 21:25"
+updated_date: "2026-11-12 21:20"
 labels:
   - ui
   - api
