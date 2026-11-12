@@ -20,6 +20,9 @@ MIN_TEXT_CHARS = 25  # below this a page is treated as scanned
 class Cell:
     text: str
     bbox: tuple[float, float, float, float]
+    # word boxes inside the cell (start offset in text, box), when the reader gives them: lets a number
+    # inside a longer cell get its own exact box instead of an estimate
+    words: list[tuple[int, tuple[float, float, float, float]]] = field(default_factory=list)
 
 
 @dataclass
@@ -73,10 +76,18 @@ def _digital_lines(page: pdfplumber.page.Page, number: int) -> list[Line]:
                 cells[-1] = Cell(
                     prev.text + " " + w["text"],
                     (prev.bbox[0], min(prev.bbox[1], bb[1]), bb[2], max(prev.bbox[3], bb[3])),
+                    [*prev.words, (len(prev.text) + 1, bb)],
                 )
                 continue
-        cells.append(Cell(w["text"], bb))
-    cells = [Cell(c.text, tuple(round(v, 2) for v in c.bbox)) for c in cells]
+        cells.append(Cell(w["text"], bb, [(0, bb)]))
+    cells = [
+        Cell(
+            c.text,
+            tuple(round(v, 2) for v in c.bbox),
+            [(o, tuple(round(v, 2) for v in b)) for o, b in c.words],
+        )
+        for c in cells
+    ]
     return _group(cells, number, "pdfplumber-text", 1.0)
 
 
