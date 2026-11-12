@@ -7,9 +7,9 @@ owner: "Compare complete extraction workflows"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-rfm5yy"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/24"
 created_date: "2026-11-12 15:25"
-updated_date: "2026-11-12 15:18"
+updated_date: "2026-11-12 17:33"
 labels:
   - extraction
   - qa
