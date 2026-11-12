@@ -1,15 +1,15 @@
 ---
 id: SC-5.14
 title: Agentic revalidation of extracted fee values
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Add agentic revalidation of extracted values"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-wc8huq"
 pr: ""
 created_date: "2026-11-12 17:50"
-updated_date: "2026-11-12 17:51"
+updated_date: "2026-11-12 19:17"
 labels:
   - extraction
 dependencies:
@@ -18,6 +18,7 @@ parent_task_id: SC-5
 priority: P1
 paths_owned:
   - "backend/src/pce/extraction/revalidate.py"
+  - "backend/src/pce/extraction/parsers.py"
   - "backend/tests/test_revalidate.py"
   - "data/specimens/arena/**"
   - "docs/research/REVALIDATION_PROTOCOL.md"
@@ -66,20 +67,42 @@ to it. Off on Render free (0.15 CPU).
 
 ## Acceptance Criteria
 
-- [ ] #1 The graph never changes a value, label or box: every output value is a reader's value at its box (tested).
-- [ ] #2 A specialist can confirm or flag but never drop a figure; an unconfirmed value stays in review (tested).
-- [ ] #3 Arena scores the revalidation workflow and its ablations against finder + verify on the same pages, with 95% intervals and held-out pages.
-- [ ] #4 Off by default; finder + verify output is unchanged when revalidation is off (regression guard).
+- [x] #1 The graph never changes a value, label or box: every output value is a reader's value at its box (tested).
+- [x] #2 A specialist can confirm or flag but never drop a figure; an unconfirmed value stays in review (tested).
+- [x] #3 Arena scores the revalidation workflow and its ablations against finder + verify on the same pages, with 95% intervals and held-out pages.
+- [x] #4 Off by default; finder + verify output is unchanged when revalidation is off (regression guard).
 
 ## Implementation Notes
 
+- Stacked on PR #15 (SC-5.8, finder + verify), merged with main for the arena (SC-5.10). Merge #15 first.
+- `revalidate.py`: plain-Python graph (state `Case`, nodes triage / readers / reconcile / critic / decide).
+  Specialists return confirm / flag / abstain, never a number; the critic may only flag; only readers and
+  arithmetic clear reading doubts; low OCR confidence is never cleared.
+- App: `parsers._cross_check` runs the deterministic page checks when `PCE_REVALIDATE=1` (off by default).
+- Lab: `data/specimens/arena/revalidate_lab.py` plugs in RapidOCR, docTR, PaddleOCR-VL rows (stored lab
+  outputs) and replays the Qwen3-4B critic from `agent.py`'s log; `run.py` scores five variants.
+- `run.py` / `agent.py` use this checkout's finder harness when present (no separate `var/arena/wt`).
+
 ## Outcome
 
-- **Status**: 
+- **Status**: completed
+- 63 pages, 899 fees, all variants keep 90% of fees. Wrong accepted / review: finder + verify 5.9% / 18%;
+  arithmetic only 5.8% / 17% (9 doubtful values confirmed, all right); readers + arithmetic 6.3% / 14%;
+  full graph with critic 4.6% / 34% (29% if the critic ignores zeros), about 40 s/page CPU.
+- `python -m pce.evaluation` (SYNTHETIC, digital + scan): identical with revalidation on and off, gates pass.
+- Recommendation in `docs/research/REVALIDATION_PROTOCOL.md`: turn arithmetic on in the app; keep the
+  critic optional for local installs; next levers Jev review ranking and a stronger second reader.
 
 ## Issues Encountered
+
+- Extra readers confirm digits, not meaning: they accepted a footnote marker glued to a figure and a
+  scan value under a misread label. Letting them clear low OCR confidence made it worse, so it is excluded.
+- The critic run competes for the same 4 cores as the harness: 63 pages took about an hour.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-wc8huq | 32fa791 | 2026-11-12 | feat(extraction): revalidation graph that confirms or flags values |
+| claude/project-thread-wc8huq | 0fba860 | 2026-11-12 | feat(arena): score the revalidation graph and its ablations |
+| claude/project-thread-wc8huq | 80bb44a | 2026-11-12 | docs(research): extraction and revalidation protocol with arena scores |
