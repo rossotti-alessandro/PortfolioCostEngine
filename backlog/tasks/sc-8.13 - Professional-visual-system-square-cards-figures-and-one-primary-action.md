@@ -6,7 +6,7 @@ assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
 progress: 100
-branch: "local/sc-8.13"
+branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-12 20:45"
 updated_date: "2026-11-12 20:46"
@@ -97,6 +97,6 @@ None: styling and markup only. No new dependency, no backend change.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
-| local/sc-8.13 | 9748f1a | 2026-11-12 | Square visual system, figure cards, one primary action |
+| claude/project-thread-bj3sap | 9fc71d6 | 2026-11-12 | Square visual system, figure cards, one primary action |
 
 ## Issues Encountered
