@@ -32,7 +32,9 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 WT = ROOT / "var" / "arena" / "wt"
 sys.path.insert(0, str(WT / "data" / "specimens" / "strategies"))
+sys.path.insert(0, str(HERE))
 import score  # noqa: E402  (the harness scorer, read-only)
+from agent import flag_only  # noqa: E402
 
 DUMPS = WT / "var" / "strategies"
 BENCH = ROOT / "data" / "specimens" / "ocrbench"
@@ -51,8 +53,13 @@ WORKFLOWS = [  # (key, name, harness dump, how it works)
 OUT = ROOT / "var" / "arena"
 AGENT_HOW = ("Finder + verify, then a local language model checks each candidate with tools (second OCR, "
              "table row) and keeps, drops or flags it. It cannot write a number.")  # fmt: skip
+FLAG_HOW = ("The same agent run, but a 'not a fee' answer only sends the figure to review instead of dropping it: "
+            "the model can never remove a figure on its own.")  # fmt: skip
 for d in sorted((OUT / "agent").glob("*/")):  # one agentic workflow per local model run with agent.py --model
     WORKFLOWS.append((f"agentic:{d.name}", f"Agentic review ({d.name})", f"agent:{d.name}", AGENT_HOW))
+    WORKFLOWS.append(
+        (f"agentic_flag:{d.name}", f"Agent flags only ({d.name})", f"agentflag:{d.name}", FLAG_HOW)
+    )
 
 
 def predictions() -> dict[str, dict[str, list[dict]]]:
@@ -61,6 +68,15 @@ def predictions() -> dict[str, dict[str, list[dict]]]:
         if dump.startswith("agent:"):
             runs = (OUT / "agent" / dump[6:]).glob("*.json")
             out[key] = {f.stem: json.loads(f.read_text(encoding="utf-8"))["preds"] for f in runs}
+        elif dump.startswith("agentflag:"):
+            cands = json.loads(
+                (DUMPS / "finder @text + verify(tesseract crops).json").read_text(encoding="utf-8")
+            )
+            runs = (OUT / "agent" / dump[10:]).glob("*.json")
+            out[key] = {
+                f.stem: flag_only(cands[f.stem], json.loads(f.read_text(encoding="utf-8"))["log"])
+                for f in runs
+            }
         elif (f := DUMPS / f"{dump}.json").exists():
             out[key] = json.loads(f.read_text(encoding="utf-8"))
     return out
@@ -73,8 +89,9 @@ def seconds() -> dict[str, dict[str, float]]:
     for key, _, dump, _ in WORKFLOWS:
         if run := prev.get(f"{dump}@all"):
             secs[key] = {"median": run["summary"]["s_per_page"]}
-        elif dump.startswith("agent:") and "finder_verify" in secs:  # the agent runs after finder + verify
-            agent = [json.loads(f.read_text())["seconds"] for f in (OUT / "agent" / dump[6:]).glob("*.json")]
+        elif dump.startswith("agent") and "finder_verify" in secs:  # the agent runs after finder + verify
+            run_dir = OUT / "agent" / dump.partition(":")[2]
+            agent = [json.loads(f.read_text())["seconds"] for f in run_dir.glob("*.json")]
             if agent:
                 secs[key] = {"median": round(secs["finder_verify"]["median"] + statistics.median(agent), 2)}
     return secs
@@ -102,7 +119,10 @@ def portfolio(specs: list[str]) -> list[dict] | None:
     workflow that runs inside the app: "<workflow name>=<path to results.json>"."""
     from pce.evaluation import gold  # noqa: PLC0415  (backend env; only needed with --portfolio)
 
-    pinned = {c: len(getattr(gold, c.replace("-", "_"))(OUT).portfolio.expect) for c in ("synthetic-p1042", "synthetic-p2077")}
+    pinned = {
+        c: len(getattr(gold, c.replace("-", "_"))(OUT).portfolio.expect)
+        for c in ("synthetic-p1042", "synthetic-p2077")
+    }
     rows = []
     for spec in specs:
         name, _, path = spec.partition("=")
@@ -117,7 +137,9 @@ def portfolio(specs: list[str]) -> list[dict] | None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--portfolio", nargs="*", default=[], help='"<workflow>=<results.json>" from pce.evaluation')
+    ap.add_argument(
+        "--portfolio", nargs="*", default=[], help='"<workflow>=<results.json>" from pce.evaluation'
+    )
     args = ap.parse_args()
     pages = json.loads((BENCH / "pages.json").read_text(encoding="utf-8"))
     gold = json.loads((BENCH / "groundtruth.json").read_text(encoding="utf-8"))["pages"]
@@ -142,12 +164,23 @@ def main() -> None:
         g = gold[next(p for p in pages if p["id"] == i).get("gt_from") or i]["items"]
         per_page[i] = {
             "hits": {k: figure_hits(g, preds[k][i]) for k in preds if i in preds[k]},
-            "extra": {k: [p for p in preds[k][i] if p.get("value") is not None and
-                          figure_hits(g, [p]) == ["missed"] * len(g)][:40]
-                      for k in preds if i in preds[k]},  # fmt: skip
+            "extra": {
+                k: [
+                    p
+                    for p in preds[k][i]
+                    if p.get("value") is not None and figure_hits(g, [p]) == ["missed"] * len(g)
+                ][:40]
+                for k in preds
+                if i in preds[k]
+            },  # fmt: skip
         }
     OUT.mkdir(parents=True, exist_ok=True)
-    blob = {"workflows": table, "per_page": per_page, "common_pages": len(common), "portfolio": portfolio(args.portfolio)}
+    blob = {
+        "workflows": table,
+        "per_page": per_page,
+        "common_pages": len(common),
+        "portfolio": portfolio(args.portfolio),
+    }
     (OUT / "arena.json").write_text(json.dumps(blob, ensure_ascii=False, default=str), encoding="utf-8")
     write_md(table, len(common))
     for k, v in table.items():
@@ -161,7 +194,7 @@ def write_md(table: dict, n_common: int) -> None:
         return (f"| {v['name']} | {s['pages']} | {s['gold']} | {s['precision']:.0%} | {s['recall']:.0%} | "
                 f"{s['f1']:.2f} | {s['review_share']:.0%} | {s['accepted_precision']:.0%} | "
                 f"{s['wrong_accepted']} ({s['wrong_accepted_share']:.1%}) | {s['bbox_hit_rate']:.0%} | "
-                f"{s.get('s_per_page') if s.get('s_per_page') is not None else '–'} |")  # fmt: skip
+                f"{round(s['s_per_page'], 1) if s.get('s_per_page') is not None else '–'} |")  # fmt: skip
 
     head = ("| Workflow | Pages | Gold fees | Precision | Recall | F1 | Sent to review | Precision (accepted) | "
             "Wrong values accepted | Box on the value | s/page |\n|---|---|---|---|---|---|---|---|---|---|---|")  # fmt: skip

@@ -1,15 +1,15 @@
 ---
 id: SC-5.10
 title: Workflow arena - compare complete extraction workflows end to end
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Compare complete extraction workflows"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-rfm5yy"
 pr: ""
 created_date: "2026-11-12 13:10"
-updated_date: "2026-11-12 13:04"
+updated_date: "2026-11-12 15:05"
 labels:
   - extraction
   - qa
@@ -62,19 +62,44 @@ the runner rejects any value not present in a tool output at the cited box.
 
 ## Acceptance Criteria
 
-- [ ] #1 At least five complete workflows scored on the same inputs with the same scorer
-- [ ] #2 The agentic workflow never emits a number that no tool read at its cited box (tested)
-- [ ] #3 Lab shows the comparison with per-page drill-down; synthetic data labelled
+- [x] #1 At least five complete workflows scored on the same inputs with the same scorer
+- [x] #2 The agentic workflow never emits a number that no tool read at its cited box (tested)
+- [x] #3 Lab shows the comparison with per-page drill-down; synthetic data labelled
 
 ## Implementation Notes
 
+- `data/specimens/arena/run.py` scores every workflow with the SC-5.8 strategy scorer
+  (`data/specimens/strategies/score.py`), read-only from a checkout of PR #15 at `var/arena/wt`
+  (the harness dumps each workflow's predictions there). Whole-prospect rows come from
+  `python -m pce.evaluation` results.json files passed with `--portfolio`.
+- `data/specimens/arena/agent.py`: Qwen3-4B-Instruct-2507 (Apache-2.0, bf16, CPU, local weights only)
+  reviews the finder + verify candidates by id, with two deterministic tools over stored lab outputs
+  (RapidOCR re-read of the value box; PaddleOCR-VL table row). `apply_decisions` builds the output from the
+  candidates, so the model can drop or flag a figure but never write or change one (AC #2,
+  `test_agent.py`, 4 tests). `flag_only` replays a run with "not a fee" turned into "send to review".
+- Workflow 4 is the vision reader on its own (PaddleOCR-VL rows anchored to text-layer boxes) on the 23-page
+  core set; the vision model as second reader is in the model lab (`hybrid_vlm`).
+- Lab: new "Workflows" tab (scores, SYNTHETIC whole-portfolio table, per-page drill-down with boxes).
+- Qwen3-1.7B (fp32) was tried first and dropped true fees erratically; its results were discarded.
+
 ## Outcome
 
-- **Status**:
+- **Status**: Done. 7 workflows on 63 pages (899 hand-checked fees); see `data/specimens/arena/RESULTS.md`.
+- Finder + verify stays the best trade-off: P 82%, R 90%, 5.9% wrong values accepted, 1.5 s/page.
+- Agentic review (drop mode): P 90%, R 71%. It removes false figures but also 175 real fees, a third of
+  them zero charges. Flag-only mode keeps recall at 90% and lowers wrong accepted values to 4.5%, but sends
+  39% of figures to review (18% without the agent) and costs about 40 s/page on CPU.
+- Recommendation: do not put the agent in the app now. If used, only in flag mode, after zero-charge
+  handling is fixed in the prompt or by rule.
+- Whole-portfolio results (SYNTHETIC P-1042, P-2077) are identical before and after SC-5.8, because finder
+  figures are `fee_mention` and do not enter totals.
 
 ## Issues Encountered
+
+- CPU contention made early timings unreliable; heavy jobs were run one at a time with `OMP_THREAD_LIMIT=1`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-rfm5yy | 21b4199 | 2026-11-12 | Agent, tests, arena scorer, lab tab (WIP) |

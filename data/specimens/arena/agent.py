@@ -46,7 +46,7 @@ SYSTEM = (
 )
 ASK_TOOLS = (
     "Tools you may call before deciding:\n"
-    '  reread: a second OCR engine reads the value box again (use when the value looks misread)\n'
+    "  reread: a second OCR engine reads the value box again (use when the value looks misread)\n"
     'Answer ONLY with JSON: {"reread": [ids]}. Use [] when you need nothing.'
 )
 ASK_DECIDE = (
@@ -109,6 +109,15 @@ def apply_decisions(cands: list[dict], decisions: dict[str, str]) -> list[dict]:
             p["reasons"] = [*p.get("reasons", []), "agent_unsure"]
         out.append(p)
     return out
+
+
+def flag_only(cands: list[dict], log: list[dict]) -> list[dict]:
+    """Replay a logged agent run with "not_fee" downgraded to "unsure": the model may send a figure to review
+    but never remove it. Scored in the arena as its own workflow."""
+    decisions = {
+        k: ("unsure" if v == "not_fee" else v) for step in log for k, v in step.get("decisions", {}).items()
+    }
+    return apply_decisions(cands, decisions)
 
 
 def parse_json(text: str) -> dict:
@@ -191,7 +200,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen3-1.7B")
     ap.add_argument("--only", default="")
-    ap.add_argument("--dtype", default="float32", help="bfloat16 halves RAM for 4B models; float32 is faster on CPU")
+    ap.add_argument(
+        "--dtype", default="float32", help="bfloat16 halves RAM for 4B models; float32 is faster on CPU"
+    )
     args = ap.parse_args()
     cands = json.loads(CANDS.read_text(encoding="utf-8"))
     out_dir = OUT / args.model.split("/")[-1]
