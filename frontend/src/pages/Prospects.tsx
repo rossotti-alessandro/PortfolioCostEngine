@@ -1,6 +1,6 @@
 import { Badge, Button, Card, Dialog, Empty, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
-import { BOUND_TEXT, bps, chf } from "@/lib/format";
+import { bps, chf, savingParts } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Building2, FlaskConical, Plus, Upload } from "lucide-react";
@@ -111,9 +111,12 @@ export default function ProspectsPage() {
                     <td className="num px-3 py-3 text-right">
                       {p.summary ? (
                         <>
-                          <span className="text-[12px] text-subtle">{t(BOUND_TEXT[p.summary.bound])} </span>
+                          <span className="text-[12px] text-subtle">
+                            {Number(p.summary.saving) < 0 && `${t("costs more")} `}
+                            {t(savingParts(p.summary.saving, p.summary.bound).prefix)}{" "}
+                          </span>
                           <span className={Number(p.summary.saving) > 0 ? "font-medium text-teal-700" : ""}>
-                            {chf(p.summary.saving)}
+                            {chf(savingParts(p.summary.saving, p.summary.bound).value)}
                           </span>
                         </>
                       ) : (
