@@ -25,6 +25,9 @@ the obtained value) and `results.json` (per document). Both are git-ignored beca
 third-party documents. Exit code 1 when the `baseline` strategy (or any listed in `--gate`) fails a gate.
 The integration test `backend/tests/evaluation/test_protocol.py` runs the same protocol in the gate.
 
+Holdings and AUM on real public statements have their own scorer:
+`uv run python ../data/specimens/statements/score.py` (gold and results in `data/specimens/statements/`, SC-9.6).
+
 ## The stages
 
 Each stage is scored on its own, so a wrong total is attributed to the stage that caused it.

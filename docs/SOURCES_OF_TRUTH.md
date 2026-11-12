@@ -13,6 +13,7 @@ fix or delete the other one in the same PR.
 | Fee categories and cost methodology | `docs/research/FEE_TAXONOMY.md`, `data/taxonomy/fee_taxonomy.csv` | research (SC-2) |
 | Document types and what each contains | `docs/research/DOCUMENT_TAXONOMY.md`, `data/taxonomy/document_types.csv` | research (SC-2) |
 | Public sources, licences, fetch status | `docs/research/SOURCE_REGISTER.md` | research (SC-2) |
+| Go-live gates, pilot, analyst review and incident protocols | [docs/READINESS.md](READINESS.md) | SC-11.10 |
 | Privacy and hosting options | `docs/research/DATA_PRIVACY_AND_HOSTING.md` + [ADR 0004](adr/0004-privacy-local-first.md) | research + coordinator |
 | What was wrong in the ChatGPT handoff | `docs/CRITICAL_REVIEW.md` | research (SC-2) |
 | Extraction engines and versions | [ADR 0003](adr/0003-document-extraction-and-ocr.md), `backend/pyproject.toml`, `backend/uv.lock` | SC-1.2 |

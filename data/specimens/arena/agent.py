@@ -29,7 +29,8 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-CANDS = ROOT / "var" / "arena" / "wt" / "var" / "strategies" / "finder @text + verify(tesseract crops).json"
+WT = ROOT if (ROOT / "data" / "specimens" / "strategies").exists() else ROOT / "var" / "arena" / "wt"
+CANDS = WT / "var" / "strategies" / "finder @text + verify(tesseract crops).json"
 STORED = ROOT / "var" / "ocrbench" / "out"
 OUT = ROOT / "var" / "arena" / "agent"
 CHUNK = 20  # candidates per model call: keeps the prompt short enough for a 1.7B model on CPU
