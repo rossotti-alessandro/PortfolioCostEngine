@@ -1,15 +1,15 @@
 ---
 id: SC-5.11
 title: Read scanned pages in parallel and keep the server responsive
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Read document pages in parallel"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-ch9r5h"
 pr: ""
 created_date: "2026-11-12 14:30"
-updated_date: "2026-11-12 14:30"
+updated_date: "2026-11-12 14:19"
 labels:
   - extraction
   - performance
