@@ -1,6 +1,6 @@
 import { NotStarted, ReadSummary } from "@/components/ReadSummary";
 import { PageTitle } from "@/components/Shell";
-import { Badge, Button, Card, CardHeader, ErrorBox, Spinner, inputCls } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Money, Spinner, StatGrid, inputCls } from "@/components/ui";
 import { api, getRole } from "@/lib/api";
 import { LAYER, chf, savingParts } from "@/lib/format";
 import { getLang, t } from "@/lib/i18n";
@@ -42,7 +42,7 @@ export default function ReportPage() {
               {(["en", "it"] as const).map((l) => (
                 <Button
                   key={l}
-                  variant={l === getLang() ? "accent" : undefined}
+                  variant={l === getLang() ? "primary" : "outline"}
                   loading={dl === l}
                   onClick={async () => {
                     setDl(l);
@@ -81,15 +81,15 @@ export default function ReportPage() {
             </div>
             <div className="space-y-5 p-6">
               <ReadSummary a={a} />
-              <div className="grid gap-3 sm:grid-cols-3">
+              <StatGrid className="grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
                 <Fig
                   label={t("Today, known annual cost")}
                   value={chf(cur.total_known)}
                   sub={cur.is_complete ? undefined : t("at least; some costs unknown")}
                 />
                 <Fig label={t("With {firm}", { firm })} value={chf(s.ledger.total_known)} />
-                <Fig label={t(sv.label)} value={`${t(sv.prefix)} ${chf(sv.value)}`.trim()} accent={sv.saves} />
-              </div>
+                <Fig label={t(sv.label)} prefix={t(sv.prefix)} value={chf(sv.value)} accent={sv.saves} />
+              </StatGrid>
               <table className="w-full text-[13px]">
                 <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
                   <tr className="border-b border-line">
@@ -207,12 +207,23 @@ export default function ReportPage() {
   );
 }
 
-function Fig({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+function Fig({
+  label,
+  value,
+  prefix,
+  sub,
+  accent,
+}: { label: string; value: string; prefix?: string; sub?: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg bg-paper px-4 py-3">
-      <div className="text-[12px] text-muted">{label}</div>
-      <div className={`num mt-0.5 text-xl font-semibold ${accent ? "text-teal-700" : "text-navy-900"}`}>{value}</div>
-      {sub && <div className="text-[11.5px] text-amber-700">{sub}</div>}
+    <div className="rounded-[var(--radius-card)] border border-line px-4 py-3">
+      <div className="truncate text-[12px] text-muted" title={label}>
+        {label}
+      </div>
+      <div className={`mt-1.5 text-[22px] font-semibold leading-none ${accent ? "text-teal-700" : "text-navy-900"}`}>
+        {prefix && <span className="mr-1.5 text-[13px] font-medium">{prefix}</span>}
+        <Money value={value} />
+      </div>
+      {sub && <div className="mt-1.5 text-[11.5px] text-amber-700">{sub}</div>}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { ReviewPoints } from "@/components/ReviewPoints";
 import { PageTitle } from "@/components/Shell";
 import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { ViewMenu, useHidden } from "@/components/ViewMenu";
-import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatusBadge } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatGrid, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -52,7 +52,7 @@ export default function CostsPage() {
         <NotStarted pid={id} docs={a.documents.length} />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatGrid>
             <Kpi
               label={t("Assets reviewed")}
               value={chf(a.aum.total)}
@@ -93,7 +93,7 @@ export default function CostsPage() {
               }
             />
             <CoverageMeter ledger={L} />
-          </div>
+          </StatGrid>
           <ReadSummary a={a} />
         </>
       )}
@@ -155,16 +155,16 @@ function CoverageMeter({ ledger }: { ledger: Analysis["current"] }) {
   const share = Number(ledger.verified_share ?? 0);
   const n = ledger.unknown.length;
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3.5">
-      <div className="text-[12px] font-medium uppercase tracking-wide text-subtle">{t("Evidence coverage")}</div>
-      <div className="num mt-1 text-[22px] font-semibold leading-tight text-navy-900">
+    <div className="flex min-h-[116px] flex-col rounded-[var(--radius-card)] border border-line bg-surface px-5 py-4">
+      <div className="truncate text-[12.5px] font-medium text-muted">{t("Evidence coverage")}</div>
+      <div className="money num mt-2 text-[26px] font-semibold leading-none tracking-tight text-navy-900">
         {t("{pct}% observed", { pct: (share * 100).toFixed(0) })}
       </div>
-      <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-paper" aria-hidden>
+      <div className="mt-3 flex h-1.5 overflow-hidden rounded-[2px] bg-paper" aria-hidden>
         <div className="bg-green-700" style={{ width: `${share * 100}%` }} />
         <div className="hatch flex-1" />
       </div>
-      <div className="mt-1.5 text-[12.5px] text-muted">
+      <div className="mt-auto pt-2 text-[12.5px] text-muted">
         {n === 0 ? (
           t("All cost categories evidenced")
         ) : (
@@ -224,7 +224,7 @@ function LayerBreakdown({
               <BarChart
                 data={rows}
                 layout="vertical"
-                margin={{ left: 0, right: 120, top: 4, bottom: 4 }}
+                margin={{ left: 0, right: 190, top: 4, bottom: 4 }}
                 barCategoryGap={10}
               >
                 <XAxis type="number" hide />
@@ -656,7 +656,7 @@ function Requests({ a }: { a: Analysis }) {
           <div
             key={r.key}
             className={cn(
-              "rounded-lg border p-3.5",
+              "rounded-[var(--radius-card)] border p-3.5",
               r.status === "open" ? "border-amber-700/25 bg-amber-50/60" : "border-line bg-paper opacity-75",
             )}
           >

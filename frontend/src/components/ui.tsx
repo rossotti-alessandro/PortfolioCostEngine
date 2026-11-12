@@ -20,12 +20,12 @@ import { type ButtonHTMLAttributes, type ReactNode, useState } from "react";
 /* shadcn-style primitives, styled with the project tokens */
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 whitespace-nowrap",
+  "inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 whitespace-nowrap",
   {
     variants: {
       variant: {
-        primary: "bg-navy-900 text-white hover:bg-navy-800 shadow-sm",
-        accent: "bg-teal-700 text-white hover:bg-teal-600 shadow-sm",
+        primary: "bg-navy-900 text-white hover:bg-navy-800",
+        accent: "border border-teal-700 bg-surface text-teal-700 hover:bg-teal-50",
         outline: "border border-line-strong bg-surface text-ink hover:bg-paper",
         ghost: "text-muted hover:bg-navy-100/60 hover:text-ink",
         danger: "border border-red-700/30 bg-surface text-red-700 hover:bg-red-100",
@@ -54,13 +54,7 @@ export function Button({
 
 export function Card({ className, children, ...p }: { className?: string; children: ReactNode; id?: string }) {
   return (
-    <section
-      className={cn(
-        "rounded-[var(--radius-card)] border border-line bg-surface shadow-[0_1px_2px_rgb(11_37_69/0.04)]",
-        className,
-      )}
-      {...p}
-    >
+    <section className={cn("rounded-[var(--radius-card)] border border-line bg-surface", className)} {...p}>
       {children}
     </section>
   );
@@ -73,7 +67,9 @@ export function CardHeader({
   className,
 }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-start justify-between gap-4 border-b border-line px-5 py-3.5", className)}>
+    <div
+      className={cn("flex min-h-[52px] items-center justify-between gap-4 border-b border-line px-5 py-3", className)}
+    >
       <div className="flex min-w-0 items-center gap-1.5">
         <h2 className="text-[15px] font-semibold text-navy-900">{title}</h2>
         {subtitle && <InfoTip>{subtitle}</InfoTip>}
@@ -104,7 +100,7 @@ export function Badge({
     <span
       title={title}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-medium ring-1 ring-inset whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-[3px] px-1.5 py-0.5 text-[11.5px] font-medium ring-1 ring-inset whitespace-nowrap",
         TONES[tone],
         className,
       )}
@@ -135,6 +131,26 @@ export function StatusBadge({ m }: { m: string }) {
   );
 }
 
+const MONEY = /^(−?)([A-Z]{3}) (.+)$/;
+
+/** An amount as one unit: small currency code, tabular figure, never wrapped. Plain text passes through. */
+export function Money({ value, className }: { value: ReactNode; className?: string }) {
+  const m = typeof value === "string" ? MONEY.exec(value) : null;
+  if (!m) return <span className={cn("money num", className)}>{value}</span>;
+  return (
+    <span className={cn("money num", className)}>
+      <span className="mr-[0.3em] align-[0.12em] text-[0.6em] font-medium tracking-wide opacity-70">{m[2]}</span>
+      {m[1]}
+      {m[3]}
+    </span>
+  );
+}
+
+/** Figures in a row of equal cards that reflow instead of squeezing (no wrapped numbers on narrow screens). */
+export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3", className)}>{children}</div>;
+}
+
 export function Kpi({
   label,
   value,
@@ -152,25 +168,32 @@ export function Kpi({
   onClick?: () => void;
 }) {
   const cls = cn(
-    "num mt-1 text-[22px] font-semibold leading-tight",
+    "mt-2 block text-[26px] font-semibold leading-none tracking-tight",
     tone === "teal" ? "text-teal-700" : tone === "amber" ? "text-amber-700" : "text-navy-900",
   );
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3.5" title={help}>
-      <div className="text-[12px] font-medium uppercase tracking-wide text-subtle">{label}</div>
+    <div
+      className="flex min-h-[116px] flex-col rounded-[var(--radius-card)] border border-line bg-surface px-5 py-4"
+      title={help}
+    >
+      <div className="truncate text-[12.5px] font-medium text-muted" title={label}>
+        {label}
+      </div>
       {onClick ? (
         <button
           type="button"
           onClick={onClick}
           title={t("How is this calculated?")}
-          className={cn(cls, "block text-left decoration-dotted underline-offset-4 hover:underline")}
+          className={cn(cls, "text-left decoration-dotted decoration-1 underline-offset-[6px] hover:underline")}
         >
-          {value}
+          <Money value={value} />
         </button>
       ) : (
-        <div className={cls}>{value}</div>
+        <div className={cls}>
+          <Money value={value} />
+        </div>
       )}
-      {sub && <div className="mt-1 text-[12.5px] text-muted">{sub}</div>}
+      {sub && <div className="mt-auto pt-3 text-[12.5px] leading-snug text-muted">{sub}</div>}
     </div>
   );
 }
@@ -250,7 +273,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export const inputCls =
-  "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-subtle focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 num";
+  "h-9 w-full rounded-[var(--radius-control)] border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-subtle focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 num";
 
 export function Empty({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
   return (
