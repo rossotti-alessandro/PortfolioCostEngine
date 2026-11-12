@@ -90,7 +90,8 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 | `GapCard` | an unknown cost + the document that would resolve it + "Add to request letter" |
 | `CostWaterfall` | stacked/waterfall by layer with unknown hatched; table twin toggle |
 | `ScenarioCompare` | current vs same-holdings vs changed-holdings, with comparability badge |
-| `Stepper` | New analysis → Upload → Review → Costs → Compare → Report, always visible in the flow |
+| `StepBar` | Documents → Check values → Costs → Compare → Report across the top of the prospect header (`components/Shell.tsx`), always visible; done tick per step, count of values still to check; Internal economics as a lock link at the right end |
+| `AccountMenu` | bottom of the sidebar: user, language and demo role; opens language switch, role picker and sign-out. The sidebar itself holds only places: Clients, Cost reviews, Library |
 | `ReviewTable` | keyboard: j/k move, a accept, e edit, r reject, Enter open source |
 | `DemoWatermark` | "SYNTHETIC DEMO" on every page and export when the dataset is synthetic |
 
