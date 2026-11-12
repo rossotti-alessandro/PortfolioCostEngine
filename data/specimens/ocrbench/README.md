@@ -14,7 +14,7 @@ images, so it lives in `var/` and is not committed.
 | File | Role |
 |---|---|
 | `select_pages.py` | Picks a stratified page set (18 document families x EN/DE/FR/IT), renders pages at 144 dpi, makes simulated scans. Writes `pages.json`. |
-| `groundtruth.txt` | Hand-checked fee figures per page (label, value as printed, table or not). Read from the rendered page, not from the text layer. |
+| `groundtruth.txt` | Hand-checked fee figures per page (label, value as printed, layout element: T table, K key-value, N text, F footnote). Read from the rendered page, not from the text layer. |
 | `gt_build.py` | Turns `groundtruth.txt` into `groundtruth.json` and adds each value's box from the PDF text layer. |
 | `adapters.py` | One function per engine, same output shape: text, word/line boxes, layout regions, tables, fees. |
 | `run.py` | Runs one engine over the pages in its own process (so peak RAM is that engine's). |
@@ -23,7 +23,9 @@ images, so it lives in `var/` and is not committed.
 | `hybrid.py` | Builds hybrid pipelines from stored outputs (no new model calls) and the consensus/review numbers. |
 | `lab.py`, `lab_template.html` | Builds the lab viewer in `var/ocrbench/lab/`. |
 | `models.json` | Facts per engine (size, licence, what it returns) and the models looked at but not run, with the reason. |
-| `vlm_core.json` | The 23-page core set the slow VLMs run on first. |
+| `vlm_core.json` | The 23-page core set the slow VLMs run on first, and the 8-page `mini` set for the slowest ones. |
+| `app_run.py` | Runs the FeeLens upload pipeline (`pce.extraction.parsers.extract`) on every page as one more engine. Backend env. |
+| `app_e2e.py` | Runs the SYNTHETIC prospects end to end through the app and the accuracy protocol, for the lab's "App end to end" view. Backend env. |
 
 ## Run it
 
@@ -42,6 +44,8 @@ for e in pdfplumber tesseract rapidocr doctr heron ppdoclayout3 doclayout_yolo t
   $PY data/specimens/ocrbench/run.py $e; done
 for e in paddleocr_vl lighton_ocr glm_ocr granite_docling qwen3vl got_ocr florence2; do
   $PY data/specimens/ocrbench/run.py $e --core; done       # add no flag for all pages (hours on CPU)
+(cd backend && OMP_THREAD_LIMIT=1 uv run python ../data/specimens/ocrbench/app_run.py \
+  && OMP_THREAD_LIMIT=1 uv run python ../data/specimens/ocrbench/app_e2e.py)   # the app as an engine
 $PY data/specimens/ocrbench/hybrid.py --vlm paddleocr_vl
 $PY data/specimens/ocrbench/score.py
 $PY data/specimens/ocrbench/lab.py && (cd var/ocrbench/lab && python3 -m http.server 8765)
@@ -70,5 +74,5 @@ Weights download once from Hugging Face into the normal cache (about 20 GB for a
   *Table-aware*: also keeps every rate or amount inside a table whose cells or heading mention a fee.
 - *s/page*: median wall time after model load, 4 CPU cores (Xeon with AMX), no GPU.
 
-Known limits: 38 pages with fee figures is enough to rank engines, not to quote a precise accuracy;
+Known limits: 54 pages with 813 fee figures is enough to rank engines, not to quote a precise accuracy;
 labels are short forms of what is printed; one annotator (Claude), spot-checked against the rendered page.
