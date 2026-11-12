@@ -116,7 +116,7 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <p class="sub" id="lede">Local OCR, layout, table and vision-language models run on real public bank and fund documents, scored against hand-checked fee figures.</p>
     </div>
     <nav class="tabs" aria-label="Views">
-      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#app">App end to end</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
+      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#app">App end to end</a><a href="#workflows">Workflows</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
     </nav>
   </header>
 
@@ -208,6 +208,26 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
     <div class="panel"><h2>Extraction errors per document</h2><p class="muted" style="margin-top:0">From the accuracy protocol (docs/EVALUATION_PROTOCOL.md): every expected value the app did not read correctly.</p><div class="scroll"><table id="docerr"></table></div></div>
   </section>
 
+  <section class="view" id="v-workflows" hidden>
+    <div class="panel">
+      <h2>Complete workflows, side by side</h2>
+      <p class="muted" style="margin-top:0">Each workflow turns a page into fee figures, each with its label, its value and the box it was read from. All of them are scored the same way against the figures checked by hand. A figure "sent to review" is shown to the analyst with a warning; a "wrong value accepted" is the dangerous error: a confident number that is not on the page under that label.</p>
+      <div class="controls"><label for="wscope">Pages <select id="wscope"><option value="common">Same pages for every workflow (fair)</option><option value="all">Every page each workflow ran</option></select></label></div>
+      <div class="scroll"><table id="wtable"></table></div>
+      <details><summary>How each workflow works</summary><div id="whow"></div></details>
+    </div>
+    <div class="panel" id="wport" hidden><h2>Whole portfolio, SYNTHETIC prospects</h2><p class="muted" style="margin-top:0">The workflows that run inside the app, applied to every document of a prospect: do the final totals match the numbers pinned by hand?</p><div class="scroll"><table id="wptable"></table></div></div>
+    <div class="panel">
+      <h2>Page by page</h2>
+      <div class="controls"><label for="wpage">Page <select id="wpage"></select></label><label for="wwf">Workflow on the page <select id="wwf"></select></label></div>
+      <div class="bench" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:12px">
+        <div class="stage" id="wstage"></div>
+        <div style="min-width:0"><div class="scroll" style="max-height:75vh;overflow-y:auto"><table class="gtt" id="wgrid"></table></div>
+        <details><summary>Figures this workflow reported that are not fees under that label</summary><div id="wextra"></div></details></div>
+      </div>
+    </div>
+  </section>
+
   <section class="view" id="v-models" hidden>
     <div class="cards" id="cards"></div>
     <div class="panel">
@@ -269,12 +289,13 @@ function boot() {
 
 function route() {
   const h = (location.hash || "#overview").slice(1);
-  const views = ["overview", "documents", "app", "models", "pipeline"];
+  const views = ["overview", "documents", "app", "workflows", "models", "pipeline"];
   const v = views.includes(h) ? h : "overview";
   views.forEach(x => { $("#v-" + x).hidden = x !== v; });
   document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + v ? "page" : "false"));
   if (v === "documents" && !cur) pick(D.pages[0].id);
   if (v === "app") appView();
+  if (v === "workflows") wfView();
 }
 
 const COLS = [
@@ -476,6 +497,50 @@ function showAtom(i, tr) {
     const boxes = ss.map(s => `<rect x="${s.b[0] - 3}" y="${s.b[1] - 3}" width="${s.b[2] - s.b[0] + 6}" height="${s.b[3] - s.b[1] + 6}" fill="none" stroke="var(--gt)" stroke-width="3" vector-effect="non-scaling-stroke"><title>${esc(s.label)}</title></rect>`).join("");
     return `<div class="cap"><span class="muted mono">${esc(d.file)} · page ${ss[0].page}</span></div><div class="stage" style="margin-bottom:12px"><svg viewBox="0 0 ${pg.w} ${pg.h}"><image href="${pg.img}" width="${pg.w}" height="${pg.h}"/>${boxes}</svg></div>`;
   }).join("") || "<p class='muted'>The source is a spreadsheet cell or has no box.</p>";
+}
+
+const HIT = {found: ["✓", "var(--hit)"], review: ["?", "var(--gt)"], missed: ["✗", "var(--miss)"]};
+function wfView() {
+  const A = D.arena;
+  if (!A) { $("#wtable").innerHTML = "<tr><td>No workflow run in this build.</td></tr>"; return; }
+  const keys = Object.keys(A.workflows);
+  if (!$("#wpage").options.length) {
+    const ids = Object.keys(A.per_page);
+    $("#wpage").innerHTML = D.pages.filter(p => ids.includes(p.id)).map(p => `<option value="${p.id}">${esc(p.issuer)} · p${p.page}${p.variant === "scan-sim" ? " (simulated scan)" : ""} · ${p.gt.length} figures</option>`).join("");
+    $("#wwf").innerHTML = keys.map(k => `<option value="${k}">${esc(A.workflows[k].name)}</option>`).join("");
+    $("#wwf").value = keys.find(k => k.startsWith("agentic")) || "finder_verify";
+    ["wpage", "wwf"].forEach(id => $("#" + id).addEventListener("change", wfPage));
+    $("#wscope").addEventListener("change", wfTable);
+    $("#whow").innerHTML = "<ul>" + keys.map(k => `<li><b>${esc(A.workflows[k].name)}</b>: ${esc(A.workflows[k].how)}</li>`).join("") + "</ul>";
+  }
+  wfTable(); wfPortfolio(); wfPage();
+}
+function wfTable() {
+  const A = D.arena, sc = $("#wscope").value;
+  const rows = Object.entries(A.workflows).filter(([, w]) => w[sc]).sort((a, b) => b[1][sc].f1 - a[1][sc].f1);
+  const bar = v => `<div class="barcell"><div class="bartrack"><div class="bar" style="width:${v * 100}%"></div></div><span class="mono">${pct(v)}</span></div>`;
+  $("#wtable").innerHTML = `<tr><th>Workflow</th><th class="num">Pages</th><th>Fees found (recall)</th><th class="num">Precision</th><th class="num">Sent to review</th><th class="num">Wrong values accepted</th><th class="num">Box on the value</th><th class="num">s/page</th></tr>` +
+    rows.map(([k, w]) => { const s = w[sc]; return `<tr><td><b>${esc(w.name)}</b></td><td class="num">${s.pages}</td><td>${bar(s.recall)}</td><td class="num">${pct(s.precision)}</td><td class="num">${pct(s.review_share)}</td><td class="num">${s.wrong_accepted} (${(s.wrong_accepted_share * 100).toFixed(1)}%)</td><td class="num">${pct(s.bbox_hit_rate)}</td><td class="num">${s.s_per_page ?? "–"}</td></tr>`; }).join("");
+}
+function wfPortfolio() {
+  const P = D.arena.portfolio;
+  $("#wport").hidden = !P;
+  if (!P) return;
+  $("#wptable").innerHTML = `<tr><th>Workflow</th><th>Prospect</th><th>Copies</th><th class="num">Figures read</th><th class="num">Totals right</th><th>Wrong total without warning</th></tr>` +
+    P.map(r => `<tr><td>${esc(r.workflow)}</td><td>${esc(r.corpus.replace("synthetic-", "SYNTHETIC ").toUpperCase())}</td><td>${r.variant === "scan" ? "scanned" : "original PDFs"}</td><td class="num">${pct(r.recall)}</td><td class="num">${r.totals_ok}/${r.totals}</td><td><span class="chip ${r.silent_error ? "risk" : "ok"}">${r.silent_error ? "yes" : "no"}</span></td></tr>`).join("");
+}
+function wfPage() {
+  const A = D.arena, id = $("#wpage").value, k = $("#wwf").value, p = D.pages.find(x => x.id === id), pp = A.per_page[id];
+  const keys = Object.keys(A.workflows).filter(x => pp.hits[x]);
+  const hits = pp.hits[k] || [];
+  let g = "";
+  p.gt.forEach((t, i) => { if (!t.b) return; const h = HIT[hits[i]] || HIT.missed; g += `<rect x="${t.b[0] - 3}" y="${t.b[1] - 3}" width="${t.b[2] - t.b[0] + 6}" height="${t.b[3] - t.b[1] + 6}" fill="none" stroke="${h[1]}" stroke-width="3" vector-effect="non-scaling-stroke"><title>${esc(t.label)}: ${esc(t.value)} (${hits[i] || "not run"})</title></rect>`; });
+  (pp.extra[k] || []).forEach(x => { if (!x.bbox) return; const b = x.bbox.map(v => v * 2); g += `<rect x="${b[0] - 2}" y="${b[1] - 2}" width="${b[2] - b[0] + 4}" height="${b[3] - b[1] + 4}" fill="none" stroke="var(--region)" stroke-width="2" stroke-dasharray="4 2" vector-effect="non-scaling-stroke"><title>reported, not a fee here: ${esc(x.label)} = ${esc(x.value)}</title></rect>`; });
+  $("#wstage").innerHTML = `<svg viewBox="0 0 ${p.w} ${p.h}" role="img" aria-label="page with figures"><image href="img/${p.id}.jpg" width="${p.w}" height="${p.h}"/>${g}</svg><div class="muted" style="font-size:.8rem;padding:6px">Solid: hand-checked figures (green found, amber sent to review, red missed). Dashed purple: reported by this workflow but not a fee under that label.</div>`;
+  $("#wgrid").innerHTML = `<tr><th>Figure</th><th>Value</th>${keys.map(x => `<th title="${esc(A.workflows[x].name)}">${esc(A.workflows[x].name.replace("Agentic review", "Agent").replace(" after SC-5.8", " now").replace(" before SC-5.8", " before"))}</th>`).join("")}</tr>` +
+    p.gt.map((t, i) => `<tr><td>${esc(t.label)}</td><td class="mono">${esc(t.value)}</td>${keys.map(x => { const h = HIT[pp.hits[x][i]]; return `<td style="color:${h[1]};font-weight:600">${h[0]}</td>`; }).join("")}</tr>`).join("") || "<tr><td>No fee is printed on this page: every figure reported here is a false one.</td></tr>";
+  const ex = pp.extra[k] || [];
+  $("#wextra").innerHTML = ex.length ? "<ul>" + ex.map(x => `<li>${esc(x.label)} = <span class="mono">${esc(x.value)}</span>${x.needs_review ? " <span class='chip'>sent to review</span>" : ""}</li>`).join("") + "</ul>" : "<p class='muted'>None.</p>";
 }
 
 function cards() {
