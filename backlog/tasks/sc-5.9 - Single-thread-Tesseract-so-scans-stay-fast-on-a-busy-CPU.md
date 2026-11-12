@@ -90,6 +90,11 @@ Under load: about 35x faster per page. Idle: same speed (OCR already runs one pa
 
 ## Branch & Commits
 
-- Branch `claude/project-thread-gb52v5`
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-gb52v5 | 16c227f | 2026-11-12 | fix(extraction): run Tesseract single-threaded by default |
 
 ## Issues Encountered
+
+- The gate's toolchain test needs `gs` and `qpdf` installed (bootstrap.sh does it); a bare cloud
+  container without them fails `test_required_components_present`, unrelated to this change.
