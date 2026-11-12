@@ -1,15 +1,15 @@
 ---
 id: SC-5.16
 title: "Read every holding on real statements: cash, bonds, shorts, second client"
-status: To Do
+status: "Done"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Audit production readiness and close gaps"
+model: "claude-opus-5-5"
+progress: 100
+branch: "claude/project-thread-sdc7fx"
 pr: ""
 created_date: "2026-11-12 21:55"
-updated_date: "2026-11-12 21:55"
+updated_date: "2026-11-12 23:26"
 labels:
   - extraction
 dependencies: []
@@ -58,16 +58,36 @@ Every rule must be checked against the synthetic prospects and the arena pages t
 
 ## Acceptance Criteria
 
-- [ ] #1 Fidelity US sample: 30 of 34 holdings or better; AJ Bell: first client's AUM within 1% or a two-client warning
-- [ ] #2 Synthetic prospects and Fidelity UK unchanged (`pce.evaluation` gates pass, score.py row identical)
+- [x] #1 Fidelity US sample: 30 of 34 holdings or better; AJ Bell: first client's AUM within 1% or a two-client warning
+- [x] #2 Synthetic prospects and Fidelity UK unchanged (`pce.evaluation` gates pass, score.py row identical)
 
 ## Implementation Notes
 
+Owned paths also include `backend/src/pce/analysis.py` (the `second_person:*` check) and
+`data/specimens/statements/RESULTS.md`. Proposed approach steps 1, 2 and 4 done; step 3 (reading the AJ Bell
+overview's cash and off-panel policy lines) not done: the two alarms tell the analyst, and a rule that turns
+overview lines into holdings risks double counting on statements whose tables already include them.
+
 ## Outcome
 
+- Fidelity US sample: 34 of 34 holdings (was 17), AUM 278,922.20 exact (was 35% short), reconciliation
+  passes. Rows now read: bonds priced per 100 of face value, short positions, prices with a footnote
+  letter, three-decimal quantities settled by quantity x price = value. Section subtotals and
+  transaction-table totals are no longer added up as the statement total.
+- AJ Bell demo report: new failing check `second_person:*` when a page header names a different person
+  (the check shows the page, never the name). AUM still 20% short, now with two alarms.
+- Fidelity UK and the synthetic prospects unchanged (`pce.evaluation`: P-1042 and P-2077 digital 100%,
+  scans 85.5% and 96.2%, wrong 0). Silent AUM errors on the four statements: 0.
+- Edward Jones (classified as a cash statement) left open.
+
 ## Issues Encountered
+
+The first synthetic test passed against the old code by coincidence (each section had its own header row),
+so it was rewritten to mirror the real layout: two sections under one header.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-sdc7fx | 906aa46 | 2026-11-12 | fix(extraction): read bonds, shorts and subtotals on US statements |
+| claude/project-thread-sdc7fx | 8ac5009 | 2026-11-12 | feat(analysis): alarm when one file holds two clients' statements |

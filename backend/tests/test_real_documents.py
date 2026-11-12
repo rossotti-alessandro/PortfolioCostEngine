@@ -252,3 +252,101 @@ def test_overview_total_larger_than_holdings_raises_an_alarm(tmp_path):
     checks = {c["key"]: c for c in a["checks"]}
     assert checks["printed_total:1"]["status"] == "fail"
     assert "10,000.00" in checks["printed_total:1"]["detail"]
+
+
+def test_holdings_rows_us_statements_print(tmp_path):
+    # Fidelity US sample (SC-9.6 found 17 of 34 holdings): a footnote letter after the price, a short
+    # position with a negative value, bonds priced per 100 of face value, and quantities with three
+    # decimals ("500.000"), which are ambiguous on their own but settled by quantity x price = value.
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / "us2.pdf", "Investment report")
+    d.header("Synthetic Brokerage LLC", "Boston", "SYNTHETIC investment report", "Holdings")
+    cols = [(50, "l"), (230, "r"), (300, "r"), (370, "r"), (440, "r"), (510, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    row("Description", "Quantity", "Price Per Unit", "Ending Market Value", "Cost Basis")
+    row("ALPHA INC (ALP)", "25.00", "$525.31", "$13,132.75", "$9,350.12")
+    row("BETA COM (BET)", "30.00", "203.15A", "6,094.50", "4,149.75")
+    row("GAMMA GROUP LTD (GAM)", "-100.00", "137.10", "-13,710.00", "-14,510.99")
+    row("DELTA REIT INC (DLT)", "500.000", "10.57", "5,285.00", "unknown")
+    row("EPSILON CORP NT 6% 12/15/13", "5,000.00", "$101.250", "$5,062.50", "$10,000.00")
+    d.save()
+    res, _ = extract("us2.pdf", (tmp_path / "us2.pdf").read_bytes())
+    pos = {f.label: f.value for f in res.facts if f.kind == "position"}
+    assert pos == {
+        "ALPHA INC (ALP)": "13132.75",
+        "BETA COM (BET)": "6094.50",
+        "GAMMA GROUP LTD (GAM)": "-13710.00",
+        "DELTA REIT INC (DLT)": "5285.00",
+        "EPSILON CORP NT 6% 12/15/13": "5062.50",
+    }
+
+
+def test_section_subtotals_are_not_the_account_total(tmp_path):
+    # Fidelity US sample: "Total Mutual Funds (12% of account holdings)" closes a section, "Total Holdings"
+    # closes the account. Adding section subtotals gave a statement total of 99,966.96 for 278,922.20.
+    from pce.demo.generate import Doc
+
+    d = Doc(tmp_path / "us3.pdf", "Investment report")
+    d.header("Synthetic Brokerage LLC", "Boston", "SYNTHETIC investment report", "Holdings")
+    cols = [(50, "l"), (300, "r"), (380, "r"), (460, "r"), (530, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    row("Description", "Quantity", "Price Per Unit", "Ending Market Value", "Cost Basis")
+    row("ALPHA FUND CL I (ALF)", "100.00", "$10.00", "$1,000.00", "$900.00")
+    row("Total Mutual Funds (40% of account holdings)", "$1,000.00", "$900.00", "$100.00")
+    row("BETA INC (BET)", "30.00", "$50.00", "$1,500.00", "$1,000.00")
+    row("Total Stocks (60% of account holdings)", "$1,500.00", "$1,000.00", "$500.00")
+    row("Total Holdings", "$2,500.00", "$1,900.00", "$600.00")
+    d.save()
+    res, _ = extract("us3.pdf", (tmp_path / "us3.pdf").read_bytes())
+    assert {f.key: f.value for f in res.facts}["total:assets"] == "2500.00"
+    assert sorted(f.value for f in res.facts if f.kind == "position") == ["1000.00", "1500.00"]
+
+
+def test_a_second_person_in_the_file_raises_an_alarm(tmp_path):
+    # AJ Bell demo report (corpus): one PDF holds Mr M Thomas's report, then Mr K Adams's from page 16.
+    # Adding both people's holdings into one prospect's AUM must not pass silently.
+    from pce.demo.generate import Doc
+    from pce.demo.offline import run
+
+    folder = tmp_path / "pack"
+    folder.mkdir()
+    d = Doc(folder / "two.pdf", "Client valuation")
+    cols = [(50, "l"), (250, "r"), (310, "r"), (370, "r"), (430, "r")]
+
+    def row(*cells: str) -> None:
+        d.row([(x, t, a) for (x, a), t in zip(cols, cells, strict=False)])
+
+    for person, holding in (("Mr A Alpha", "ALPHA EQUITY I ACC"), ("Mrs B Beta", "BETA BOND FUND INC")):
+        d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client valuation", person)
+        row("Holding name", "Quantity", "Price (£)", "Value (£)", "Cost (£)")
+        row(holding, "1,000.00000", "5.00000", "5,000.00", "4,000.00")
+        row("Total", "5,000.00", "4,000.00")
+        d.c.showPage()
+        d.page += 1
+    d.save()
+    checks = {c["key"]: c for c in run(folder)["checks"]}
+    assert checks["second_person:1"]["status"] == "fail"
+    assert "page 2" in checks["second_person:1"]["detail"]
+    assert "Beta" not in checks["second_person:1"]["detail"]  # names stay in the document, not in checks
+
+
+def test_one_person_on_every_page_raises_no_alarm(tmp_path):
+    from pce.demo.generate import Doc
+    from pce.demo.offline import run
+
+    folder = tmp_path / "pack"
+    folder.mkdir()
+    d = Doc(folder / "one.pdf", "Client valuation")
+    for _ in range(2):
+        d.header("Synthetic Platform Ltd", "London", "SYNTHETIC client valuation", "Mr A Alpha")
+        d.c.showPage()
+        d.page += 1
+    d.save()
+    assert not [c for c in run(folder)["checks"] if c["key"].startswith("second_person")]

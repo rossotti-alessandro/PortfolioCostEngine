@@ -28,7 +28,7 @@ decision or signature, not code.
 | # | Gate | Owner | Status 2026-11-12 | Closes with |
 |---|---|---|---|---|
 | G1 | Extraction stack merged: #17, then #15, #16, #21, #27 (#26 independent) | Ale (rule 9) | **Closed 2026-11-12**: all merged on Ale's instruction, after the combined tree passed the full gate (section 3.3) | Done |
-| G2 | Accuracy on real statements measured (holdings, AUM, statement fees) | Engineering | Partial 2026-11-12: 4 public statements checked, no silent AUM error left, holdings recall 50% on the hardest sample (`data/specimens/statements/RESULTS.md`); Swiss statements only in the pilot | SC-9.6, SC-5.16 |
+| G2 | Accuracy on real statements measured (holdings, AUM, statement fees) | Engineering | Partial 2026-11-12: 4 public statements checked, no silent AUM error left; Fidelity US 34 of 34 holdings with exact AUM after SC-5.16; two-client files raise an alarm (`data/specimens/statements/RESULTS.md`); Swiss statements only in the pilot | SC-9.6, SC-5.16 |
 | G3 | Where the pilot runs: Safe Capital machine (recommended) or Swiss host | Ale + Massimo | Open decision | SC-11.6 (local) or SC-11.2 (hosted) |
 | G4 | Named users with MFA and roles; no shared admin password | Engineering, Ale approves (rule 9) | Open. Only one env-seeded admin exists | SC-11.7 |
 | G5 | Delete a prospect and everything derived on request | Engineering | Open. No delete endpoint on main | SC-11.11 |
@@ -87,8 +87,8 @@ regression, but the synthetic prospects no longer tell strategies apart: only re
 Running the same 63 pages again will not change the decision. The useful next tests are:
 
 1. **Real statement layouts** (SC-9.6): started 2026-11-12 on the 4 usable public statements
-   (`data/specimens/statements/RESULTS.md`). It found two bugs (wrong currency on US rows, a 20% AUM shortfall
-   with no alarm), both now fixed or alarmed. Public Swiss and Italian statements barely exist, so the pilot
+   (`data/specimens/statements/RESULTS.md`). It found wrong currency on US rows, unread bonds and shorts, section
+   subtotals summed as the total, and a 20% AUM shortfall with no alarm: all fixed or alarmed (SC-5.16). Public Swiss and Italian statements barely exist, so the pilot
    is the real test.
 2. **The supervised pilot itself** (section 4): every figure checked by an analyst gives a real error rate on
    real documents at no extra labelling cost.
