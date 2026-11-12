@@ -7,9 +7,9 @@ owner: "Simplify upload-to-report user flow"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-3ahesb"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/19"
 created_date: "2026-11-12 13:30"
-updated_date: "2026-11-12 13:21"
+updated_date: "2026-11-12 13:22"
 labels:
   - ui
   - report
