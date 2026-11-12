@@ -1,11 +1,11 @@
 ---
 id: SC-5.9
 title: Single-thread Tesseract so scans stay fast on a busy CPU
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Fix slow reading of scanned pages"
 model: "claude-opus"
-progress: 5
+progress: 100
 branch: "claude/project-thread-gb52v5"
 pr: ""
 created_date: "2026-11-12 00:40"
@@ -44,6 +44,9 @@ Reproduced on a 4-core cloud container, synthetic 300 dpi A4 page (60 text lines
 | idle | 1.96 s | 2.03 s |
 | 4 busy loops | 86.6 s | 2.41 s |
 
+Through the app's own OCR path (`layout._ocr_lines`, an oversized synthetic page), 4 busy loops:
+`OMP_THREAD_LIMIT=4` did not finish in 170 s, `OMP_THREAD_LIMIT=1` took 19.6 s. Idle: 14.9 s vs 15.3 s.
+
 ### User Flow Impact
 
 An analyst uploading a scanned statement on a machine doing anything else waits seconds, not minutes.
@@ -68,14 +71,25 @@ Under load: about 35x faster per page. Idle: same speed (OCR already runs one pa
 
 ## Acceptance Criteria
 
-- [ ] #1 Importing `pce.extraction` sets `OMP_THREAD_LIMIT=1` when unset (tested)
-- [ ] #2 An explicit `OMP_THREAD_LIMIT` is kept (tested)
-- [ ] #3 Gate green
+- [x] #1 Importing `pce.extraction` sets `OMP_THREAD_LIMIT=1` when unset (tested)
+- [x] #2 An explicit `OMP_THREAD_LIMIT` is kept (tested)
+- [x] #3 Gate green
 
 ## Implementation Notes
 
+- Owned paths as declared. No overlap with PR #15 (edits `layout.py`, adds `verify.py`) or PR #16: both
+  call Tesseract through modules inside `pce.extraction`, so both get the limit without edits.
+- `node scripts/backlog-new-id.mjs --help` has no help flag and reserved top-level id SC-12 by mistake
+  (branch `backlog-ids/sc-12`, unused). The proxy refuses ref deletion; the coordinator can reuse it.
+
 ## Outcome
 
-- **Status**: <!-- completed | partial | blocked -->
+- **Status**: completed
+- Every Tesseract call made from the backend now runs single-threaded unless `OMP_THREAD_LIMIT` is
+  set explicitly. The Docker image (Render) already set it, so the live demo does not change.
+
+## Branch & Commits
+
+- Branch `claude/project-thread-gb52v5`
 
 ## Issues Encountered
