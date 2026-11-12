@@ -1,15 +1,15 @@
 ---
 id: SC-5.9
 title: Single-thread Tesseract so scans stay fast on a busy CPU
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Fix slow reading of scanned pages"
+model: "claude-opus"
+progress: 5
+branch: "claude/project-thread-gb52v5"
 pr: ""
 created_date: "2026-11-12 00:40"
-updated_date: "2026-11-12 00:40"
+updated_date: "2026-11-12 00:36"
 labels:
   - extraction
   - performance
