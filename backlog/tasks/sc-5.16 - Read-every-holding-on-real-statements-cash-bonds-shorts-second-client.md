@@ -1,15 +1,15 @@
 ---
 id: SC-5.16
 title: "Read every holding on real statements: cash, bonds, shorts, second client"
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Audit production readiness and close gaps"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-sdc7fx"
 pr: ""
 created_date: "2026-11-12 21:55"
-updated_date: "2026-11-12 21:55"
+updated_date: "2026-11-12 22:57"
 labels:
   - extraction
 dependencies: []
