@@ -38,11 +38,22 @@ test("02 new prospect: upload statements, cost report and KIDs through the UI", 
   await page.getByRole("button", { name: "Create and upload documents" }).click();
   await expect(page).toHaveURL(/\/p\/\d+\/documents/);
   pid = Number(page.url().match(/\/p\/(\d+)/)?.[1]);
+  // Before any statement: no CHF 0 total and no green "all evidenced" badge, a clear first step instead.
+  await page.goto(`/p/${pid}/costs`);
+  await expect(page.getByText("Costs are not calculated yet")).toBeVisible();
+  await expect(page.getByText("No statement of assets yet")).toBeVisible();
+  await expect(page.getByText("All cost categories evidenced")).toHaveCount(0);
+  await page.getByRole("button", { name: "Upload documents" }).click();
+  await expect(page).toHaveURL(/\/documents$/);
   const files = readdirSync(P2077).map((f) => join(P2077, f));
   if (existsSync(REAL_KID)) files.push(REAL_KID);
   await page.getByLabel("Choose files to upload").setInputFiles(files);
-  await expect(page.getByText("Last upload")).toBeVisible({ timeout: 90_000 });
+  // Each file gets its own row with its result and the values read.
+  await expect(page.getByText("Upload finished")).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText(`${files.length} of ${files.length} files processed`)).toBeVisible();
   for (const f of files) await expect(page.getByText(f.split("/").pop() as string).first()).toBeVisible();
+  await expect(page.getByText(/^\d+ values read$/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review values" })).toBeVisible();
   await expect(page.getByText("unknown", { exact: true })).toHaveCount(0);
   await shot(page, "02-documents");
 });
@@ -80,7 +91,7 @@ test("06 demo prospect P-1042: costs, compare, report PDF", async ({ page }) => 
   const demo = rows.find((x) => x.code === "P-1042");
   expect(demo).toBeTruthy();
   await page.goto(`/p/${demo?.id}/costs`);
-  await expect(page.getByText("Cost ledger")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cost ledger" })).toBeVisible();
   await shot(page, "06-demo-costs");
   await page.goto(`/p/${demo?.id}/compare`);
   await expect(page.getByText("Cost by layer, today vs proposal")).toBeVisible();
@@ -89,11 +100,12 @@ test("06 demo prospect P-1042: costs, compare, report PDF", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Client report" })).toBeVisible();
   const [dl] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Download PDF" }).click(),
+    page.getByRole("button", { name: "PDF in Italian" }).click(),
   ]);
   const path = await dl.path();
   expect(path).toBeTruthy();
-  expect(dl.suggestedFilename()).toMatch(/\.pdf$/);
+  expect(dl.suggestedFilename()).toMatch(/-it\.pdf$/);
+  await expect(page.getByTestId("read-summary")).toContainText("values read from");
   await shot(page, "08-demo-report");
 });
 

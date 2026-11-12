@@ -14,7 +14,7 @@ import re
 import time
 import zipfile
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -945,14 +945,14 @@ def audit_log(pid: int, db: DB, c: C) -> list[dict]:
 
 
 @app.get("/api/prospects/{pid}/report.pdf")
-def report_pdf(pid: int, db: DB, c: C) -> Response:
+def report_pdf(pid: int, db: DB, c: C, lang: Literal["en", "it"] = "en") -> Response:
     from .report import render_client_report
 
     p = get_prospect(db, c, pid)
     r = client_safe(
         compute(db, c, p)
     )  # defence in depth: the client report never receives internal economics
-    pdf = render_client_report(r)
+    pdf = render_client_report(r, lang)
     safe_code = re.sub(r"[^A-Za-z0-9_-]", "", p.code)  # the code is user input; keep the header clean
     audit(
         db,
@@ -966,5 +966,5 @@ def report_pdf(pid: int, db: DB, c: C) -> Response:
     return Response(
         pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="cost-review-{safe_code}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="cost-review-{safe_code}-{lang}.pdf"'},
     )

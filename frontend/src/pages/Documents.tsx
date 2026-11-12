@@ -115,7 +115,11 @@ function UploadProgress({
     <Card>
       <CardHeader
         title={busy ? t("Reading documents…") : t("Upload finished")}
-        subtitle={t("{done} of {n} files processed", { done, n: rows.length })}
+        actions={
+          <span className="num text-[12.5px] text-muted">
+            {t("{done} of {n} files processed", { done, n: rows.length })}
+          </span>
+        }
       />
       <div className="mx-5 mb-1 h-1.5 overflow-hidden rounded-full bg-paper" aria-hidden>
         <div className="h-full bg-teal-600 transition-all" style={{ width: `${(done / rows.length) * 100}%` }} />
