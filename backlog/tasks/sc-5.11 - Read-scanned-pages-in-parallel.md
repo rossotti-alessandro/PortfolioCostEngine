@@ -1,15 +1,15 @@
 ---
 id: SC-5.11
 title: Read scanned pages in parallel and keep the server responsive
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Read document pages in parallel"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-ch9r5h"
 pr: ""
 created_date: "2026-11-12 14:30"
-updated_date: "2026-11-12 14:19"
+updated_date: "2026-11-12 14:35"
 labels:
   - extraction
   - performance
@@ -67,16 +67,33 @@ same behaviour and memory as today.
 
 ## Acceptance Criteria
 
-- [ ] #1 `read_pdf` output (pages, lines, cells, boxes, engines, confidences) is identical with 1 and 4 workers on the SYNTHETIC scan
-- [ ] #2 A 50-page SYNTHETIC scan reads at least 2x faster on 4 cores; the number is recorded here
-- [ ] #3 Worker count respects `PCE_OCR_WORKERS` and a fractional cgroup quota (Render free: 1)
-- [ ] #4 `python -m pce.evaluation` is unchanged versus main (all gates pass, same scores)
-- [ ] #5 The upload route no longer blocks the event loop
+- [x] #1 `read_pdf` output (pages, lines, cells, boxes, engines, confidences) is identical with 1 and 4 workers on the SYNTHETIC scan
+- [x] #2 A 50-page SYNTHETIC scan reads at least 2x faster on 4 cores; the number is recorded here
+- [x] #3 Worker count respects `PCE_OCR_WORKERS` and a fractional cgroup quota (Render free: 1)
+- [x] #4 `python -m pce.evaluation` is unchanged versus main (all gates pass, same scores)
+- [x] #5 The upload route no longer blocks the event loop
 
 ## Implementation Notes
 
+- Owned paths as declared. `api.py`: only the upload route signature and its file read changed.
+- Branch merges PR #17's branch (SC-5.9): without `OMP_THREAD_LIMIT=1`, four parallel Tesseracts
+  busy-waited each other and four pages had not finished after 5 minutes.
+- Digital pages are read inline: 50 pages take 1.0 s, not worth a pool. Routing (text-layer characters per
+  page) is unchanged.
+
 ## Outcome
 
-- **Status**: 
+- **Status**: completed
+- Measured on 4 cores, SYNTHETIC 50-page scan built from the demo generator: 1 worker 83.7 s, 2 workers
+  42.3 s, 4 workers 21.7 s (3.9x). Output hash identical in all three. Python peak memory 177 MB with 1
+  worker, 399 MB with 4.
+- `python -m pce.evaluation --strategy baseline --variant digital,scan`: identical to main (results.json
+  equal once timings are removed; all gates pass).
+- Render free (0.15 CPU, 512 MB) gets 1 worker: same speed and memory as before, but other requests are
+  no longer frozen during an upload.
+- Tests: `backend/tests/test_parallel_read.py` (parallel equals sequential, worker sizing incl. fractional
+  quota, upload route is not a coroutine).
 
 ## Issues Encountered
+
+- Parallel OCR depends on SC-5.9 (PR #17), merged into this branch. Merge #17 first.
