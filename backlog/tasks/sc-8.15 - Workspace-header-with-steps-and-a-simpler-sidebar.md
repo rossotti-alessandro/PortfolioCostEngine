@@ -1,14 +1,14 @@
 ---
 id: SC-8.15
 title: Workspace header with steps and a simpler sidebar
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
-created_date: "2026-11-12 23:00"
+created_date: "2026-11-12 22:58"
 updated_date: "2026-11-12 22:58"
 labels:
   - ui
@@ -59,17 +59,31 @@ None: the header reuses the analysis and documents queries the pages already loa
 
 ## Acceptance Criteria
 
-- [ ] #1 On every prospect page the five steps show across the top with done state and the count of values still to check; clicking a step navigates
-- [ ] #2 Sidebar shows Clients, Cost reviews, Library and an account menu that holds language, demo role and sign-out
-- [ ] #3 E2E suite passes, including language and role switching through the menu
+- [x] #1 On every prospect page the five steps show across the top with done state and the count of values still to check; clicking a step navigates
+- [x] #2 Sidebar shows Clients, Cost reviews, Library and an account menu that holds language, demo role and sign-out
+- [x] #3 E2E suite passes, including language and role switching through the menu
 
 ## Implementation Notes
 
+- Owned paths as listed. No backend change. The step count is `review.facts - reviewed - rejected` from the
+  analysis payload already loaded by every prospect page.
+- The account menu is a `<details>` popover; it closes when the language changes (the app re-renders), so
+  the E2E reopens it before switching back.
+
 ## Outcome
+
+- **Status**: completed
+- Prospect header: breadcrumb, name, facts, then the five steps (Documents, Check values with the count
+  still to check, Costs, Compare, Report) and a lock link to Internal economics.
+- Sidebar: Clients & pipeline, Cost reviews, Library (catalogue and how it works link to each other), a
+  "Local only" shield with tooltip, and the account menu (language, demo role, sign-out).
+- E2E 17/17 passed locally; `local-gate.sh` GATE PASSED. Screenshots: project files
+  `feelens-redesign/nav-*.png`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | bfa3322 | 2026-11-12 | Steps across the workspace header, simpler sidebar |
 
 ## Issues Encountered
