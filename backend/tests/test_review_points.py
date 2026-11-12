@@ -115,3 +115,25 @@ def test_failed_checks_rank_before_warnings():
         {"key": "p", "status": "pass", "title": "P", "detail": "", "fact_ids": []},
     ]
     assert [p["vars"]["title"] for p in run([], checks)] == ["F", "W"]
+
+
+def test_flag_on_a_line_not_added_is_low():
+    ev = [
+        {
+            "fact_id": 4,
+            "confidence": 1.0,
+            "status": "extracted",
+            "review": {"status": "needs_review", "reasons": ["engines_disagree"]},
+        }
+    ]
+    (p,) = run([atom("m", role="not_a_paid_cost", measurement="maximum", evidence=ev)])
+    assert (p["kind"], p["severity"], p["fact_ids"]) == ("extraction_flag", "low", [4])
+
+
+def test_unused_fee_mentions_grouped_per_document():
+    mentions = [{"fact_id": i, "filename": f} for i, f in ((1, "a.pdf"), (2, "a.pdf"), (3, "b.pdf"))]
+    pts = review_points(
+        {"current": {"total_known": "0", "atoms": []}, "aum": {}, "checks": [], "unused_mentions": mentions}
+    )
+    assert sorted((p["vars"]["file"], p["fact_ids"]) for p in pts) == [("a.pdf", [1, 2]), ("b.pdf", [3])]
+    assert all(p["kind"] == "unused_mentions" and p["amount"] is None for p in pts)

@@ -961,4 +961,9 @@ export const IT: Record<string, string> = {
   "Reset to the value read, by {user}": "Riportato al valore letto, da {user}",
   "Not yet checked by a person": "Non ancora verificato da una persona",
   "Checked by a person": "Verificato da una persona",
+  "{n} fee amounts in {file} are not used in any total":
+    "{n} importi di commissioni in {file} non sono usati in nessun totale",
+  "Found on the page but not matched to a cost. Open them, then accept or reject each in evidence review.":
+    "Trovati sulla pagina ma non collegati a un costo. Aprili, poi accetta o respingi ciascuno nella verifica delle evidenze.",
+  "Found in {file}, not used": "Trovato in {file}, non usato",
 };

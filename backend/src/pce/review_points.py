@@ -55,6 +55,18 @@ def _point(
     }
 
 
+def _flag_point(atom: dict, flagged: list[dict], severity: str) -> dict:
+    reasons = sorted({r for e in flagged for r in e["review"].get("reasons", [])})
+    return _point(
+        "extraction_flag",
+        severity,
+        atom=atom,
+        fact_ids=[e["fact_id"] for e in flagged],
+        label=atom["label"],
+        reasons=",".join(reasons),
+    )
+
+
 def _rate_bps(atom: dict, bank_assets: dict[str, str]) -> Decimal | None:
     if atom.get("rate_bps") is not None:
         return D(atom["rate_bps"])
@@ -86,6 +98,12 @@ def review_points(result: dict) -> list[dict]:
             )
             continue
         if role != "counted":
+            # a flagged reading on a line that is not added still deserves a look, at low priority
+            flagged = [
+                e for e in a.get("evidence") or [] if (e.get("review") or {}).get("status") == "needs_review"
+            ]
+            if flagged:
+                points.append(_flag_point(a, flagged, LOW))
             continue
         amount = D(a["amount"])
         share = amount / total if total else Decimal(0)
@@ -105,17 +123,7 @@ def review_points(result: dict) -> list[dict]:
             )
         flagged = [e for e in ev if (e.get("review") or {}).get("status") == "needs_review"]
         if flagged:
-            reasons = sorted({r for e in flagged for r in e["review"].get("reasons", [])})
-            points.append(
-                _point(
-                    "extraction_flag",
-                    HIGH,
-                    atom=a,
-                    fact_ids=[e["fact_id"] for e in flagged],
-                    label=a["label"],
-                    reasons=", ".join(reasons),
-                )
-            )
+            points.append(_flag_point(a, flagged, HIGH))
         for e in ev:
             if e.get("status") == "corrected" and e["fact_id"] not in seen_facts:
                 seen_facts.add(e["fact_id"])
@@ -170,6 +178,23 @@ def review_points(result: dict) -> list[dict]:
                     "vars": {"title": c["title"], "detail": c["detail"]},
                 }
             )
+
+    # fee amounts the layout finder saw that no parser used: candidates for a missing cost, never in a total
+    by_doc: dict[str, list[dict]] = {}
+    for m in result.get("unused_mentions", []):
+        by_doc.setdefault(m["filename"], []).append(m)
+    for filename, ms in by_doc.items():
+        points.append(
+            {
+                "key": f"unused:{filename}",
+                "kind": "unused_mentions",
+                "severity": MEDIUM,
+                "atom_id": None,
+                "fact_ids": [m["fact_id"] for m in ms],
+                "amount": None,
+                "vars": {"n": str(len(ms)), "file": filename},
+            }
+        )
 
     points.sort(key=lambda p: (_RANK[p["severity"]], -(D(p["amount"]) if p["amount"] else Decimal(0))))
     return points
