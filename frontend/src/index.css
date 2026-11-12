@@ -96,3 +96,10 @@ body {
     padding-right: 600px;
   }
 }
+
+/* Figures never break across lines: an amount is one unit ("CHF 4'300'000"), in tables and cards alike. */
+td.num,
+th.num,
+.money {
+  white-space: nowrap;
+}
