@@ -1,11 +1,11 @@
 ---
 id: SC-8.16
 title: Costs page answer first and unknowns listed once
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-12 23:52"
@@ -61,17 +61,28 @@ None: same analysis payload, less markup.
 
 ## Acceptance Criteria
 
-- [ ] #1 The page opens with the known annual cost, its lower-bound wording and the count of undetermined costs; the total opens its calculation
-- [ ] #2 Each undetermined cost is listed once in the to-do (as a request when one exists), never shown as zero
-- [ ] #3 E2E suite passes (costs, trace, review points)
+- [x] #1 The page opens with the known annual cost, its lower-bound wording and the count of undetermined costs; the total opens its calculation
+- [x] #2 Each undetermined cost is listed once in the to-do (as a request when one exists), never shown as zero
+- [x] #3 E2E suite passes (costs, trace, review points)
 
 ## Implementation Notes
 
+- Owned paths as listed. No backend change; `not_determined` review points are hidden only when the
+  analysis carries at least one request, so an unknown without a request is still listed as a point.
+
 ## Outcome
+
+- **Status**: completed
+- `Answer` card replaces the four figure cards; "Documents to ask for" follows; the unknown chips under the
+  chart are gone; the read summary counts points the same way and shows the documents to ask for.
+- E2E 17/17 passed locally; `local-gate.sh` GATE PASSED. Screenshot: project files
+  `feelens-redesign/costs-answer.png`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | d64e862 | 2026-11-12 | Answer card, documents to ask for, unknowns listed once |
+| claude/project-thread-bj3sap | dd99cd4 | 2026-11-12 | Design system: Costs layout |
 
 ## Issues Encountered
