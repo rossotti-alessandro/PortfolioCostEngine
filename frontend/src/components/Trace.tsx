@@ -375,9 +375,8 @@ export function SourcePane({ evidence, usedIn }: { evidence: EvidenceRef[]; used
             </button>
           )}
         </div>
-        <div className="truncate text-[12.5px]">
-          <span className="font-medium text-ink">{e.filename}</span>
-          <span className="text-muted"> · {e.where}</span>
+        <div className="truncate text-[12.5px] font-medium text-ink" title={e.where}>
+          {e.where}
         </div>
         {e.sheet ? (
           <div className="h-[260px] overflow-hidden rounded-md border border-line">
