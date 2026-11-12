@@ -234,15 +234,37 @@ def _no_isin_position(ln: Line, name: str | None = None) -> tuple[str, Decimal, 
     texts = [c.text.strip() for c in ln.cells]
     for j in range(first, len(texts) - 2):
         try:
-            qty = parse_amount(_CCY_SYMBOL.sub(r"\1", texts[j]))
-            pm = _PRICE_4DP.match(texts[j + 1])
             mv = parse_amount(_CCY_SYMBOL.sub(r"\1", texts[j + 2]))
         except (ValueError, ArithmeticError):
             continue
+        pm = _PRICE_4DP.match(_FOOTNOTE.sub("", texts[j + 1]))  # "203.15A": A is a footnote marker
         price = Decimal(pm.group(1).replace(",", "")) if pm else None
-        if price is not None and mv > 0 and abs(qty * price - mv) <= mv * Decimal("0.01"):
-            return name, qty, price, mv
+        if price is None or mv == 0:
+            continue
+        for qty in _quantity_readings(texts[j]):
+            # Bonds are priced per 100 of face value. A short position has a negative value.
+            for gross in (qty * price, qty * price / 100):
+                if abs(gross - mv) <= abs(mv) * Decimal("0.01"):
+                    return name, qty, price, mv
     return None
+
+
+_FOOTNOTE = re.compile(r"(?<=\d)[A-Za-z]$")
+
+
+def _quantity_readings(text: str) -> list[Decimal]:
+    """A quantity such as "500.000" is ambiguous on its own (500 or 500,000), so parse_amount refuses it.
+    Here both readings are offered and the caller keeps the one for which quantity x price = value."""
+    t = _CCY_SYMBOL.sub(r"\1", text.strip())
+    try:
+        return [parse_amount(t)]
+    except (ValueError, ArithmeticError):
+        pass
+    m = re.fullmatch(r"(-?)(\d{1,3})([.,])(\d{3})", t)
+    if not m:
+        return []
+    sign = -1 if m.group(1) else 1
+    return [sign * Decimal(f"{m.group(2)}.{m.group(4)}"), sign * Decimal(m.group(2) + m.group(4))]
 
 
 def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
@@ -250,6 +272,7 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
     ccy = prof.currency or "CHF"
     in_table = in_fees = no_isin_table = False
     in_weights: int | None = None
+    table_start = 0
     for page in pages:
         for li, ln in enumerate(page.lines):
             low = ln.text.lower()
@@ -279,6 +302,7 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                 continue
             if _QTY_PRICE_VALUE.search(low) and re.search(r"price|prezzo|kurs|cours", low) and not in_fees:
                 in_table, no_isin_table = True, True  # "Quantity | Price | Value" without an ISIN column
+                table_start = len(facts)
                 sym = next((k for k in _SYMBOL_CCY if k in ln.text), None)
                 ccy = _SYMBOL_CCY[sym] if sym else ccy  # "Price (£) | Value (£)": the rows carry no symbol
                 continue
@@ -356,6 +380,17 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                         )
                     )
                 continue
+            if (
+                no_isin_table
+                and in_table
+                and low.startswith("total")
+                and not _ACCOUNT_TOTAL.match(re.sub(r"\s*\(.*?\)\s*", "", ln.cells[0].text).strip())
+            ):
+                # "Total Mutual Funds (12% of account holdings)" closes a section, not the account: more
+                # holdings follow, and adding section subtotals mis-states the account total. A table that
+                # read no holding ("Total Securities Bought") was a transaction list: it ends here.
+                in_table = any(f.kind == "position" for f in facts[table_start:])
+                continue
             # "Total | 388,714.25 | 374,716.14 | 3.74": value, then cost and change columns
             wide_total = no_isin_table and len(ln.cells) > 3 and low.startswith("total")
             if in_table and amounts and (len(ln.cells) <= 3 or wide_total):
@@ -400,6 +435,13 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
 
 _GRAND_TOTAL = re.compile(
     r"^(?:grand )?total(?: portfolio| value| assets| account value)?$|^totale$|^gesamttotal$", re.I
+)
+
+
+_ACCOUNT_TOTAL = re.compile(
+    r"^(?:grand )?total(?: holdings| value| account value| assets| portfolio| investments)?:?$"
+    r"|^totale$|^gesamttotal$",
+    re.I,
 )
 
 
