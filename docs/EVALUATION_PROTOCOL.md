@@ -33,6 +33,7 @@ Each stage is scored on its own, so a wrong total is attributed to the stage tha
 |---|---|---|---|
 | 1 | Classification | Is the document the type we think? | `classification_accuracy` |
 | 2 | Field extraction | Did we read each labelled value, with the right number? | precision, recall, F1, `wrong_value`, `missing_as_zero`, `value_recall` |
+| 2b | Fee mentions | Did a finder at least see the fee, even if the ledger does not use it yet? | `mention_recall` (facts of kind `fee_mention`; never part of precision, provenance or totals) |
 | 3 | Location | Does the fact's box sit on the labelled value? | `bbox_hit_rate` (when the gold has value boxes) |
 | 4 | Provenance | Does the cited page box / sheet cell really show that number? | `provenance` counts: verified, mismatch, no_evidence, unverifiable |
 | 5 | Portfolio computation | Are AUM, known costs, comparison and saving right? | `portfolio_mismatches`, raised requests, rejected tariffs |

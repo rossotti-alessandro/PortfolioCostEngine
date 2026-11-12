@@ -570,13 +570,14 @@ def get_one(pid: int, db: DB, c: C) -> dict:
 
 
 @app.post("/api/prospects/{pid}/documents")
-async def upload(pid: int, db: DB, c: C, files: Annotated[list[UploadFile], File()]) -> dict:
+def upload(pid: int, db: DB, c: C, files: Annotated[list[UploadFile], File()]) -> dict:
+    # plain def: FastAPI runs it in its thread pool, so a long OCR does not block other requests (SC-5.11)
     p = get_prospect(db, c, pid)
     if len(files) > MAX_FILES_PER_UPLOAD:
         raise HTTPException(413, f"at most {MAX_FILES_PER_UPLOAD} files per upload")
     out = []
     for uf in files:
-        data = await uf.read(MAX_UPLOAD_BYTES + 1)
+        data = uf.file.read(MAX_UPLOAD_BYTES + 1)
         try:
             d, new = ingest(db, c, p, uf.filename or "upload", data)
             out.append(

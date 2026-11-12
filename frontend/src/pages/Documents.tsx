@@ -60,11 +60,11 @@ export default function DocumentsPage() {
         )}
         actions={
           <Link to={`/p/${pid}/review`}>
-            <Button variant="accent">{t("Review extracted values")}</Button>
+            <Button>{t("Review extracted values")}</Button>
           </Link>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
           <Dropzone onFiles={uploadAll} busy={busy} />
           {rows.length > 0 && <UploadProgress rows={rows} docs={docs.data ?? []} pid={pid} busy={busy} />}
@@ -174,12 +174,12 @@ function UploadProgress({
           </span>
           <span className="flex gap-2">
             <Link to={`/p/${pid}/review`}>
-              <Button variant="accent">
+              <Button>
                 {t("Review values")} <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link to={`/p/${pid}/costs`}>
-              <Button>{t("See costs")}</Button>
+              <Button variant="outline">{t("See costs")}</Button>
             </Link>
           </span>
         </div>
@@ -244,11 +244,9 @@ function DocTable({
       <table className="w-full text-[13px]">
         <thead>
           <tr className="border-b border-line text-left text-[11.5px] uppercase tracking-wide text-subtle">
-            <th className="px-5 py-2 font-medium">{t("File")}</th>
+            <th className="min-w-[260px] px-5 py-2 font-medium">{t("File")}</th>
             <th className="px-3 py-2 font-medium">{t("Type")}</th>
-            <th className="px-3 py-2 font-medium">{t("Issuer")}</th>
-            <th className="px-3 py-2 font-medium">{t("Date / period")}</th>
-            <th className="px-3 py-2 font-medium">{t("Read with")}</th>
+            <th className="min-w-[180px] px-3 py-2 font-medium">{t("Issuer and date")}</th>
             <th className="px-3 py-2 text-right font-medium">{t("Values")}</th>
           </tr>
         </thead>
@@ -265,10 +263,21 @@ function DocTable({
                   ) : (
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-navy-700" />
                   )}
-                  <span className="break-all">{d.filename}</span>
+                  <span className="[overflow-wrap:anywhere]">{d.filename}</span>
                 </Link>
-                <div className="ml-6 mt-0.5 font-mono text-[10.5px] text-subtle" title={d.sha256}>
-                  sha256 {d.sha256.slice(0, 12)}…
+                <div className="ml-6 mt-1 flex items-center gap-2 text-[11px] text-subtle">
+                  {d.profile.engines.includes("tesseract-ocr") ? (
+                    <Badge tone="violet">
+                      <ScanLine className="h-3 w-3" /> OCR
+                    </Badge>
+                  ) : d.profile.engines.includes("openpyxl") ? (
+                    <Badge>{t("Spreadsheet cells")}</Badge>
+                  ) : (
+                    <Badge>{t("Digital text")}</Badge>
+                  )}
+                  <span className="font-mono" title={`sha256 ${d.sha256}`}>
+                    {d.sha256.slice(0, 8)}
+                  </span>
                 </div>
                 <Link
                   to={`/p/${pid}/documents/${d.id}`}
@@ -285,7 +294,7 @@ function DocTable({
               <td className="px-3 py-2.5">
                 <select
                   aria-label={t("Document type for {file}", { file: d.filename })}
-                  className="h-8 rounded-md border border-line-strong bg-surface px-2 text-[12.5px]"
+                  className="h-8 rounded-[var(--radius-control)] border border-line-strong bg-surface px-2 text-[12.5px]"
                   value={d.doc_type}
                   onChange={(e) => onType(d.id, e.target.value)}
                 >
@@ -300,24 +309,15 @@ function DocTable({
                 )}
               </td>
               <td className="px-3 py-2.5">
-                <div className="text-ink">{d.profile.institution ?? "–"}</div>
-                {d.profile.jurisdiction && <Badge className="mt-1">{d.profile.jurisdiction}</Badge>}
-              </td>
-              <td className="num px-3 py-2.5 text-muted">
-                {d.profile.period_start
-                  ? `${d.profile.period_start} → ${d.profile.period_end}`
-                  : (d.profile.as_of ?? "–")}
-              </td>
-              <td className="px-3 py-2.5">
-                {d.profile.engines.includes("tesseract-ocr") ? (
-                  <Badge tone="violet">
-                    <ScanLine className="h-3 w-3" /> OCR
-                  </Badge>
-                ) : d.profile.engines.includes("openpyxl") ? (
-                  <Badge>{t("Spreadsheet cells")}</Badge>
-                ) : (
-                  <Badge>{t("Digital text")}</Badge>
-                )}
+                <div className="text-ink">
+                  {d.profile.institution ?? "–"}
+                  {d.profile.jurisdiction && <Badge className="ml-1.5">{d.profile.jurisdiction}</Badge>}
+                </div>
+                <div className="num mt-0.5 whitespace-nowrap text-[12px] text-muted">
+                  {d.profile.period_start
+                    ? `${d.profile.period_start} → ${d.profile.period_end}`
+                    : (d.profile.as_of ?? "–")}
+                </div>
               </td>
               <td className="num px-3 py-2.5 text-right">{d.fact_count}</td>
             </tr>

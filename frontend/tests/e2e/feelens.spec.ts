@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Page, expect, test } from "@playwright/test";
+import { E2E_ADMIN } from "../../playwright.config";
 
 /**
  * End-to-end: a real browser drives the real API on an empty database.
@@ -211,7 +212,23 @@ test("11 trace: result → computation → line → highlighted source page", as
   await expect(dlg.getByText("900,000.00 × 1.08%", { exact: false })).toBeVisible();
   await expect(dlg.getByRole("button", { name: /Read from the document/ })).toBeVisible();
   await expect(dlg.locator('.evidence-box[data-active="true"]')).toBeVisible();
+  // the panel is not modal: the cost page behind it stays usable
+  await expect(page.getByRole("heading", { name: "Current costs" })).toBeVisible();
+  // decision trail: how it was read, what the checks said, what a person did, where it is used
+  const trail = dlg.getByRole("region", { name: "Decision trail" });
+  await expect(trail.getByText("Read from digital text")).toBeVisible();
+  await expect(trail.getByText("Not yet checked by a person")).toBeVisible();
+  await expect(trail.getByText(/Known annual cost CHF/)).toBeVisible();
   await shot(page, "13-trace-line-kid");
+  // full page: only the cited box is drawn until the analyst asks for all values
+  await dlg.getByRole("button", { name: "Show full page" }).click();
+  await expect(dlg.locator(".evidence-box")).toHaveCount(1);
+  await dlg.getByLabel("Show all values on this page").check();
+  await expect.poll(() => dlg.locator(".evidence-box").count()).toBeGreaterThan(1);
+  await dlg.getByRole("button", { name: "Show the row only" }).click();
+  // a person decision lands in the trail with who did it
+  await trail.getByRole("button", { name: "Accept this value" }).click();
+  await expect(trail.getByText(`Accepted by ${E2E_ADMIN}`)).toBeVisible();
   await dlg.getByRole("button", { name: /Holding value used as basis/ }).click();
   await expect(dlg.getByText(/alpha_statement_of_assets/).first()).toBeVisible();
   await expect(dlg.locator('.evidence-box[data-active="true"]')).toBeVisible();

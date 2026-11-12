@@ -77,6 +77,15 @@ export interface DocumentRow {
 }
 
 /** One input of a computed number, with where it was read (inline from the analysis payload). */
+/** What the extraction's own checks said about a value (fact.extra.review, SC-5.8 / SC-5.14). */
+export interface ExtractionReview {
+  status: string; // accepted | needs_review
+  reasons?: string[];
+  engines?: string[];
+  checks?: { name: string; passed: boolean; detail?: string }[];
+  alternatives?: { value?: string | null; engine?: string }[];
+}
+
 export interface EvidenceRef {
   fact_id: number;
   role: "value" | "basis" | "fx_rate";
@@ -89,7 +98,7 @@ export interface EvidenceRef {
   value_extracted: string | null;
   currency: string | null;
   status: Fact["status"];
-  review: { status: string; reasons?: string[] } | null;
+  review: ExtractionReview | null;
   page: number | null;
   bbox: number[] | null;
   sheet: string | null;

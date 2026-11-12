@@ -57,8 +57,9 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 ## 3. Space, shape, elevation
 
 - Spacing: 4 px base (`1 = 4px`). Page padding 24/32, card padding 20, table cell 8×12, compact 6×10.
-- Radius: 6 px controls, 10 px cards, 999 px chips. Elevation: hairline borders by default; one shadow
-  level for popovers/dialogs only.
+- Radius: square look. 4 px controls (`--radius-control`: buttons, inputs, selects), 6 px cards
+  (`--radius-card`), 3 px badges and chips; full circles only for dots and step numbers. Elevation:
+  hairline borders, no card shadows; one shadow level for popovers/dialogs only.
 - Layout: left nav 240 px (collapsible to 64), content max-width 1440, review screen full-bleed split 55/45.
 
 ## 4. Numbers
@@ -68,6 +69,11 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 - Percent with 2 decimals plus bps on cost screens: `1.08% (108 bps)`.
 - Right-aligned, tabular numerals, currency code always visible on totals.
 - Negative savings shown with a minus sign and danger colour, never hidden.
+- A figure is one unit and never wraps (`.money`, `td.num`). In a figure card the currency code is small and
+  muted before the figure (`Money` in `components/ui.tsx`).
+- Figure cards (`Kpi`): sentence-case label on one line, figure 26 px semibold, one line of context at the
+  bottom, equal height in a row. Rows of cards use `StatGrid` (auto-fit, min 220 px) so they reflow to
+  fewer columns instead of squeezing the figure.
 
 ## 5. House components
 
@@ -77,6 +83,9 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 | `StatusChip` | evidence status with icon + label + colour from § 1 |
 | `EvidenceLink` | wraps any number; click opens `SourceViewer` at page + bbox or sheet + cell |
 | `SourceViewer` | PDF.js page + highlight rectangle (accent-soft fill, accent 2px border), zoom, page nav; sheet grid for XLSX |
+| `EvidencePanel` | right side panel opened by any number (`components/Trace.tsx`), non-modal: the page stays usable and another click replaces the content. Formula → inputs → `SourceCrop` → `DecisionTrail` |
+| `SourceCrop` | the cited row cropped from the page at readable size, context dimmed, one box with the value tag; "Show full page" opens `SourceViewer` in focus mode (only the cited box until "Show all values") |
+| `DecisionTrail` | read (text, OCR or cell, engine, confidence) → automatic checks (fact review: readers, checks, reasons) → person (accept / correct old → new / reject, who, when) → used in. A step with no data says so; never an invented check (`lib/trail.ts`) |
 | `CoverageMeter` | "82% of expected cost categories evidenced"; mandatory next to every headline total |
 | `GapCard` | an unknown cost + the document that would resolve it + "Add to request letter" |
 | `CostWaterfall` | stacked/waterfall by layer with unknown hatched; table twin toggle |
@@ -97,7 +106,8 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 
 ## 7. Calls to action
 
-One primary button per screen (navy, filled), secondary outlined, tertiary text. Verb-first labels
+One primary button per screen (navy, filled, `Button` default), secondary outlined (`outline`, or `accent`
+= teal outline for a positive secondary such as "Load synthetic demo"), tertiary text (`ghost`). Verb-first labels
 ("Analyse documents", "Approve figures", "Export report"). Destructive actions red and confirmed. No
 disabled-without-reason buttons: show why in a tooltip.
 

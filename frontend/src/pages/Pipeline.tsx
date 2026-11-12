@@ -85,10 +85,10 @@ export default function PipelinePage() {
         actions={
           <>
             <Link to={`/p/${id}/review?doc=${p.document.id}`}>
-              <Button variant="accent">{t("Review its values")}</Button>
+              <Button>{t("Review its values")}</Button>
             </Link>
             <Link to={`/p/${id}/documents`}>
-              <Button>{t("All documents")}</Button>
+              <Button variant="outline">{t("All documents")}</Button>
             </Link>
           </>
         }

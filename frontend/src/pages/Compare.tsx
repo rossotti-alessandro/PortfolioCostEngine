@@ -1,7 +1,19 @@
 import { NotStarted } from "@/components/ReadSummary";
 import { PageTitle } from "@/components/Shell";
 import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
-import { Badge, Button, Card, CardHeader, ErrorBox, Field, Kpi, Spinner, StatusBadge, inputCls } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  ErrorBox,
+  Field,
+  Kpi,
+  Spinner,
+  StatGrid,
+  StatusBadge,
+  inputCls,
+} from "@/components/ui";
 import { api } from "@/lib/api";
 import { BOUND_TEXT, LAYER, chf, cn, savingParts } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -73,7 +85,7 @@ export default function ComparePage() {
       />
       {!cmp.like_for_like && (
         <div
-          className="flex gap-2.5 rounded-lg border border-amber-700/25 bg-amber-50 px-4 py-3 text-[13px] text-amber-700"
+          className="flex gap-2.5 rounded-[var(--radius-card)] border border-amber-700/25 bg-amber-50 px-4 py-3 text-[13px] text-amber-700"
           role="note"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -82,7 +94,7 @@ export default function ComparePage() {
           )}
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid>
         <Kpi
           label={t("Today (comparable)")}
           value={chf(cmp.current_known)}
@@ -132,7 +144,7 @@ export default function ComparePage() {
               : t("Not paid back by the saving")
           }
         />
-      </div>
+      </StatGrid>
 
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <LayerCompare cur={a.scenarios.current_comparable} prop={sc.ledger} cmp={cmp} firm={firm} />
@@ -255,8 +267,8 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
       <table className="w-full text-[13px]">
         <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
           <tr>
-            <th className="px-5 pt-3 pb-1 font-medium">{t("Layer")}</th>
-            <th className="w-[38%] px-2 pt-3 pb-1 font-medium" />
+            <th className="min-w-[170px] px-5 pt-3 pb-1 font-medium">{t("Layer")}</th>
+            <th className="w-[30%] px-2 pt-3 pb-1 font-medium" />
             <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Today")}</th>
             <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Proposal")}</th>
             <th className="px-5 pt-3 pb-1 text-right font-medium">{t("Difference")}</th>

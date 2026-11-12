@@ -43,7 +43,7 @@ export function NotStarted({ pid, docs }: { pid: number; docs: number }) {
             : t("Upload a statement of assets for each bank to start.")}
         </p>
         <Link to={`/p/${pid}/documents`} className="mt-3 inline-block">
-          <Button variant="accent">{t("Upload documents")}</Button>
+          <Button>{t("Upload documents")}</Button>
         </Link>
       </Empty>
     </Card>
