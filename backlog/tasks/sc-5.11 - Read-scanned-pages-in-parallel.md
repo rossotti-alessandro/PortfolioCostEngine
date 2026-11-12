@@ -94,6 +94,13 @@ same behaviour and memory as today.
 - Tests: `backend/tests/test_parallel_read.py` (parallel equals sequential, worker sizing incl. fractional
   quota, upload route is not a coroutine).
 
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-ch9r5h | d2287d6 | 2026-11-12 | chore(extraction): stack SC-5.11 on SC-5.9 single-thread Tesseract |
+| claude/project-thread-ch9r5h | 87cc644 | 2026-11-12 | perf(extraction): OCR scanned pages in parallel, upload off event loop |
+
 ## Issues Encountered
 
 - Parallel OCR depends on SC-5.9 (PR #17), merged into this branch. Merge #17 first.
