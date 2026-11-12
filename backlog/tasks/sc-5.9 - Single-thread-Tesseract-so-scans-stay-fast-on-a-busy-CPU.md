@@ -7,9 +7,9 @@ owner: "Fix slow reading of scanned pages"
 model: "claude-opus"
 progress: 100
 branch: "claude/project-thread-gb52v5"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/17"
 created_date: "2026-11-12 00:40"
-updated_date: "2026-11-12 00:36"
+updated_date: "2026-11-12 00:45"
 labels:
   - extraction
   - performance
