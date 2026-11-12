@@ -7,9 +7,9 @@ owner: "Add prospect CRM and conversion funnel"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-ms8qbh"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/4"
 created_date: "2026-11-06 15:35"
-updated_date: "2026-11-06 15:38"
+updated_date: "2026-11-11 14:30"
 labels:
   - ui
   - api
@@ -79,6 +79,8 @@ Funnel metrics are computed in one pass over stage events; fine for thousands of
   locally against 1.63.0 with backend on :8000 and Vite on :5173.
 
 ## Outcome
+
+Merged into the demo branch in PR #4 and PR #6 (Italian pages, details behind toggles), and into main with PR #5 on 2026-11-11.
 
 - Backend `pce.crm`: contacts, append-only stage events, activities, link/create cost review, funnel, synthetic seed (41 contacts).
 - Funnel: reached per stage (furthest stage, lost included), step conversion, drop-off, win rate, lead-to-client,
