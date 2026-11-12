@@ -974,6 +974,66 @@ def run_slanet(img: Image.Image, words: list[dict] | None = None, **_: Any) -> R
     return out
 
 
+_nemotron = None
+NEMOTRON_PROMPT = "</s><s><predict_bbox><predict_classes><output_markdown><predict_text_in_pic>"
+
+
+def _latex_rows(tab: str) -> list[list[str]]:
+    """Nemotron writes tables as LaTeX tabular: rows end with \\\\, cells split on &."""
+    body = re.sub(r"\\(begin|end)\{tabular\}(\{[^}]*\})?", "", tab)
+    rows = []
+    for line in re.split(r"\\\\", body):
+        cells = []
+        for c in line.split("&"):
+            c = re.sub(r"\\(multirow|multicolumn)\{[^}]*\}\{[^}]*\}", "", c)
+            c = re.sub(r"\\linebreak\{\}", " ", c).replace("\\%", "%").replace("**", "")
+            c = re.sub(r"\\[a-zA-Z]+", "", c).replace("{", "").replace("}", "")
+            cells.append(re.sub(r"\s+", " ", c).strip())
+        if any(cells):
+            rows.append(cells)
+    return rows
+
+
+def run_nemotron_parse(img: Image.Image, **_: Any) -> Result:
+    """Nemotron-3.5-Parse single pass: every block comes as <x_a><y_b>content<x_c><y_d><class_X>,
+    coordinates 0-1 of the page. Custom model code, reviewed before running (SC-5.13)."""
+    global _nemotron
+    torch = _torch()
+    from transformers import AutoModel, AutoProcessor, GenerationConfig
+
+    repo = "nvidia/Nemotron-3.5-Parse"
+    if _nemotron is None:
+        model = AutoModel.from_pretrained(repo, trust_remote_code=True, dtype=torch.float32).eval()
+        gen = GenerationConfig.from_pretrained(repo)
+        gen.max_new_tokens, gen.do_sample, gen.num_beams, gen.repetition_penalty = 6000, False, 1, 1.1
+        _nemotron = (model, AutoProcessor.from_pretrained(repo, trust_remote_code=True), gen)
+    model, proc, gen = _nemotron
+    inputs = proc(images=[img.convert("RGB")], text=NEMOTRON_PROMPT, return_tensors="pt", add_special_tokens=False)
+    with torch.inference_mode():
+        ids = model.generate(**inputs, generation_config=gen)
+    raw = proc.batch_decode(ids, skip_special_tokens=False)[0]
+    W, H = img.size
+    out = empty()
+    parts = []
+    pat = r"<x_([\d.]+)><y_([\d.]+)>(.*?)<x_([\d.]+)><y_([\d.]+)><class_([\w-]+)>"
+    for x0, y0, body, x1, y1, cls in re.findall(pat, raw, flags=re.S):
+        b = [float(x0) * W, float(y0) * H, float(x1) * W, float(y1) * H]
+        out["regions"].append({"label": cls, "b": b, "s": 1.0})
+        body = body.strip()
+        if "\\begin{tabular}" in body:
+            rows = _latex_rows(body)
+            out["tables"].append({"b": b, "rows": rows})
+            body = "\n".join(" | ".join(r) for r in rows)
+        else:
+            body = body.replace("**", "").replace("\\%", "%")
+        if body:
+            out["words"].append({"t": body, "b": b, "c": 1.0})
+            parts.append(body)
+    out["text"] = "\n\n".join(parts)
+    out["raw"] = raw
+    return out
+
+
 MODELS: dict[str, dict[str, Any]] = {
     # key: fn, family, HF repo(s), licence, needs (pdf/words)
     "pdfplumber": {
@@ -1147,6 +1207,12 @@ MODELS: dict[str, dict[str, Any]] = {
         "family": "table",
         "repo": "PP-DocLayoutV3 + SLANet+ (rapid-table, ONNX)",
         "licence": "Apache-2.0",
+    },
+    "nemotron_parse": {
+        "fn": run_nemotron_parse,
+        "family": "vlm",
+        "repo": "nvidia/Nemotron-3.5-Parse",
+        "licence": "OpenMDW-1.1",
     },
 }
 
