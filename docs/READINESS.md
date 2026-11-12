@@ -28,7 +28,7 @@ decision or signature, not code.
 | # | Gate | Owner | Status 2026-11-12 | Closes with |
 |---|---|---|---|---|
 | G1 | Extraction stack merged: #17, then #15, #16, #21, #27 (#26 independent) | Ale (rule 9) | **Closed 2026-11-12**: all merged on Ale's instruction, after the combined tree passed the full gate (section 3.3) | Done |
-| G2 | Accuracy on real statements measured (holdings, AUM, statement fees) | Engineering | Partial 2026-11-12: 4 public statements checked, no silent AUM error left; Fidelity US 34 of 34 holdings with exact AUM after SC-5.16; two-client files raise an alarm (`data/specimens/statements/RESULTS.md`); Swiss statements only in the pilot | SC-9.6, SC-5.16 |
+| G2 | Accuracy on real statements measured (holdings, AUM, statement fees) | Engineering | Partial 2026-11-12: 4 public statements checked, no silent AUM error left; Fidelity US 34 of 34 holdings with exact AUM after SC-5.16; AJ Bell overview cash and policies read after SC-5.17, so its AUM matches its account totals exactly; two-client files raise an alarm (`data/specimens/statements/RESULTS.md`); Swiss statements only in the pilot | SC-9.6, SC-5.16 |
 | G3 | Where the pilot runs: Safe Capital machine (recommended) or Swiss host | Ale + Massimo | Open decision | SC-11.6 (local) or SC-11.2 (hosted) |
 | G4 | Named users with MFA and roles; no shared admin password | Engineering, Ale approves (rule 9) | Open. Only one env-seeded admin exists | SC-11.7 |
 | G5 | Delete a prospect and everything derived on request | Engineering | Open. No delete endpoint on main | SC-11.11 |

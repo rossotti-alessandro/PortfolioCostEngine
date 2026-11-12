@@ -1,15 +1,15 @@
 ---
 id: SC-5.17
 title: "Read overview cash and policies, and annotated statement samples"
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Audit production readiness and close gaps"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-sdc7fx"
 pr: ""
 created_date: "2026-11-12 23:50"
-updated_date: "2026-11-12 23:50"
+updated_date: "2026-11-12 23:56"
 labels:
   - extraction
 dependencies: []
@@ -59,17 +59,31 @@ reconciliation check would then fail, so the error is visible.
 
 ## Acceptance Criteria
 
-- [ ] #1 AJ Bell: the first client's cash and policies are read; the file's AUM equals the sum of its account totals, and the two-person alarm stays
-- [ ] #2 Edward Jones: holdings read, or the reason it cannot be documented in RESULTS.md
-- [ ] #3 Synthetic prospects, Fidelity US and Fidelity UK unchanged
+- [x] #1 AJ Bell: the first client's cash and policies are read; the file's AUM equals the sum of its account totals, and the two-person alarm stays
+- [x] #2 Edward Jones: holdings read, or the reason it cannot be documented in RESULTS.md
+- [x] #3 Synthetic prospects, Fidelity US and Fidelity UK unchanged
 
 ## Implementation Notes
 
+Owned paths also include `docs/READINESS.md` (G2 row). `parsers._account_breakdown` runs after the holdings
+tables so it can tell assets already read from assets only the overview lists.
+
 ## Outcome
 
+- AJ Bell demo report: 8 more holdings (5 account cash lines, 2 off-panel Prudential policies, the second
+  client's cash). The file's AUM, 660,273.45 GBP, equals the sum of its account totals: the first client's
+  618,520.40 plus the second client's 41,753.05. Reconciliation passes; the two-person alarm remains, and the
+  analyst removes the second client's pages.
+- Edward Jones: not fixed, by decision. The reasons are in RESULTS.md finding 4. With no holdings, the app
+  already asks for a holdings statement, so the gap is visible.
+- Fidelity US (34/34, exact), Fidelity UK and the synthetic prospects unchanged.
+
 ## Issues Encountered
+
+None.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-sdc7fx | 9b39f76 | 2026-11-12 | feat(extraction): read cash and policies from account breakdowns |
