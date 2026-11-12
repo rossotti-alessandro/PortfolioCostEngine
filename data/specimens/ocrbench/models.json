@@ -329,6 +329,16 @@
   "licence_risk": "none",
   "role": "The cheap path, plus the vision model as a second reader only where it helps."
  },
+ "nemotron_parse": {
+  "name": "Nemotron-3.5-Parse",
+  "kind": "Document VLM (layout + reading order + tables)",
+  "params": "0.63B",
+  "download_gb": 1.3,
+  "boxes": "block",
+  "tables": "yes (LaTeX tabular)",
+  "licence_risk": "low (OpenMDW-1.1, permissive)",
+  "role": "NVIDIA's page parser, single pass. Custom model code, reviewed before running (SC-5.13). Matches the best VLMs on the 8 hard pages but takes about 5 minutes per page on CPU."
+ },
  "_not_run": [
   {
    "repo": "baidu/Unlimited-OCR",
@@ -461,6 +471,12 @@
    "size_gb": 2.3,
    "licence": "AGPL-3.0",
    "why": "AGPL. The Apache-2.0 Pro-2605 release of the same model was run instead."
+  },
+  {
+   "repo": "tiiuae/Falcon-OCR",
+   "size_gb": 1.1,
+   "licence": "Apache-2.0",
+   "why": "GPU-only code: a Triton kernel and compiled flex attention. A CPU port (kernel as plain torch, eager attention) still failed inside flex attention's block mask. Needs a GPU (SC-5.13)."
   }
  ]
 }
