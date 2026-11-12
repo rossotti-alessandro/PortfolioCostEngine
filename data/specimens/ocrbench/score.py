@@ -298,11 +298,15 @@ def main() -> None:
                 None if res.get("includes_load") else res["seconds"],
                 bool(res.get("error")),
             )
-    core = set(
-        json.loads((HERE / "vlm_core.json").read_text(encoding="utf-8"))["pages"]
-    )
+    sets = json.loads((HERE / "vlm_core.json").read_text(encoding="utf-8"))
+    core, mini = set(sets["pages"]), set(sets["mini"])
     engines = {k: e for k, r in runs.items() if (e := summarise(k, r, None))}
-    engines_core = {k: e for k, r in runs.items() if (e := summarise(k, r, core))}
+
+    def same_pages(only: set[str]) -> dict:
+        # a fair table holds only engines that ran every page of the set
+        return {k: e for k, r in runs.items() if (e := summarise(k, r, only)) and e["pages"] == len(only)}
+
+    engines_core, engines_mini = same_pages(core), same_pages(mini)
     families = family_scores(runs, pages)
     SCORES_JSON.parent.mkdir(parents=True, exist_ok=True)
     SCORES_JSON.write_text(
@@ -310,6 +314,7 @@ def main() -> None:
             {
                 "engines": engines,
                 "engines_core": engines_core,
+                "engines_mini": engines_mini,
                 "families": families,
                 "per_page": per_page,
             },
@@ -317,7 +322,7 @@ def main() -> None:
         ),
         encoding="utf-8",
     )
-    write_md(engines, engines_core, len(core), families)
+    write_md(engines, engines_core, len(core), families, engines_mini, len(mini))
     print(SCORES_MD.read_text(encoding="utf-8"))
 
 
@@ -395,7 +400,7 @@ def summarise(name: str, run: dict, only: set[str] | None) -> dict | None:
         "peak_rss_gb": meta.get("peak_rss_gb"),
         "gt_items": tot["gt"],
         "element_pair_recall": {
-            k[8:]: ratio(tot["pair_el:" + k[8:]], v)
+            k[6:]: ratio(tot["pair_el:" + k[6:]], v)
             for k, v in sorted(tot.items())
             if k.startswith("gt_el:")
         },
@@ -410,7 +415,9 @@ def pct(v: float | None) -> str:
     return "–" if v is None else f"{v * 100:.0f}%"
 
 
-def write_md(engines: dict, engines_core: dict, n_core: int, families: dict) -> None:
+def write_md(
+    engines: dict, engines_core: dict, n_core: int, families: dict, engines_mini: dict, n_mini: int
+) -> None:
     lines = [
         "# Local OCR / layout / VLM benchmark — scores",
         "",
@@ -420,6 +427,10 @@ def write_md(engines: dict, engines_core: dict, n_core: int, families: dict) -> 
         f"## Same {n_core} pages for every engine (fair comparison)",
         "",
         *table(engines_core),
+        "",
+        f"## Same {n_mini} hard pages (slow VLM triage set, one model at a time)",
+        "",
+        *table(engines_mini),
         "",
         f"## Every page each engine ran (fast engines: all {max(e['pages'] for e in engines.values())})",
         "",

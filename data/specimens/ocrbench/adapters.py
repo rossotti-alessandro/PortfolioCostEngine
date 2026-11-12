@@ -691,12 +691,16 @@ def _blocks_result(blocks: list[tuple[str, list[float] | None, str]]) -> Result:
 
 def run_lighton3(img: Image.Image, repo: str = "lightonai/LightOnOCR-3-0.8B", **_: Any) -> Result:
     """LightOnOCR-3 in grounding mode: each block comes as ![label](x0,y0,x1,y1) on a 0-1000 grid."""
-    text = _chat(repo, _fit(img, 1540), "grounding", 4096)
+    return _lighton3_parse(_chat(repo, _fit(img, 1540), "grounding", 4096), img)
+
+
+def _lighton3_parse(text: str, img: Image.Image) -> Result:
+    """Each block starts with ![label](x0,y0,x1,y1); its content follows on the same line and the next ones."""
     blocks, cur = [], None
     for line in text.splitlines():
-        m = re.match(r"!\[(\w+)\]\((\d+),(\d+),(\d+),(\d+)\)\s*$", line.strip())
+        m = re.match(r"!\[(\w+)\]\((\d+),(\d+),(\d+),(\d+)\)\s*(.*)$", line.strip())
         if m:
-            cur = [m.group(1), _grid_box([float(v) for v in m.groups()[1:]], img, 1000), ""]
+            cur = [m.group(1), _grid_box([float(v) for v in m.groups()[1:5]], img, 1000), m.group(6) + "\n"]
             blocks.append(cur)
         elif cur is not None:
             cur[2] += line + "\n"

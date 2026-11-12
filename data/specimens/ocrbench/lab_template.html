@@ -116,7 +116,7 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <p class="sub" id="lede">Local OCR, layout, table and vision-language models run on real public bank and fund documents, scored against hand-checked fee figures.</p>
     </div>
     <nav class="tabs" aria-label="Views">
-      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
+      <a href="#overview">Overview</a><a href="#documents">Documents</a><a href="#app">App end to end</a><a href="#models">Models</a><a href="#pipeline">Pipeline</a>
     </nav>
   </header>
 
@@ -127,6 +127,7 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <p class="muted" style="margin-top:0">Main score: <b>fee figure read with its label on the same row</b>, the input a fee parser needs. Click a column to sort. All runs on 4 CPU cores, no GPU.</p>
       <div class="controls"><label for="scope">Pages <select id="scope">
         <option value="engines_core">Same pages for every engine (fair)</option>
+        <option value="engines_mini">Same 8 hard pages (slow VLMs)</option>
         <option value="engines_all">Every page each engine ran</option></select></label></div>
       <div class="scroll"><table id="rank"></table></div>
       <details><summary>What each column means</summary>
@@ -149,6 +150,16 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
       <h2>By document family</h2>
       <p class="muted" style="margin-top:0">Label + value on the same row, per family of pages, for the engines that read text.</p>
       <div class="scroll"><table id="byfam"></table></div>
+    </div>
+    <div class="panel">
+      <h2>By layout element</h2>
+      <p class="muted" style="margin-top:0">Where the fee sits on the page, as tagged by hand: a ruled <b>table</b>, a <b>key-value</b> list (label left, value right, no grid), running <b>text</b>, or a <b>footnote</b>. Label + value on the same row, every page each engine ran.</p>
+      <div class="scroll"><table id="byel"></table></div>
+    </div>
+    <div class="panel">
+      <h2>What the layout models call the fee's region</h2>
+      <p class="muted" style="margin-top:0">For every hand-checked fee, the smallest region each layout model drew around it. This is the list of layout elements a fee extractor has to handle. "(none)" means the model drew no region over the fee.</p>
+      <div class="scroll"><table id="regl"></table></div>
     </div>
   </section>
 
@@ -181,6 +192,22 @@ svg text { fill: var(--ink-2); font-family: var(--body) }
     </div>
   </section>
 
+  <section class="view" id="v-app" hidden>
+    <div class="panel">
+      <h2>The FeeLens app, run end to end</h2>
+      <p class="muted" style="margin-top:0">Two SYNTHETIC prospects go through the same steps as a real upload: read each document, classify it, extract every figure with its page and box, compute the portfolio's all-in cost, and run the validation checks. The expected numbers were pinned by hand. "Scan" means the same documents as image-only copies, so the app has to OCR them. Click a cost line to see the page it comes from.</p>
+      <div class="controls"><label for="run">Run <select id="run"></select></label></div>
+    </div>
+    <div class="tiles" id="apptiles"></div>
+    <div class="panel"><h2>App against the numbers pinned by hand</h2><div class="scroll"><table id="appexp"></table></div></div>
+    <div class="bench" style="grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)">
+      <div class="panel"><h2>Cost lines the app found</h2><p class="muted" style="margin-top:0">Only lines marked "counted in the total" add up to the all-in cost. Click a line to see the page and the box it was read from. Unknown lines have no amount: missing is never zero.</p><div class="scroll" style="max-height:70vh;overflow-y:auto"><table id="atoms"></table></div></div>
+      <div class="panel" style="min-width:0"><h2 id="srctitle">Source</h2><div class="muted" id="srcmeta">Pick a cost line.</div><div id="srcpage"></div></div>
+    </div>
+    <div class="panel"><h2>Validation checks and missing documents</h2><div class="scroll"><table id="checks"></table></div></div>
+    <div class="panel"><h2>Extraction errors per document</h2><p class="muted" style="margin-top:0">From the accuracy protocol (docs/EVALUATION_PROTOCOL.md): every expected value the app did not read correctly.</p><div class="scroll"><table id="docerr"></table></div></div>
+  </section>
+
   <section class="view" id="v-models" hidden>
     <div class="cards" id="cards"></div>
     <div class="panel">
@@ -201,8 +228,9 @@ const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let D, cur = null;
 
-const FAM = {hybrid: "Pipeline", baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
-const TEXT_FAMS = new Set(["hybrid", "baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
+const EL = {table: "table", key_value: "key-value", text: "text", footnote: "footnote"};
+const FAM = {app: "FeeLens app", hybrid: "Pipeline", baseline: "Baseline", ocr: "OCR", layout: "Layout", table: "Tables", vlm: "VLM parser", "vlm-extract": "VLM extractor", docqa: "Doc QA"};
+const TEXT_FAMS = new Set(["app", "hybrid", "baseline", "ocr", "table", "vlm", "vlm-extract", "docqa"]);
 
 fetch("data.json").then(r => r.json()).then(d => { D = d; boot(); }).catch(e => {
   $("#lede").textContent = "Could not load data.json: " + e;
@@ -225,13 +253,14 @@ function boot() {
   rankTable("pair_recall");
   scatter();
   byFamily();
+  byElement();
   docList();
   ["engA", "engB"].forEach((id, i) => {
     const s = $("#" + id);
-    s.innerHTML = Object.keys(D.engines).sort().map(k => `<option value="${k}">${esc(D.engines[k].name || k)}</option>`).join("");
+    s.innerHTML = Object.keys(D.engines_all).sort().map(k => `<option value="${k}">${esc(D.engines_all[k].name || k)}</option>`).join("");
   });
-  $("#engA").value = D.engines.paddleocr_vl ? "paddleocr_vl" : "pdfplumber";
-  $("#engB").value = D.engines.docling ? "docling" : "tesseract";
+  $("#engA").value = D.engines_all.app_baseline ? "app_baseline" : "pdfplumber";
+  $("#engB").value = D.engines_all.hybrid_vlm ? "hybrid_vlm" : "docling";
   ["engA", "engB", "lgt", "lwords", "lregions", "ltables"].forEach(id => $("#" + id).addEventListener("change", render));
   cards();
   route();
@@ -240,11 +269,12 @@ function boot() {
 
 function route() {
   const h = (location.hash || "#overview").slice(1);
-  const views = ["overview", "documents", "models", "pipeline"];
+  const views = ["overview", "documents", "app", "models", "pipeline"];
   const v = views.includes(h) ? h : "overview";
   views.forEach(x => { $("#v-" + x).hidden = x !== v; });
   document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + v ? "page" : "false"));
   if (v === "documents" && !cur) pick(D.pages[0].id);
+  if (v === "app") appView();
 }
 
 const COLS = [
@@ -310,6 +340,21 @@ function byFamily() {
   $("#byfam").innerHTML = head + rows;
 }
 
+function byElement() {
+  const A = D.engines_all;
+  const E = Object.values(A).filter(e => TEXT_FAMS.has(e.family) && e.element_pair_recall).sort((a, b) => (b.pair_recall ?? 0) - (a.pair_recall ?? 0));
+  const els = ["table", "key_value", "text", "footnote"];
+  const n = {}; D.pages.filter(p => p.variant === "original").forEach(p => p.gt.forEach(g => { n[g.el] = (n[g.el] || 0) + 1; }));
+  $("#byel").innerHTML = `<tr><th>Engine</th><th class="num">Pages</th>${els.map(k => `<th class="num">${EL[k]} (${n[k] || 0})</th>`).join("")}</tr>` +
+    E.map(e => `<tr><td>${esc(e.name || e.engine)}</td><td class="num">${e.pages}</td>${els.map(k => `<td class="num">${pct(e.element_pair_recall[k])}</td>`).join("")}</tr>`).join("");
+  const L = Object.values(A).filter(e => e.family === "layout" && e.region_labels);
+  const tot = {}, per = {};
+  L.forEach(e => { per[e.engine] = {}; let t = 0; Object.entries(e.region_labels).forEach(([k, v]) => { const lab = k.split(":").slice(1).join(":"); per[e.engine][lab] = (per[e.engine][lab] || 0) + v; t += v; tot[lab] = (tot[lab] || 0) + v; }); per[e.engine]._t = t; });
+  const labs = Object.keys(tot).sort((a, b) => tot[b] - tot[a]);
+  $("#regl").innerHTML = `<tr><th>Region label</th>${L.map(e => `<th class="num">${esc(e.name || e.engine)}</th>`).join("")}</tr>` +
+    labs.map(l => `<tr><td>${esc(l)}</td>${L.map(e => { const v = per[e.engine][l]; return `<td class="num">${v ? `${v} <span class="muted">(${Math.round(100 * v / per[e.engine]._t)}%)</span>` : "–"}</td>`; }).join("")}</tr>`).join("");
+}
+
 function docList() {
   const groups = {};
   D.pages.forEach(p => (groups[p.stratum] ||= []).push(p));
@@ -335,12 +380,13 @@ function render() {
   pane("#paneA", a); pane("#paneB", b);
   const sa = p.scores[a] || {}, sb = p.scores[b] || {};
   const mark = (s, i) => { const f = s.items && s.items[i]; if (!f) return "<span class='muted'>–</span>"; return f.p ? "<span class='ok'>row ✓</span>" : f.v ? "<span class='muted'>read, row ✗</span>" : "<span class='ko'>missed</span>"; };
-  $("#gtt").innerHTML = p.gt.length ? `<tr><th>Fee (as printed)</th><th>Value</th><th>${esc(a)}</th><th>${esc(b)}</th></tr>` + p.gt.map((g, i) => `<tr><td>${esc(g.label)}${g.in_table ? " <span class='chip'>table</span>" : ""}</td><td class="mono">${esc(g.value)}</td><td>${mark(sa, i)}</td><td>${mark(sb, i)}</td></tr>`).join("") : `<tr><td class="muted">This page has no fee figures. It tests whether engines invent fees: see false positives below.</td></tr>`;
+  const sapp = p.scores.app_baseline || {}, showApp = a !== "app_baseline" && b !== "app_baseline";
+  $("#gtt").innerHTML = p.gt.length ? `<tr><th>Fee (as printed)</th><th>Value</th><th>${esc(a)}</th><th>${esc(b)}</th>${showApp ? "<th>FeeLens app</th>" : ""}</tr>` + p.gt.map((g, i) => `<tr><td>${esc(g.label)} <span class='chip'>${EL[g.el] || "table"}</span></td><td class="mono">${esc(g.value)}</td><td>${mark(sa, i)}</td><td>${mark(sb, i)}</td>${showApp ? `<td>${mark(sapp, i)}</td>` : ""}</tr>`).join("") : `<tr><td class="muted">This page has no fee figures. It tests whether engines invent fees: see false positives below.</td></tr>`;
   const E = Object.keys(p.scores).sort((x, y) => (p.scores[y].pair || 0) - (p.scores[x].pair || 0));
   $("#pscores").innerHTML = `<tr><th>Engine</th><th class="num">Row ✓</th><th class="num">Read</th><th class="num">Boxed</th><th class="num">Table ROI</th><th class="num">False fees</th><th class="num">Seconds</th></tr>` + E.map(k => {
     const s = p.scores[k], o = (D.outputs[k] || {})[p.id] || {};
     const r = (x, n) => n ? `${x}/${n}` : "–";
-    return `<tr><td>${esc(D.engines[k]?.name || k)}</td><td class="num">${r(s.pair || 0, s.gt)}</td><td class="num">${r(s.value || 0, s.gt)}</td><td class="num">${r(s.located_tight || 0, s.gt_boxed)}</td><td class="num">${r(s.table_roi || 0, s.gt_table_boxed)}</td><td class="num">${s.false_pos ?? "–"}</td><td class="num">${o.sec ?? "–"}${o.err ? " ⚠" : ""}</td></tr>`;
+    return `<tr><td>${esc(D.engines_all[k]?.name || k)}</td><td class="num">${r(s.pair || 0, s.gt)}</td><td class="num">${r(s.value || 0, s.gt)}</td><td class="num">${r(s.located_tight || 0, s.gt_boxed)}</td><td class="num">${r(s.table_roi || 0, s.gt_table_boxed)}</td><td class="num">${s.false_pos ?? "–"}</td><td class="num">${o.sec ?? "–"}${o.err ? " ⚠" : ""}</td></tr>`;
   }).join("");
   $("#rawA").innerHTML = raw(a); $("#rawB").innerHTML = raw(b);
 }
@@ -358,7 +404,7 @@ function raw(k) {
 
 function pane(sel, k) {
   const p = cur, o = (D.outputs[k] || {})[p.id], s = p.scores[k] || {};
-  const e = D.engines[k] || {};
+  const e = D.engines_all[k] || {};
   const rect = (b, col, w, dash, title) => b ? `<rect x="${b[0]}" y="${b[1]}" width="${Math.max(1, b[2] - b[0])}" height="${Math.max(1, b[3] - b[1])}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""} vector-effect="non-scaling-stroke"><title>${esc(title)}</title></rect>` : "";
   let g = "";
   if (o) {
@@ -374,6 +420,62 @@ function pane(sel, k) {
   const hits = s.gt ? `${s.pair}/${s.gt} fees on their row` : (p.gt.length ? "" : `${s.false_pos ?? 0} false fees`);
   $(sel).innerHTML = `<div class="cap"><b>${esc(e.name || k)}</b><span class="muted mono">${o ? (o.sec ?? "–") + " s" + (o.load ? " incl. model load" : "") : "not run"} · ${hits}</span></div>
     <div class="stage"><svg viewBox="0 0 ${p.w} ${p.h}" role="img" aria-label="${esc(k)} output over page"><image href="img/${p.id}.jpg" x="0" y="0" width="${p.w}" height="${p.h}"/>${g}</svg></div>`;
+}
+
+const chf = v => v == null || v === "None" ? "unknown" : Number(v).toLocaleString("en-CH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const PATHS = {"current.total_known": "All-in annual cost (known)", "current.billed_known": "Billed costs", "current.embedded_known": "Costs inside products",
+  "current.total_bps": "Cost in basis points", "aum.total": "Assets under management"};
+const label = k => PATHS[k] || k.replace(/^scenarios\./, "Proposal: ").replace(/[._]/g, " ");
+let appRun = null;
+const ROLE_ORDER = ["counted", "unknown", "included_in_parent", "corroborating", "not_a_paid_cost"];
+const ROLE = {counted: ["counted in the total", "ok"], unknown: ["unknown: document requested", "risk"], included_in_parent: ["inside the fund's TER, counted once", ""],
+  corroborating: ["cross-check of another line, not added", ""], not_a_paid_cost: ["shown for reference, not a paid cost", ""]};
+function appView() {
+  if (!D.e2e) { $("#apptiles").innerHTML = "<p class='muted'>No end-to-end run in this build.</p>"; return; }
+  const sel = $("#run");
+  if (!sel.options.length) {
+    sel.innerHTML = D.e2e.runs.map((r, i) => `<option value="${i}">${esc(r.corpus.replace("synthetic-", "SYNTHETIC ").toUpperCase())} · ${r.variant === "scan" ? "scanned copies (OCR)" : "original PDFs"}</option>`).join("");
+    sel.addEventListener("change", () => showRun(+sel.value));
+  }
+  showRun(+sel.value || 0);
+}
+function showRun(i) {
+  const r = appRun = D.e2e.runs[i], m = r.metrics;
+  const n = Object.keys(r.expect).length, bad = Object.keys(r.expect).filter(k => r.expect[k] !== r.got[k]).length;
+  $("#apptiles").innerHTML = [
+    [chf(r.summary.total_known), "all-in annual cost the app computed (CHF, known lines)"],
+    [`${n - bad}/${n}`, "totals equal to the numbers pinned by hand"],
+    [pct(m.recall), `figures read correctly (${m.gold ?? "–"} expected)`],
+    [m.missing_as_zero ?? 0, "missing figures shown as zero (must be 0)"],
+    [m.silent_error ? "YES" : "no", "wrong total with no warning"],
+  ].map(([v, l]) => `<div class="tile"><div class="n">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("");
+  $("#appexp").innerHTML = `<tr><th>Number</th><th class="num">Pinned by hand</th><th class="num">App</th><th>Result</th></tr>` +
+    Object.keys(r.expect).map(k => { const ok = r.expect[k] === r.got[k]; return `<tr><td>${esc(label(k))}<div class="muted mono">${esc(k)}</div></td><td class="num">${esc(r.expect[k])}</td><td class="num">${esc(r.got[k])}</td><td><span class="chip ${ok ? "ok" : "risk"}">${ok ? "match" : "differs"}</span></td></tr>`; }).join("");
+  const atoms = [...r.atoms].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || Number(b.amount ?? 0) - Number(a.amount ?? 0));
+  $("#atoms").innerHTML = `<tr><th>Cost line</th><th>Layer</th><th class="num">CHF / year</th><th class="num">bps</th><th>Sources</th></tr>` + atoms.map((a, j) => `<tr data-a="${r.atoms.indexOf(a)}" style="cursor:pointer" tabindex="0"><td><b>${esc(a.fee_label)}</b><div class="muted" style="font-size:.82rem">${esc(a.label)}${a.institution ? " · " + esc(a.institution) : ""}</div><div style="margin-top:3px"><span class="chip ${(ROLE[a.role] || [])[1] || ""}">${esc((ROLE[a.role] || [a.role])[0])}</span></div></td><td><span class="chip">${esc(a.layer)}</span></td><td class="num" style="${a.role === "counted" ? "" : "color:var(--ink-2)"}">${a.amount == null ? "unknown" : chf(a.amount)}</td><td class="num">${a.bps ?? "–"}</td><td class="num">${a.sources.length}</td></tr>`).join("");
+  document.querySelectorAll("#atoms tr[data-a]").forEach(tr => { const go = () => showAtom(+tr.dataset.a, tr); tr.addEventListener("click", go); tr.addEventListener("keydown", e => { if (e.key === "Enter") go(); }); });
+  $("#srctitle").textContent = "Source"; $("#srcmeta").textContent = "Pick a cost line."; $("#srcpage").innerHTML = "";
+  const st = {pass: "ok", fail: "risk", warn: "risk"};
+  $("#checks").innerHTML = `<tr><th>Check</th><th>Result</th><th>Detail</th></tr>` + r.checks.map(c => `<tr><td>${esc(c.title)}</td><td><span class="chip ${st[c.status] || ""}">${esc(c.status)}</span></td><td class="muted">${esc(c.detail)}</td></tr>`).join("") +
+    r.requests.map(q => `<tr><td>Ask the client for: ${esc(q.ask_for || q.title)}</td><td><span class="chip">missing doc</span></td><td class="muted">${esc(q.reason)}</td></tr>`).join("");
+  const errs = r.per_document.flatMap(d => (d.errors || []).map(e => ({...e, file: d.file})).concat(d.error ? [{file: d.file, label: "crash", want: "", got: d.error, status: "error"}] : []));
+  $("#docerr").innerHTML = errs.length ? `<tr><th>Document</th><th>Figure</th><th class="num">Expected</th><th class="num">App read</th><th>Status</th></tr>` + errs.map(e => `<tr><td class="mono">${esc(e.file)}</td><td>${esc(e.label)}</td><td class="num">${esc(e.want)}</td><td class="num">${esc(e.got ?? "nothing")}</td><td><span class="chip risk">${esc(e.status)}</span></td></tr>`).join("") : "<tr><td>Every expected figure was read correctly.</td></tr>";
+}
+function showAtom(i, tr) {
+  const a = appRun.atoms[i];
+  document.querySelectorAll("#atoms tr").forEach(t => t.style.background = t === tr ? "var(--accent-soft)" : "");
+  $("#srctitle").textContent = a.fee_label;
+  const f = a.formula ? `<div class="mono" style="margin:4px 0">${esc(a.formula)}</div>` : "";
+  if (!a.sources.length) { $("#srcmeta").innerHTML = f + "No source fact: " + esc(a.note || "this line comes from a rule or a request, not a printed figure."); $("#srcpage").innerHTML = ""; return; }
+  $("#srcmeta").innerHTML = f + a.sources.map(s => { const d = appRun.docs.find(x => x.id === s.doc); return `<div><b>${esc(s.label)}</b> = <span class="mono">${esc(s.value)}</span> · ${esc(d ? d.file : "")}${s.page ? " p" + s.page : ""}${s.cell ? " " + esc(s.sheet) + "!" + esc(s.cell) : ""}${s.engine ? ` <span class="chip">${esc(s.engine)}</span>` : ""}</div>`; }).join("");
+  const pages = {};
+  a.sources.forEach(s => { if (s.page && s.b) (pages[s.doc + ":" + s.page] ||= []).push(s); });
+  $("#srcpage").innerHTML = Object.entries(pages).map(([k, ss]) => {
+    const d = appRun.docs.find(x => x.id === ss[0].doc), pg = d && d.pages[ss[0].page - 1];
+    if (!pg) return "";
+    const boxes = ss.map(s => `<rect x="${s.b[0] - 3}" y="${s.b[1] - 3}" width="${s.b[2] - s.b[0] + 6}" height="${s.b[3] - s.b[1] + 6}" fill="none" stroke="var(--gt)" stroke-width="3" vector-effect="non-scaling-stroke"><title>${esc(s.label)}</title></rect>`).join("");
+    return `<div class="cap"><span class="muted mono">${esc(d.file)} · page ${ss[0].page}</span></div><div class="stage" style="margin-bottom:12px"><svg viewBox="0 0 ${pg.w} ${pg.h}"><image href="${pg.img}" width="${pg.w}" height="${pg.h}"/>${boxes}</svg></div>`;
+  }).join("") || "<p class='muted'>The source is a spreadsheet cell or has no box.</p>";
 }
 
 function cards() {
