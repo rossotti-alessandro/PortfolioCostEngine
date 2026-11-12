@@ -39,3 +39,13 @@ and 13 account totals. Most public "sample statements" are reading guides with a
 (BIL, Basel-Stadt, Scotia, SGKB, ZKB): no holdings to check. The 30+ page target of SC-9.6 is not reachable
 from public material alone; Swiss and Italian private-bank statements are not published. The supervised
 pilot (`docs/READINESS.md` section 4) is where holdings accuracy on real Swiss statements gets measured.
+
+### Search for more (2026-11-12)
+
+Searched again for public Swiss, Italian and German holdings statements ("Vermögensauszug", "Depotauszug
+Lesehilfe", "estratto conto titoli", "rendiconto patrimoniale", private-bank sample statements) and checked
+eight more PDFs: Monte dei Paschi's reading guide to the securities statement, SSK's account and custody
+statement annex, Avadis' custody statement note, Fideuram's service guide, NBIN, Aligned Capital and
+Scotiabank (EN) guides. None has a Swiss or Italian holdings table with figures: they describe the fields
+in text or show pictures without values. Only the two Canadian guides (NBIN, Scotiabank) carry sample
+figures, in the same layout family as the Scotia guide already in the corpus. Not added.
