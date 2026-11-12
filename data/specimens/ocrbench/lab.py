@@ -79,7 +79,8 @@ def main() -> None:
     e2e = OCR / "e2e" / "e2e.json"
     if e2e.exists():  # the SYNTHETIC prospects run through the app (app_e2e.py)
         shutil.copytree(OCR / "e2e" / "img", LAB / "e2e" / "img")
-    data = {"pages": out_pages, "e2e": json.loads(e2e.read_text(encoding="utf-8")) if e2e.exists() else None,
+    arena = ROOT / "var" / "arena" / "arena.json"  # the workflow arena (data/specimens/arena/run.py)
+    data = {"pages": out_pages, "arena": json.loads(arena.read_text(encoding="utf-8")) if arena.exists() else None, "e2e": json.loads(e2e.read_text(encoding="utf-8")) if e2e.exists() else None,
             "families": scores.get("families", {}), "engines": scores["engines_core"], "engines_core": scores["engines_core"],
             "engines_all": scores["engines"], "engines_mini": scores.get("engines_mini", {}), "n_core": len(json.loads((HERE / "vlm_core.json").read_text())["pages"]),
             "outputs": outputs, "models": meta_extra}
