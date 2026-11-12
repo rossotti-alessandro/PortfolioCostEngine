@@ -1,15 +1,15 @@
 ---
 id: SC-5.14
 title: Agentic revalidation of extracted fee values
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Add agentic revalidation of extracted values"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-wc8huq"
 pr: ""
 created_date: "2026-11-12 18:05"
-updated_date: "2026-11-12 18:05"
+updated_date: "2026-11-12 17:51"
 labels:
   - extraction
 dependencies:
