@@ -1,15 +1,15 @@
 ---
 id: SC-5.22
 title: Read scanned pages with RapidOCR when installed
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Raise fee detection toward 100%"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-o8nuus"
 pr: ""
 created_date: "2026-11-13 17:58"
-updated_date: "2026-11-13 17:57"
+updated_date: "2026-11-13 18:06"
 labels:
   - extraction
 dependencies: []
@@ -68,9 +68,9 @@ stays a follow-up.
 
 ## Acceptance Criteria
 
-- [ ] #1 With the extra installed, production `extract()` finds more gold fees on the simulated scan pages than Tesseract (52.8% on 11 pages), with no more wrong values.
-- [ ] #2 Without the extra, behaviour is unchanged (Tesseract); digital pages unchanged; synthetic `pce.evaluation` stays 100%/0 wrong.
-- [ ] #3 Unit tests cover the reader selection and the scenario-title veto with SYNTHETIC data.
+- [x] #1 With the extra installed, production `extract()` finds more gold fees on the simulated scan pages than Tesseract (52.8% on 11 pages), with no more wrong values.
+- [x] #2 Without the extra, behaviour is unchanged (Tesseract); digital pages unchanged; synthetic `pce.evaluation` stays 100%/0 wrong.
+- [x] #3 Unit tests cover the reader selection and the scenario-title veto with SYNTHETIC data.
 
 ## Implementation Notes
 
@@ -81,7 +81,19 @@ Render demo keeps Tesseract until the extra is added to the image.
 
 ## Outcome
 
+- **Status**: completed (merge needs Ale's approval: new dependency licences, AGENTS.md rule 9)
+- Production `extract()` on the 11 scan pages of the ocrbench gold (89 fees), strategies scorer:
+  Tesseract 52.8% found, 10 wrong, 1 accepted wrong, 6.9 s/page -> RapidOCR 69.7% found, 3 wrong,
+  1 accepted wrong (an insurance DIP minimum premium), 4.3 s/page.
+- Digital pages do not use OCR: finder 95.6% -> 95.8% (scenario-title veto), wrong 130 -> 129.
+- `pce.evaluation` synthetic P-1042 and P-2077: recall 100%, wrong 0; sabotaged controls still fail.
+- The synthetic scanned statement gives the same debits with both readers (`test_pipeline.py`).
+- No network: RapidOCR initialised and read a page with sockets disabled; models ship in the wheel.
+
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-o8nuus | 4703deb | 2026-11-13 | Add SC-5.22 |
+| claude/project-thread-o8nuus | f0663c8 | 2026-11-13 | Scenario section titles veto their rows |
+| claude/project-thread-o8nuus | 14d6b8f | 2026-11-13 | Read scans with RapidOCR when installed |
