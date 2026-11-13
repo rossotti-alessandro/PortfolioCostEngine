@@ -1,15 +1,15 @@
 ---
 id: SC-5.22
 title: Read scanned pages with RapidOCR when installed
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Raise fee detection toward 100%"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-o8nuus"
 pr: ""
 created_date: "2026-11-13 17:58"
-updated_date: "2026-11-13 17:58"
+updated_date: "2026-11-13 17:57"
 labels:
   - extraction
 dependencies: []
