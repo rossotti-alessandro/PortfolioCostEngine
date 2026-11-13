@@ -70,6 +70,16 @@ BAND_WORD = re.compile(
 PHONE = re.compile(r"(?:tel|fax|phone|t[ée]l[ée]phone|telefon)\b[^\n]{0,12}$|\+\d{0,3}\s*$", re.I)
 MILLION = re.compile(r"^\s*(?:mio|million|millionen|milioni|mln|mn|mrd|bn|billion)\b", re.I)
 THRESHOLD = 10_000  # a band limit is a large amount; a fee "up to EUR 300" is not
+# Printed right after a rate, these make it a return, not a fee ("1.91% before costs and 1.15% after costs").
+RETURN_AFTER = re.compile(
+    r"\W{0,3}(?:(?:before|after) costs|(?:apr[èe]s|avant) d[ée]duction|(?:vor|nach) (?:abzug der )?kosten|"
+    r"(?:prima|dopo) (?:la deduzione )?dei costi|al (?:netto|lordo) dei costi)",
+    re.I,
+)
+# The base a fee is charged on, not a fee: "per ogni 100 Euro di capitale", "for every EUR 1,000".
+PER_BASE = re.compile(
+    r"(?:per ogni|for every|pour chaque|f[üu]r jede[nm]?)\W*(?:CHF|EUR|USD|Euro|€)?\s*$", re.I
+)
 
 
 @dataclass
@@ -111,6 +121,8 @@ def _num_bbox(cell: Cell, n: PrintedNumber) -> tuple[float, float, float, float]
 def _accepted(n: PrintedNumber, before: str, after: str = "") -> bool:
     """A rate or a money-looking amount. Bare integers (counts, years, footnotes, page numbers),
     rates above 100 % and tier thresholds are not fee values."""
+    if RETURN_AFTER.match(after) or PER_BASE.search(before[-25:]):
+        return False
     if n.unit == "bp":
         return n.value <= 1000
     if n.is_rate:

@@ -95,3 +95,17 @@ def test_section_title_far_above_a_long_tier_table_still_names_the_fee():
     rows += [[(f"Tier {i}", 50), ("0.300 %", 300)] for i in range(50)]
     facts = finder.find_fees([_page(rows, step=10)])
     assert len(facts) == 50 and all(f.label.startswith("Transaction fees") for f in facts)
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        [("Investment EUR 10,000", 50), ("1.91% before costs and 1.15% after costs.", 300)],
+        [("coûts et de", 50), ("6.19% après déduction des coûts.", 300)],
+        [("COMMISSIONE MASSIMA APPLICABILE PER OGNI 100 EURO DI CAPITALE", 50)],
+    ],
+)
+def test_returns_and_charging_bases_are_not_fees(row):
+    """SYNTHETIC: a return quoted before/after costs, and the base a commission is charged on, under a
+    section title that names costs."""
+    assert finder.find_fees([_page([[("Costs over time", 50)], row])]) == []
