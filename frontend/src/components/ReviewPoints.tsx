@@ -1,5 +1,5 @@
 import { chf, cn } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t, tm } from "@/lib/i18n";
 import { reasonText } from "@/lib/trail";
 import type { ReviewPoint } from "@/lib/types";
 import { AlertTriangle, Info, OctagonAlert } from "lucide-react";
@@ -65,7 +65,7 @@ function text(p: ReviewPoint): { title: string; detail: string } {
         detail: t("{share}% of the known cost. Worth a second look before it goes to the client.", v),
       };
     default:
-      return { title: v.title ?? "", detail: v.detail ?? "" };
+      return { title: tm(v.title ?? ""), detail: tm(v.detail ?? "") };
   }
 }
 

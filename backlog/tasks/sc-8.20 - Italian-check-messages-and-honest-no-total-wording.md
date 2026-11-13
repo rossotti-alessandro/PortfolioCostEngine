@@ -1,15 +1,15 @@
 ---
 id: SC-8.20
 title: Italian check messages and honest "no total" wording
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Build FeeLens proposal for Massimo"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/sc-8.20-italian-messages"
 pr: ""
 created_date: "2026-11-13 12:30"
-updated_date: "2026-11-13 12:22"
+updated_date: "2026-11-13 12:26"
 labels:
   - ui
   - i18n
@@ -25,6 +25,8 @@ paths_owned:
   - frontend/src/pages/Compare.tsx
   - frontend/src/pages/Report.tsx
   - frontend/src/pages/Pipeline.tsx
+  - frontend/src/components/Shell.tsx
+  - frontend/src/components/*.test.tsx
   - frontend/src/lib/*.test.ts
   - frontend/tests/e2e/**
 spec_ref: docs/research/UX_RECOMMENDATIONS.md
@@ -55,15 +57,20 @@ Templates follow the backend wording: a changed backend sentence silently falls 
 
 ## Acceptance Criteria
 
-- [ ] #1 In the Italian UI every check title and detail produced by `pce/analysis.py` shows in Italian (unit test with one sample per template)
-- [ ] #2 The AJ Bell-style case (statement uploaded, holdings not valued in CHF) no longer says that no document is a statement of assets (unit or E2E test)
-- [ ] #3 English UI unchanged; existing E2E suite passes
+- [x] #1 In the Italian UI every check title and detail produced by `pce/analysis.py` shows in Italian (unit test with one sample per template)
+- [x] #2 The AJ Bell-style case (statement uploaded, holdings not valued in CHF) no longer says that no document is a statement of assets (unit or E2E test)
+- [x] #3 English UI unchanged; existing E2E suite passes
 
 ## Implementation Notes
 
+- `tm()` in `i18n.ts` tries the `IT_MESSAGES` patterns in `it.ts` (full-match regex, `$1…` groups translated again in turn, then the plain dictionary); unknown text stays as sent. Used for check titles and details (Costs, Pipeline), document requests (Costs) and fallback review points.
+- `i18n.test.ts` holds one backend sentence per pattern and fails if a pattern has no sample or a sample stays English.
+- `NotStarted` now takes the documents: a `portfolio_statement` among them gives "A statement of assets is uploaded, but none of its positions could be valued in CHF…", pointing to "Validation and reconciliation". The header badge says "No position valued in CHF yet" in that case. Checked on the real AJ Bell sample (GBP, no GBP/CHF rate) in the Italian UI.
+- Also owns `components/Shell.tsx` (header badge, same wording bug) and `components/*.test.tsx`.
+
 ## Outcome
 
-- **Status**: 
+- **Status**: completed. Every server check, request and ledger warning has an Italian pattern; the empty Costs, Compare and Report pages and the header badge no longer deny an uploaded statement.
 
 ## Issues Encountered
 
