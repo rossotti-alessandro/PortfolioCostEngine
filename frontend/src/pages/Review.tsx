@@ -3,7 +3,7 @@ import { SourceCrop } from "@/components/SourceCrop";
 import { Badge, Button, Card, Dialog, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, cn, num } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t, tm } from "@/lib/i18n";
 import { whyYou } from "@/lib/trail";
 import type { Fact } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -240,7 +240,8 @@ export default function ReviewPage() {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-[12px] text-subtle">
-                  {active.fee_label ?? (KIND_LABEL[active.kind] && t(KIND_LABEL[active.kind]))}
+                  {(active.fee_label && tm(active.fee_label)) ??
+                    (KIND_LABEL[active.kind] && t(KIND_LABEL[active.kind]))}
                 </div>
                 <div className="truncate text-[13.5px] font-medium text-ink">{active.label}</div>
               </div>
@@ -356,7 +357,7 @@ export default function ReviewPage() {
                     <span className={cn("block truncate", f.status === "rejected" && "text-subtle line-through")}>
                       {f.label}
                     </span>
-                    {f.fee_label && <span className="block truncate text-[11px] text-subtle">{f.fee_label}</span>}
+                    {f.fee_label && <span className="block truncate text-[11px] text-subtle">{tm(f.fee_label)}</span>}
                   </span>
                   <span className="flex min-w-0 max-w-[60%] items-center gap-2">
                     <span className="num truncate font-medium text-ink" title={displayValue(f)}>

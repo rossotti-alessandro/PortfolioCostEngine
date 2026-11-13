@@ -16,6 +16,7 @@ const SEVERITY = {
 function text(p: ReviewPoint): { title: string; detail: string } {
   const v = { ...p.vars };
   if (v.confidence) v.confidence = `${Math.round(Number(v.confidence) * 100)}%`;
+  if (v.label) v.label = tm(String(v.label)); // "Bank · Custody fee": the fee part is server English
   switch (p.kind) {
     case "not_determined":
       return {
