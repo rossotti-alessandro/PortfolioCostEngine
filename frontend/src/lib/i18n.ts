@@ -52,6 +52,7 @@ export function tm(en: string): string {
 }
 
 function translate(s: string): string {
+  if (IT[s]) return IT[s]; // a whole known sentence wins over splitting it on a pattern
   for (const [re, it] of IT_MESSAGES) {
     const m = s.match(re);
     if (m) return it.replace(/\$(\d)/g, (_x, i: string) => (m[Number(i)] ? translate(m[Number(i)]) : ""));
