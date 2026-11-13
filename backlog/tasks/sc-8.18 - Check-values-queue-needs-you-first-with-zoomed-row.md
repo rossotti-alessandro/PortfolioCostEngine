@@ -1,11 +1,11 @@
 ---
 id: SC-8.18
 title: Check values queue needs you first with zoomed row
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-13 12:01"
@@ -62,17 +62,29 @@ None: same facts query; the crop reuses the PDF already loaded for the page.
 
 ## Acceptance Criteria
 
-- [ ] #1 A document opens on the values that need a person, with the reason in words and the zoomed source row
-- [ ] #2 `whyYou` is unit-tested: confident digital value, flags plus OCR plus low confidence, already handled
-- [ ] #3 E2E review and trace tests pass; EN and IT strings present
+- [x] #1 A document opens on the values that need a person, with the reason in words and the zoomed source row
+- [x] #2 `whyYou` is unit-tested: confident digital value, flags plus OCR plus low confidence, already handled
+- [x] #3 E2E review and trace tests pass; EN and IT strings present
 
 ## Implementation Notes
 
+- Owned paths as listed, plus two strings in `pages/Report.tsx` and `pages/Internal.tsx` that still said the
+  demo role is in the sidebar (it moved to the account menu in SC-8.15). `lib/it.ts` also carries the IT
+  strings for the next Report story.
+
 ## Outcome
+
+- **Status**: completed
+- Queue tabs with counts, default Needs you, "Why you" reasons, zoomed source row, r to reject, page picks
+  outside the queue switch to All. `whyYou` unit-tested (3 cases).
+- E2E 17/17 passed locally; `local-gate.sh` GATE PASSED. Screenshot: project files
+  `feelens-redesign/check-values.png`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | 16a5f3f | 2026-11-13 | Check values queue, reasons, zoomed row |
+| claude/project-thread-bj3sap | 6c49da1 | 2026-11-13 | Demo role lives in the account menu |
 
 ## Issues Encountered
