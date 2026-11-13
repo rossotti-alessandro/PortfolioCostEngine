@@ -1,15 +1,15 @@
 ---
 id: SC-5.21
 title: Close fee detection leaks with heading-aware labels and fee vocabulary
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Raise fee detection toward 100%"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-o8nuus"
 pr: ""
 created_date: "2026-11-13 16:55"
-updated_date: "2026-11-13 16:56"
+updated_date: "2026-11-13 17:37"
 labels:
   - extraction
 dependencies: []
@@ -58,14 +58,42 @@ New vocabulary can pull in non-fee numbers: the wrong-value share must not rise.
 
 ## Acceptance Criteria
 
-- [ ] #1 Production extract() finds more gold fees on the 53 digital pages than 85.2%, measured with the strategies scorer, and on the 19 held-out round-2 pages.
-- [ ] #2 Wrong values (all, and "verified") do not rise on the same pages; synthetic corpora stay 100%/100% in `pce.evaluation`.
-- [ ] #3 Unit tests cover each new rule with SYNTHETIC lines.
+- [x] #1 Production extract() finds more gold fees on the 53 digital pages than 85.2%, measured with the strategies scorer, and on the 19 held-out round-2 pages.
+- [x] #2 Wrong values (all, and "verified") do not rise on the same pages; synthetic corpora stay 100%/100% in `pce.evaluation`.
+- [x] #3 Unit tests cover each new rule with SYNTHETIC lines.
 
 ## Implementation Notes
 
+Owned paths used: `backend/src/pce/extraction/finder.py`, `backend/src/pce/extraction/parsers.py`,
+`backend/tests/test_fee_detection_leaks.py`. The label swap (finder label over the parser label when both
+agree) was tried and reverted: parser labels feed the ledger, the client report and the Italian fee names.
+The finder's label with section and column stays in `extra["finder_label"]`; showing it in the review UI
+is a frontend follow-up.
+
 ## Outcome
 
-- **Status**: 
+- **Status**: completed
+- Production `extract()` on the ocrbench gold, strategies scorer, before -> after:
+  - 54 digital pages (813 fees): found 85.2% -> 90.2%; "verified" wrong 7.4% -> 7.4%.
+  - 19 round-2 pages never used for tuning: 86.1% -> 91.0%.
+  - all 63 pages incl. 9 simulated scans: 82.2% -> 86.7%. Scans unchanged at 53.5% (OCR is the limit).
+  - Finder alone: 92.0% -> 95.6%; wrong values 129 -> 130.
+- The scorer counts 3 more "wrong" values on the app; each new one was checked on the page: all are correct
+  values (a repeated printed value matched greedily to another gold line, or "FUNDS" vs "Money market funds").
+- `pce.evaluation` synthetic P-1042 and P-2077: recall 100%, wrong 0 (sabotaged controls still fail).
+- Statements (`data/specimens/statements/score.py`): unchanged; Fidelity US 34/34, no silent AUM error.
+- Speed: median 0.62 s/page, unchanged.
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-o8nuus | 05e134d | 2026-11-13 | Add SC-5.21 |
+| claude/project-thread-o8nuus | d6d3dfd | 2026-11-13 | Keep finder totals, find fees by heading |
+| claude/project-thread-o8nuus | a7bec77 | 2026-11-13 | Returns quoted around costs are not fees |
+| claude/project-thread-o8nuus | c69bfb5 | 2026-11-13 | Margin and debit interest paid is a cost |
 
 ## Issues Encountered
+
+- `tests/test_revalidate.py` selects facts by exact label; the label swap broke it, which is how the
+  ledger-label dependency surfaced.
