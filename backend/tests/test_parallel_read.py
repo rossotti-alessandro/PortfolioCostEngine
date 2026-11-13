@@ -47,7 +47,7 @@ def test_parallel_ocr_matches_sequential(synthetic_scan: bytes, monkeypatch: pyt
     sequential = layout.read_pdf(synthetic_scan)
     monkeypatch.setenv("PCE_OCR_WORKERS", "4")
     parallel = layout.read_pdf(synthetic_scan)
-    assert [p.engine for p in parallel] == ["tesseract-ocr"] * 4
+    assert [p.engine for p in parallel] == [layout.ocr_engine()] * 4
     assert _snapshot(parallel) == _snapshot(sequential)
 
 

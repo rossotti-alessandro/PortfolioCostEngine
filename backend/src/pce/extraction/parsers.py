@@ -18,7 +18,7 @@ from openpyxl.utils import get_column_letter
 from ..finance.isin import ISIN_RE, is_valid_isin
 from ..finance.money import parse_amount, parse_percent
 from . import finder, revalidate, verify
-from .layout import Line, PageInfo, read_pdf
+from .layout import OCR_ENGINES, Line, PageInfo, read_pdf
 from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact, Review
 from .vocab import (
     AMOUNT,
@@ -1446,6 +1446,6 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
         prof.institution = ent["entity"]
     if prof.doc_type == DocType.UNKNOWN:
         prof.warnings.append("Could not classify this document; choose its type manually.")
-    if "tesseract-ocr" in prof.engines:
+    if set(prof.engines) & set(OCR_ENGINES):
         prof.warnings.append("Scanned pages were read with OCR: confirm each value against the image.")
     return ExtractionResult(profile=prof, facts=facts, extractor_version=EXTRACTOR_VERSION), pages

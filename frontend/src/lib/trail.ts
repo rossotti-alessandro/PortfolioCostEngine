@@ -25,10 +25,13 @@ export interface TrailStep {
 
 const OCR = /ocr|tesseract|paddle|doctr|rapid/i;
 
+/** True for a page reader that OCRs an image (Tesseract, RapidOCR, ...), not a digital text layer. */
+export const isOcrEngine = (engine: string | null | undefined): boolean => !!engine && OCR.test(engine);
+
 export function readKind(e: EvidenceRef): "text" | "ocr" | "sheet" | "manual" {
   if (e.status === "manual" && !e.engine) return "manual";
   if (e.sheet || e.cell) return "sheet";
-  return e.engine && OCR.test(e.engine) ? "ocr" : "text";
+  return isOcrEngine(e.engine) ? "ocr" : "text";
 }
 
 const READ_TITLE = {

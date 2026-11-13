@@ -19,10 +19,17 @@ paths_owned:
   - backend/src/pce/extraction/layout.py
   - backend/src/pce/extraction/finder.py
   - backend/src/pce/extraction/toolchain.py
+  - backend/src/pce/extraction/parsers.py
+  - backend/src/pce/pipeline_view.py
   - backend/pyproject.toml
   - backend/uv.lock
-  - backend/tests/test_rapidocr_reader.py
   - backend/tests/test_fee_detection_leaks.py
+  - backend/tests/test_pipeline.py
+  - backend/tests/test_parallel_read.py
+  - frontend/src/lib/trail.ts
+  - frontend/src/pages/Review.tsx
+  - frontend/src/pages/Documents.tsx
+  - frontend/src/pages/Pipeline.tsx
   - docs/adr/0003-document-extraction-and-ocr.md
 spec_ref: docs/research/EXTRACTION_STRATEGY.md
 rule_refs: [".claude/rules/extraction.md", ".claude/rules/privacy.md"]
@@ -66,6 +73,11 @@ stays a follow-up.
 - [ ] #3 Unit tests cover the reader selection and the scenario-title veto with SYNTHETIC data.
 
 ## Implementation Notes
+
+Shared contract touched: `backend/pyproject.toml` and `uv.lock` (new optional extra). Pages and evidence
+now carry `rapidocr` or `tesseract-ocr` as the engine; `layout.OCR_ENGINES` (backend) and `isOcrEngine`
+(frontend) replace the checks for the literal `tesseract-ocr`. The Dockerfile is not changed, so the
+Render demo keeps Tesseract until the extra is added to the image.
 
 ## Outcome
 

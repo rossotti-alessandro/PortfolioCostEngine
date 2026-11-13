@@ -3,6 +3,7 @@ import { Badge, Button, Card, CardHeader, Empty, Spinner } from "@/components/ui
 import { api } from "@/lib/api";
 import { DOC_TYPES, assets, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { isOcrEngine } from "@/lib/trail";
 import type { Analysis, DocumentRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -364,7 +365,7 @@ function DocDetails({ d, pid, onType }: { d: DocumentRow; pid: number; onType: (
           <div>
             <dt className="text-subtle">{t("Read with")}</dt>
             <dd className="mt-0.5">
-              {d.profile.engines.includes("tesseract-ocr") ? (
+              {d.profile.engines.some(isOcrEngine) ? (
                 <Badge tone="violet">
                   <ScanLine className="h-3 w-3" /> OCR
                 </Badge>

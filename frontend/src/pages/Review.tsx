@@ -4,7 +4,7 @@ import { Badge, Button, Card, Dialog, ErrorBox, Field, Spinner, inputCls } from 
 import { api } from "@/lib/api";
 import { DOC_TYPES, cn, num } from "@/lib/format";
 import { t, tm } from "@/lib/i18n";
-import { whyYou } from "@/lib/trail";
+import { isOcrEngine, whyYou } from "@/lib/trail";
 import type { Fact } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, FileSpreadsheet, FileText, History, Pencil, ScanLine, X } from "lucide-react";
@@ -166,7 +166,7 @@ export default function ReviewPage() {
               {doc?.sha256.slice(0, 10)}…
             </div>
           </div>
-          {doc?.profile.engines.includes("tesseract-ocr") && (
+          {doc?.profile.engines.some(isOcrEngine) && (
             <Badge tone="violet">
               <ScanLine className="h-3 w-3" /> {t("Scanned · OCR")}
             </Badge>
