@@ -1,15 +1,15 @@
 ---
 id: SC-5.20
 title: Read several uploaded documents at once, with progress per file
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Validate accuracy and speed up processing"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/sc-5.20-parallel-documents"
 pr: ""
 created_date: "2026-11-13 13:11"
-updated_date: "2026-11-13 13:11"
+updated_date: "2026-11-13 13:12"
 labels:
   - extraction
   - backend
