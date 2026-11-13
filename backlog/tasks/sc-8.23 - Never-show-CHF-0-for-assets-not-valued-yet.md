@@ -7,9 +7,9 @@ owner: "Build FeeLens proposal for Massimo"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/sc-8.23-no-chf-zero"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/49"
 created_date: "2026-11-13 14:25"
-updated_date: "2026-11-13 14:25"
+updated_date: "2026-11-13 14:31"
 labels:
   - ui
 dependencies: []
