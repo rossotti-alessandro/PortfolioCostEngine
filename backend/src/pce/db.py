@@ -138,6 +138,16 @@ class Approval(Base):
     note: Mapped[str] = mapped_column(Text, default="")
 
 
+class FirmSettings(Base):
+    """One row per firm: the firm's own tariff, the starting point of every new cost review."""
+
+    __tablename__ = "firm_settings"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    proposal: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_by: Mapped[str] = mapped_column(String(100))
+    updated_at: Mapped[str] = mapped_column(String(32), default=now, onupdate=now)
+
+
 def data_dir() -> Path:
     d = Path(os.environ.get("PCE_DATA_DIR", Path(__file__).resolve().parents[3] / "var"))
     d.mkdir(parents=True, exist_ok=True)
