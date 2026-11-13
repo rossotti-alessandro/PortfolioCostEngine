@@ -7,9 +7,9 @@ owner: "Validate accuracy and speed up processing"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/sc-8.22-italian-notes"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/45"
 created_date: "2026-11-13 13:32"
-updated_date: "2026-11-13 13:37"
+updated_date: "2026-11-13 13:39"
 labels:
   - ui
   - i18n
