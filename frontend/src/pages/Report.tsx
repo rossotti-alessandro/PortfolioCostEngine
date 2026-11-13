@@ -182,7 +182,7 @@ export default function ReportPage() {
                   </>
                 ) : (
                   <p className="text-[12.5px] text-subtle">
-                    {t("Only a senior reviewer can approve. Switch the demo role in the sidebar.")}
+                    {t("Only a senior reviewer can approve. Switch the demo role in the account menu.")}
                   </p>
                 )}
               </div>

@@ -43,7 +43,7 @@ export default function InternalPage() {
           title={t("Restricted to senior reviewers and relationship managers")}
         >
           {t(
-            "Internal revenue and margin are never shown to analysts or included in client documents. Switch the demo role in the sidebar to view.",
+            "Internal revenue and margin are never shown to analysts or included in client documents. Switch the demo role in the account menu to view.",
           )}
         </Empty>
       </Card>
