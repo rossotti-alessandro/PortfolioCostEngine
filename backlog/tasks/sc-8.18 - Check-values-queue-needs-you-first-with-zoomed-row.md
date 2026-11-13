@@ -85,6 +85,6 @@ None: same facts query; the crop reuses the PDF already loaded for the page.
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
 | claude/project-thread-bj3sap | 16a5f3f | 2026-11-13 | Check values queue, reasons, zoomed row |
-| claude/project-thread-bj3sap | 6c49da1 | 2026-11-13 | Demo role lives in the account menu |
+| claude/project-thread-bj3sap | 47a0018 | 2026-11-13 | Demo role lives in the account menu |
 
 ## Issues Encountered
