@@ -1,15 +1,15 @@
 ---
 id: SC-8.19
 title: Report ready-to-send checklist and grouped decision log
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-13 12:16"
-updated_date: "2026-11-13 12:14"
+updated_date: "2026-11-13 12:30"
 labels:
   - ui
 dependencies: []
@@ -55,17 +55,25 @@ None: reads the analysis and facts already loaded by the workspace; no new endpo
 
 ## Acceptance Criteria
 
-- [ ] #1 The Report page lists open checks (values to check, documents to ask for, undetermined costs, approval) with links to where each is resolved
-- [ ] #2 Repeated consecutive audit events appear once with a count; no internal margin in the client report route
-- [ ] #3 E2E suite passes (report, PDF, roles)
+- [x] #1 The Report page lists open checks (values to check, documents to ask for, undetermined costs, approval) with links to where each is resolved
+- [x] #2 Repeated consecutive audit events appear once with a count; no internal margin in the client report route
+- [x] #3 E2E suite passes (report, PDF, roles)
 
 ## Implementation Notes
 
+- Owned paths as listed. No backend change; `lib/it.ts` strings for this page landed with SC-8.18 (#39).
+
 ## Outcome
+
+- **Status**: completed
+- "Ready to send?" card with four checks and links (Check now, See the list); footer on internal margin and analyst notes.
+- Decision log groups consecutive events with the same action and user ("11 documents uploaded").
+- E2E 17/17 passed locally; `local-gate.sh` GATE PASSED. Screenshot: project files `feelens-redesign/report-ready.png`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | 17765bf | 2026-11-13 | Ready-to-send checklist, grouped decision log, design system line |
 
 ## Issues Encountered
