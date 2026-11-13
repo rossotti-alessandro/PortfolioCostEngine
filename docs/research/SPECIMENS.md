@@ -51,6 +51,12 @@ look-alikes for the rest.
 `cost_disclosure` (ex-ante) is not yet a code in `data/taxonomy/document_types.csv`, which has the ex-post
 `annual_cost_report` only. Proposed addition for SC-2.1: `fees,cost_disclosure_ex_ante`.
 
+**Wave 4 (2026-11-13):** 15 files added after an audit against a client's document set: the first Italian
+ex-post costs and charges report with figures (Moneyfarm), 9 ex-ante cost and retrocession disclosures
+(Gutzwiller, Deutsche Bank Suisse, Cornèr, PostFinance, Raisin, easyROBI), and Swiss price lists in Italian
+(Alpian, Vontobel, cash, Baloise, VP Bank). They carry no expected values yet. The audit and an inspectable copy
+sorted by type and bank are in the project files (`corpus/documents/README.md`, `INDEX.md`).
+
 ## How each file was validated
 
 Starts with `%PDF`; `pdfinfo` opens it; `pdftotext` on pages 1-3 returns at least 200 characters that name
