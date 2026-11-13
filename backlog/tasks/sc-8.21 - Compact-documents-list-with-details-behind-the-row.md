@@ -1,15 +1,15 @@
 ---
 id: SC-8.21
 title: Compact documents list with details behind the row
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-13 12:30"
-updated_date: "2026-11-13 12:25"
+updated_date: "2026-11-13 12:45"
 labels:
   - ui
 dependencies: []
@@ -55,17 +55,26 @@ None: same documents payload, fewer DOM nodes per row.
 
 ## Acceptance Criteria
 
-- [ ] #1 Each document row is one line with file, type, bank or issuer, date, values and status; details open under the row
-- [ ] #2 At most 6 rows show until "Show all"; documents needing a check come first
-- [ ] #3 E2E suite passes (upload, pipeline links, type change)
+- [x] #1 Each document row is one line with file, type, bank or issuer, date, values and status; details open under the row
+- [x] #2 At most 6 rows show until "Show all"; documents needing a check come first
+- [x] #3 E2E suite passes (upload, pipeline links, type change)
 
 ## Implementation Notes
 
+- Owned paths as listed. No backend change. The checklist column narrows from 340 to 300 px so the list keeps its columns at 1440 px.
+
 ## Outcome
+
+- **Status**: completed
+- One line per document (File, Type, Bank or issuer, Date, Values, Status, icon link to how it was processed); needs-a-check first; 6 shown, then "Show all {n} documents".
+- Details under the row: read with, pages, period, jurisdiction, fingerprint, warnings, type selector, links to its values and its processing.
+- Drop zone is one line once documents exist.
+- E2E 17/17 passed locally; `local-gate.sh` GATE PASSED. Screenshot: project files `feelens-redesign/documents-compact.png`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | d3c27ce | 2026-11-13 | Compact documents list, details under the row, one-line drop zone |
 
 ## Issues Encountered
