@@ -7,9 +7,9 @@ owner: "Raise fee detection toward 100%"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-o8nuus"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/50"
 created_date: "2026-11-13 16:55"
-updated_date: "2026-11-13 17:37"
+updated_date: "2026-11-13 17:41"
 labels:
   - extraction
 dependencies: []
