@@ -13,6 +13,7 @@ import {
   Lock,
   LogOut,
   ShieldCheck,
+  UserCog,
   Users,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -218,6 +219,7 @@ function StepBar({ pid }: { pid: number }) {
 /** Left navigation (240px) per DESIGN_SYSTEM.md §3; collapses to a top block on small screens. */
 export function AppShell() {
   const path = useLocation().pathname;
+  const me = useQueryClient().getQueryData<Me>(["me"]);
   return (
     <div className="flex min-h-full flex-col md:flex-row">
       <aside className="no-print flex shrink-0 flex-col border-b border-line bg-surface px-3 py-4 md:sticky md:top-0 md:h-screen md:w-[240px] md:border-b-0 md:border-r">
@@ -235,6 +237,11 @@ export function AppShell() {
           >
             <BookOpen className="h-4 w-4" /> {t("Library")}
           </NavLink>
+          {me?.admin && (
+            <NavLink to="/users" className={navCls}>
+              <UserCog className="h-4 w-4" /> {t("Users")}
+            </NavLink>
+          )}
         </nav>
         <div className="mt-6 space-y-2 md:mt-auto">
           <div className="flex items-center gap-1.5 px-2.5 text-[11.5px] text-teal-700">

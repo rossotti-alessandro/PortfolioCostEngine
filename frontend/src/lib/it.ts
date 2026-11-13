@@ -722,6 +722,32 @@ export const IT: Record<string, string> = {
   "Show details": "Mostra dettagli",
   "Hide details": "Nascondi dettagli",
   "Sign in": "Accedi",
+  "Code from your authenticator app": "Codice dell'app di autenticazione",
+  "Wrong code. Use the newest code in your authenticator app.":
+    "Codice errato. Usa il codice più recente dell'app di autenticazione.",
+  "The two passwords differ.": "Le due password sono diverse.",
+  "Set up your account": "Configura il tuo account",
+  "New password": "Nuova password",
+  "At least 12 characters. Only you know it.": "Almeno 12 caratteri. La conosci solo tu.",
+  "Repeat the new password": "Ripeti la nuova password",
+  "Open an authenticator app (Microsoft Authenticator, Google Authenticator, 1Password) and add an account with this setup key:":
+    "Apri un'app di autenticazione (Microsoft Authenticator, Google Authenticator, 1Password) e aggiungi un account con questa chiave:",
+  "On this phone? Open the authenticator app directly":
+    "Sei su questo telefono? Apri direttamente l'app di autenticazione",
+  "Finish setup": "Completa la configurazione",
+  Users: "Utenti",
+  "One account per person. New and reset accounts get a one-time password; at first sign-in the person sets their own password and links an authenticator app.":
+    "Un account per persona. Gli account nuovi o reimpostati ricevono una password monouso; al primo accesso la persona sceglie la propria password e collega un'app di autenticazione.",
+  "One-time password for {user}. Give it to the person directly; it is not shown again.":
+    "Password monouso per {user}. Consegnala direttamente alla persona; non verrà mostrata di nuovo.",
+  Admin: "Amministratore",
+  "Add user": "Aggiungi utente",
+  Disabled: "Disattivato",
+  "Setup pending": "Configurazione in sospeso",
+  Reset: "Reimposta",
+  "Sign out everywhere": "Disconnetti ovunque",
+  Disable: "Disattiva",
+  Enable: "Riattiva",
   "Sign out": "Esci",
   Username: "Nome utente",
   Password: "Password",

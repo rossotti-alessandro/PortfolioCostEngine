@@ -21,6 +21,7 @@ import PipelinePage from "./pages/Pipeline";
 import ProspectsPage from "./pages/Prospects";
 import ReportPage from "./pages/Report";
 import ReviewPage from "./pages/Review";
+import { UsersPage } from "./pages/Users";
 import { crmRoutes } from "./pages/crm/routes";
 
 const qc = new QueryClient({
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },
+      { path: "/users", element: <UsersPage /> },
       ...crmRoutes,
       {
         path: "/p/:id",

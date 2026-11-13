@@ -23,7 +23,28 @@ export interface Me {
   tenant: string;
   roles: Role[];
   admin: boolean;
+  mfa: boolean;
+  setup_required: boolean;
+  must_change_password: boolean;
   csrf_token: string;
+}
+
+export interface SetupKey {
+  secret: string;
+  uri: string;
+  proof: string;
+  must_change_password: boolean;
+}
+
+export interface UserRow {
+  username: string;
+  roles: Role[];
+  admin: boolean;
+  active: boolean;
+  mfa: boolean;
+  must_change_password: boolean;
+  created_at: string;
+  created_by: string;
 }
 
 // The session lives in an HttpOnly cookie the page cannot read. The CSRF token is kept in memory only
@@ -113,8 +134,22 @@ const json = (body: unknown, method = "POST"): RequestInit => ({
 
 export const auth = {
   me: () => req<Me>("/api/auth/me"),
-  login: (username: string, password: string) => req<Me>("/api/auth/login", json({ username, password })),
+  login: (username: string, password: string, code?: string) =>
+    req<Me>("/api/auth/login", json({ username, password, code: code || null })),
+  setupKey: () => req<SetupKey>("/api/auth/setup"),
+  finishSetup: (b: { new_password?: string; secret?: string; proof?: string; code?: string }) =>
+    req<Me>("/api/auth/setup", json(b)),
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+};
+
+export const admin = {
+  users: () => req<UserRow[]>("/api/admin/users"),
+  create: (b: { username: string; roles: Role[]; admin: boolean }) =>
+    req<{ username: string; one_time_password: string }>("/api/admin/users", json(b)),
+  action: (username: string, action: "reset" | "disable" | "enable" | "sign-out") =>
+    req<{ ok?: boolean; one_time_password?: string }>(`/api/admin/users/${encodeURIComponent(username)}/${action}`, {
+      method: "POST",
+    }),
 };
 
 export const api = {
