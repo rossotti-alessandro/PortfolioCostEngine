@@ -2,11 +2,12 @@
 // where it runs, personal data, pilot and price. One source, two languages:
 //   DECK_LANG=it node build_proposal.js   -> ../FeeLens_Proposta_IT.pptx
 //   DECK_LANG=en node build_proposal.js   -> ../FeeLens_Proposal_EN.pptx
-// Screenshots: img/proposal/<lang>/, taken from `main` (7487a2f) run locally on 2026-11-13.
+// Screenshots: img/proposal/<lang>/, taken from main (after PR #43) plus the firm tariff branch (PR #40), 2026-11-13.
 //   - Prospects P-1042 and P-2077 are SYNTHETIC (pinned in backend/tests/test_pipeline.py).
 //   - "Public sample documents (real)" uses real public documents: AJ Bell demo client report, BlackRock iShares
 //     KIDs (one re-scanned as an image to show OCR), Julius Baer Europe price list. URLs in slides/README.md.
-// Accuracy figures: docs/READINESS.md section 3 and data/specimens/statements/RESULTS.md.
+// Accuracy figures: main re-run of 2026-11-13 (pce.evaluation, 62 pages / 896 fees), data/specimens/arena/RESULTS.md,
+// data/specimens/statements/RESULTS.md.
 // Prices: proposal from the pricing thread (doc "FeeLens pricing for Safe Capital", 2026-11-13), not yet approved.
 const path = require("path");
 const fs = require("fs");
@@ -74,8 +75,13 @@ function imgSize(file) {
     s.addText(title, tb({ x: 0.5, y: 0.58, w: 12.3, h: 0.7, fontSize: 26, bold: true, color: X.navy }));
     return s;
   };
-  const card = (s, x, y, w, h, fill, line) =>
-    s.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: fill || X.bg }, line: { color: line || fill || X.bg, width: line ? 0.75 : 0 } });
+  // Square white cards with a hairline border; a tinted fill becomes a thin rule of its colour on top.
+  const RULE = { [X.tealSoft]: X.teal, [X.amberSoft]: X.amber, [X.redSoft]: X.red, [X.greenSoft]: X.green, [X.infoSoft]: X.navy };
+  const card = (s, x, y, w, h, fill, line) => {
+    s.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: X.white }, line: { color: line || X.border, width: 0.75 } });
+    const rule = RULE[fill];
+    if (rule) s.addShape(pres.shapes.RECTANGLE, { x, y, w, h: 0.06, fill: { color: rule }, line: { color: rule, width: 0 } });
+  };
   const badge = (s, x, y, n, d = 0.34, fill = X.amber) => {
     s.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: fill }, line: { color: X.white, width: 1.5 } });
     s.addText(String(n), tb({ x, y, w: d, h: d, fontSize: 13, bold: true, color: X.white, align: "center", valign: "middle" }));
@@ -128,10 +134,10 @@ function imgSize(file) {
     return s;
   };
   const bigNum = (s, x, y, w, num, label, color = X.navy, sub) => {
-    card(s, x, y, w, 1.55, X.bg);
+    card(s, x, y, w, sub ? 1.75 : 1.55, X.white);
     s.addText(num, tb({ x: x + 0.2, y: y + 0.15, w: w - 0.4, h: 0.7, fontSize: 34, bold: true, color }));
-    s.addText(label, tb({ x: x + 0.2, y: y + 0.85, w: w - 0.4, h: 0.6, fontSize: 12, color: X.text }));
-    if (sub) s.addText(sub, tb({ x: x + 0.2, y: y + 1.6, w: w - 0.4, h: 0.4, fontSize: 9.5, color: X.muted }));
+    s.addText(label, tb({ x: x + 0.2, y: y + 0.85, w: w - 0.4, h: 0.55, fontSize: 12, color: X.text }));
+    if (sub) s.addText(sub, tb({ x: x + 0.2, y: y + 1.4, w: w - 0.4, h: 0.28, fontSize: 10, color: X.muted }));
   };
 
   // ---------- 1 Title ----------
@@ -155,7 +161,7 @@ function imgSize(file) {
     const items = [
       ["LuFileSearch", T("Cosa fa", "What it does"), T("Legge estratti, rendiconti costi, tariffari e KID di qualsiasi banca. Calcola il costo annuo completo e lo confronta con la vostra proposta.", "Reads statements, cost reports, price lists and KIDs from any bank. Works out the all-in annual cost and compares it with your proposal.")],
       ["LuMousePointerClick", T("Ogni cifra ha la sua fonte", "Every figure has its source"), T("Un clic su un numero mostra il calcolo e il punto esatto della pagina da cui viene. Un costo mancante resta mancante, mai zero.", "One click on a number shows the calculation and the exact spot on the page it came from. A missing cost stays missing, never zero.")],
-      ["LuUserCheck", T("Aiuta l'analista, non lo sostituisce", "It assists the analyst, it does not replace them"), T("Trova circa il 90% dei costi su documenti reali. Circa il 5-6% delle cifre accettate è ancora sbagliato: ogni rapporto lo controllano due persone.", "Finds about 90% of fees on real documents. About 5 to 6% of accepted figures are still wrong: two people check every report.")],
+      ["LuUserCheck", T("Aiuta l'analista, non lo sostituisce", "It assists the analyst, it does not replace them"), T("Trova l'82% dei costi su documenti reali (90% in laboratorio). Il 7% circa delle cifre accettate va ancora corretto: ogni rapporto lo controllano due persone.", "Finds 82% of fees on real documents (90% in the lab). About 7% of accepted figures still need correcting: two people check every report.")],
       ["LuFlag", T("Proposta: pilota di 3 mesi", "Proposal: a 3-month pilot"), T("Su un computer di Safe Capital, 10 potenziali clienti, CHF 3'000. Poi licenza annuale da CHF 9'000.", "On a Safe Capital machine, 10 prospects, CHF 3,000. Then an annual licence from CHF 9,000.")],
     ];
     for (let i = 0; i < 4; i++) {
@@ -190,21 +196,22 @@ function imgSize(file) {
 
   // ---------- 4 How it works ----------
   {
-    const s = content(T("Come funziona", "How it works"), T("Cinque passi, gli stessi in cima a ogni pagina dell'app", "Five steps, the same ones across the top of every page in the app"), T("Introduzione", "Introduction"));
+    const s = content(T("Come funziona", "How it works"), T("La vostra tariffa una volta, poi cinque passi per ogni cliente", "Your tariff once, then five steps for every client"), T("Introduzione", "Introduction"));
     const st = [
+      ["LuPercent", T("Vostra tariffa", "Your tariff"), T("Una volta sola: commissioni, custodia, cambi, IVA di Safe Capital.", "Once only: Safe Capital's fees, custody, FX, VAT.")],
       ["LuUpload", T("Documenti", "Documents"), T("Caricate i PDF (anche scansioni) o Excel del cliente.", "Upload the client's PDFs (scans too) or Excel files.")],
       ["LuSearchCheck", T("Verifica valori", "Check values"), T("Ogni valore letto, con il riquadro sulla pagina. Accettate, correggete o scartate.", "Every value read, boxed on the page. Accept, correct or reject.")],
       ["LuCalculator", T("Costi", "Costs"), T("Costo annuo noto, cosa manca, punti da verificare.", "Known annual cost, what is missing, points to review.")],
       ["LuScale", T("Confronto", "Compare"), T("Stesse posizioni, con la vostra tariffa. Risparmio come limite minimo.", "Same holdings at your tariff. Saving as a lower bound.")],
       ["LuFileCheck", T("Rapporto", "Report"), T("Un senior approva, PDF in italiano o inglese.", "A senior approves; PDF in Italian or English.")],
     ];
-    for (let i = 0; i < 5; i++) {
-      const x = 0.5 + i * 2.5;
-      card(s, x, 1.7, 2.3, 3.2, X.bg);
-      await iconTile(s, x + 0.25, 1.95, 0.7, st[i][0], X.tealSoft, X.teal);
-      badge(s, x + 1.75, 1.95, i + 1, 0.34, X.navy);
-      s.addText(st[i][1], tb({ x: x + 0.25, y: 2.85, w: 1.9, h: 0.45, fontSize: 17, bold: true, color: X.navy }));
-      s.addText(st[i][2], tb({ x: x + 0.25, y: 3.35, w: 1.9, h: 1.5, fontSize: 12.5 }));
+    for (let i = 0; i < 6; i++) {
+      const x = 0.5 + i * 2.07;
+      card(s, x, 1.7, 1.92, 3.2, i === 0 ? X.tealSoft : X.bg);
+      await iconTile(s, x + 0.22, 1.95, 0.62, st[i][0], X.tealSoft, X.teal);
+      if (i) badge(s, x + 1.4, 1.95, i, 0.32, X.navy);
+      s.addText(st[i][1], tb({ x: x + 0.22, y: 2.8, w: 1.6, h: 0.45, fontSize: 15, bold: true, color: X.navy }));
+      s.addText(st[i][2], tb({ x: x + 0.22, y: 3.3, w: 1.6, h: 1.55, fontSize: 12 }));
     }
     const rules = [
       [T("Nessuna fonte, nessuna cifra verificata.", "No source, no verified figure."), X.navy],
@@ -224,67 +231,79 @@ function imgSize(file) {
   const src = (s, text) => s.addText(text, tb({ x: 0.5, y: 6.75, w: 8.4, h: 0.25, fontSize: 9.5, italic: true, color: X.muted }));
 
   tutorial(T("Tutorial · 1 Clienti", "Tutorial · 1 Clients"), T("Si parte dai clienti: ogni relazione e a che punto è", "Start from your clients: every relationship and where it stands"), "01-crm",
-    [[1, 90, 136], [2, 1170, 625], [3, 1340, 76]],
-    [[1, T("«Analisi dei costi» nel menu", "\"Cost reviews\" in the menu"), T("Elenco di tutte le analisi in corso, con patrimonio, costo noto e risparmio.", "All cost reviews in progress, with assets, known cost and saving.")],
-     [2, T("La colonna «Analisi costi»", "The \"Cost review\" column"), T("Un clic sulla scheda apre l'analisi di quel cliente.", "One click on the card opens that client's review.")],
+    [[1, 90, 137], [2, 1170, 625], [3, 1340, 78]],
+    [[1, T("«Analisi dei costi» nel menu", "\"Cost reviews\" in the menu"), T("Tutte le analisi in corso, con patrimonio, costo noto e risparmio.", "All cost reviews in progress, with assets, known cost and saving.")],
+     [2, T("La scheda «Analisi costi»", "The \"Cost review\" chip"), T("Un clic apre l'analisi di quel cliente.", "One click opens that client's review.")],
      [3, T("«Nuovo contatto»", "\"New contact\""), T("Un potenziale cliente entra qui; il funnel mostra dove si perdono.", "A prospect starts here; the funnel shows where prospects drop out.")]],
     T("Il CRM è la pagina iniziale, come richiesto. I contatti mostrati sono sintetici.", "The CRM is the home page, as requested. The contacts shown are synthetic."));
 
-  tutorial(T("Tutorial · 2 Nuova analisi", "Tutorial · 2 New review"), T("Nuova analisi: un codice, non un nome", "New review: a code, not a name"), "03-new-prospect",
+  {
+    const s = tutorial(T("Tutorial · 2 La vostra tariffa", "Tutorial · 2 Your tariff"), T("La tariffa di Safe Capital si inserisce una volta sola", "Safe Capital's tariff is entered once"), "02-firm-tariff",
+      [[1, 80, 205], [2, 580, 390], [3, 970, 230], [4, 1287, 100]],
+      [[1, T("«Tariffa della società» nel menu", "\"Firm tariff\" in the menu"), T("I vostri prezzi, validi per tutta la società.", "Your prices, for the whole firm.")],
+       [2, T("Fasce della commissione di gestione", "Management fee bands"), T("Marginali o sull'intero patrimonio, come nel vostro contratto.", "Marginal or on the whole portfolio, as in your agreement.")],
+       [3, T("Custodia, negoziazione, cambi, IVA", "Custody, trading, FX, VAT"), T("Con il minimo annuo della banca depositaria partner.", "With the partner custodian's annual minimum.")],
+       [4, T("«Salva la tariffa»", "\"Save firm tariff\""), T("Solo un senior. Ogni nuova analisi parte da qui; un caso singolo si può ancora adattare.", "Seniors only. Every new review starts from it; one case can still be adjusted.")]],
+      T("Prezzi mostrati: tariffa demo sintetica. Con il pilota inseriamo insieme la vostra tariffa reale.", "Prices shown: synthetic demo tariff. In the pilot we enter your real tariff together."));
+    src(s, T("Prezzi dimostrativi, non la tariffa di Safe Capital.", "Demo prices, not Safe Capital's tariff."));
+  }
+
+  tutorial(T("Tutorial · 3 Nuova analisi", "Tutorial · 3 New review"), T("Nuova analisi: un codice, non un nome", "New review: a code, not a name"), "03-new-prospect",
     [[1, 720, 367], [2, 720, 562], [3, 826, 640]],
-    [[1, T("Scrivete un codice, es. P-1043", "Type a code, e.g. P-1043"), T("Nomi, numeri di conto e IBAN non servono all'analisi. Meno dati personali, meno rischio.", "Names, account numbers and IBANs are not needed. Less personal data, less risk.")],
+    [[1, T("Scrivete un codice, es. P-1043", "Type a code, e.g. P-1043"), T("Nomi, numeri di conto e IBAN non servono. Meno dati personali, meno rischio.", "Names, account numbers and IBANs are not needed. Less personal data, less risk.")],
      [2, T("Scegliete il domicilio fiscale", "Pick the tax domicile"), T("Decide se l'IVA svizzera dell'8.1% si applica ai costi proposti.", "Decides whether 8.1% Swiss VAT applies to the proposed fees.")],
-     [3, T("«Crea e carica documenti»", "\"Create and upload documents\""), T("Si apre subito la pagina di caricamento.", "Opens the upload page straight away.")]]);
+     [3, T("«Crea e carica documenti»", "\"Create and upload documents\""), T("Si apre subito la pagina dei documenti.", "Opens the documents page straight away.")]]);
 
   {
-    const s = tutorial(T("Tutorial · 3 Documenti", "Tutorial · 3 Documents"), T("Caricate tutto: ogni file mostra cosa è stato letto", "Upload everything: each file shows what was read"), "05-upload-done",
-      [[1, 353, 437], [2, 871, 529], [3, 959, 568], [4, 365, 687]],
-      [[1, T("Trascinate i file o «Scegli file»", "Drag the files or \"Choose files\""), T("PDF digitali o scansionati (OCR in IT, DE, FR, EN) ed Excel. I duplicati vengono riconosciuti.", "Digital or scanned PDFs (OCR in IT, DE, FR, EN) and Excel. Duplicates are detected.")],
-       [2, T("Il tipo riconosciuto", "The type it recognised"), T("Estratto, KID, tariffario... e quanti valori ha letto.", "Statement, KID, price list... and how many values it read.")],
-       [3, T("«Verificare il tipo» in arancione", "\"Check the type\" in amber"), T("Un file scansionato o un tariffario con più colonne di prezzo chiede una conferma.", "A scanned file or a price list with several price columns asks for a confirmation.")],
-       [4, T("«Verifica i valori»", "\"Review values\""), T("Il passo successivo.", "The next step.")]]);
+    const s = tutorial(T("Tutorial · 4 Documenti", "Tutorial · 4 Documents"), T("Caricate tutto: una riga per file, con cosa è stato letto", "Upload everything: one line per file, with what was read"), "05-upload-done",
+      [[1, 1011, 220], [2, 575, 458], [3, 1010, 376], [4, 1310, 148]],
+      [[1, T("«Scegli file» o trascinate", "\"Choose files\" or drag"), T("PDF digitali o scansionati (OCR in IT, DE, FR, EN) ed Excel. I duplicati vengono riconosciuti.", "Digital or scanned PDFs (OCR in IT, DE, FR, EN) and Excel. Duplicates are detected.")],
+       [2, T("Tipo, banca, data, valori", "Type, bank, date, values"), T("Riconosciuti da soli: estratto, KID, tariffario... e quanti valori ha letto.", "Recognised on their own: statement, KID, price list... and how many values were read.")],
+       [3, T("«Da verificare» in arancione", "\"Needs a check\" in amber"), T("Una scansione o un tariffario con più colonne chiede una conferma.", "A scan or a price list with several columns asks for a confirmation.")],
+       [4, T("«Verifica i valori»", "\"Review extracted values\""), T("Il passo successivo.", "The next step.")]]);
     src(s, R + T(": rapporto demo AJ Bell, KID iShares (uno ri-scansionato come immagine), tariffario Julius Baer Europe.", ": AJ Bell demo report, iShares KIDs (one re-scanned as an image), Julius Baer Europe price list."));
   }
 
   {
-    const s = tutorial(T("Tutorial · 3 Documenti", "Tutorial · 3 Documents"), T("«Cosa ci serve»: la lista dei documenti mancanti, banca per banca", "\"What we need\": the missing documents, bank by bank"), "06-documents",
-      [[1, 1235, 330], [2, 1260, 595], [3, 343, 679]],
-      [[1, T("Spunta verde = documento presente", "Green tick = document present"), T("Estratto patrimoniale, rendiconto costi, estratto conto, tariffario per ogni banca, KID per ogni prodotto.", "Statement of assets, cost report, cash statement, price list per bank, KID per product.")],
-       [2, T("«Entità errata»", "\"Wrong entity\""), T("Il tariffario caricato è di un'altra sede della banca: le tariffe valgono solo dove il conto è registrato.", "The price list belongs to another entity of the bank: tariffs apply only where the account is booked.")],
-       [3, T("Etichetta «OCR»", "\"OCR\" label"), T("Pagina scansionata: confermate ogni valore guardando l'immagine.", "Scanned page: confirm each value against the image.")]]);
+    const s = tutorial(T("Tutorial · 4 Documenti", "Tutorial · 4 Documents"), T("«Cosa ci serve»: i documenti mancanti, banca per banca", "\"What we need\": the missing documents, bank by bank"), "06-documents",
+      [[1, 1137, 322], [2, 1137, 520], [3, 1340, 595]],
+      [[1, T("Spunta verde = documento presente", "Green tick = document present"), T("Estratto, rendiconto costi, estratto conto, tariffario per ogni banca, KID per ogni prodotto.", "Statement, cost report, cash statement, price list per bank, KID per product.")],
+       [2, T("Cerchio arancione = manca", "Amber circle = missing"), T("Qui il rendiconto costi della seconda banca: quei costi restano «non determinati».", "Here the second bank's cost report: those costs stay \"not determined\".")],
+       [3, T("«Entità errata»", "\"Wrong entity\""), T("Il tariffario è di un'altra sede della banca: le tariffe valgono solo dove il conto è registrato.", "The price list belongs to another entity of the bank: tariffs apply only where the account is booked.")]]);
     src(s, S);
   }
 
   {
-    const s = tutorial(T("Tutorial · 4 Verifica valori", "Tutorial · 4 Check values"), T("Ogni valore letto, evidenziato sulla pagina originale", "Every value read, highlighted on the original page"), "07-check-kid",
-      [[1, 763, 389], [2, 1051, 279], [3, 1270, 430]],
-      [[1, T("Il riquadro verde sulla pagina", "The green box on the page"), T("Mostra la riga esatta da cui viene il valore.", "Shows the exact row the value came from.")],
-       [2, T("Controllate il valore", "Check the value"), T("Qui «Costi totali 7.00» è in realtà USD 7 su un esempio di USD 10'000: non è un tasso.", "Here \"Costi totali 7.00\" is really USD 7 on a USD 10,000 example: not a rate.")],
-       [3, T("«Respingi»", "\"Reject\""), T("Il valore errato non entra nei calcoli. Il tasso giusto, 0.07%, è due righe sotto. Tasti rapidi: a, e, j/k.", "The wrong value stays out of every total. The right rate, 0.07%, is two rows below. Shortcuts: a, e, j/k.")]],
-      T("Questo è un errore reale di lettura su un KID reale (iShares Core S&P 500, italiano). È il motivo per cui ogni valore viene controllato da una persona.",
-        "This is a real misread on a real KID (iShares Core S&P 500, Italian). It is why a person checks every value."));
+    const s = tutorial(T("Tutorial · 5 Verifica valori", "Tutorial · 5 Check values"), T("Prima i valori che servono a voi, ognuno sulla sua pagina", "Values that need you come first, each on its page"), "07-check-kid",
+      [[1, 1068, 212], [2, 740, 390], [3, 1050, 335], [4, 1270, 570]],
+      [[1, T("«Serve a voi · 5»", "\"Needs you · 5\""), T("Prima i dubbi; i valori confermati dai controlli sono a parte.", "Doubts first; values the checks confirmed are kept apart.")],
+       [2, T("Il riquadro sulla pagina", "The box on the page"), T("Mostra la riga esatta da cui viene il valore.", "Shows the exact row the value came from.")],
+       [3, T("Valore e motivo", "Value and reason"), T("«Costi totali 7.00» è in realtà USD 7 su un esempio di USD 10'000: non è un tasso.", "\"Costi totali 7.00\" is really USD 7 on a USD 10,000 example: not a rate.")],
+       [4, T("«Respingi»", "\"Reject\""), T("Il valore errato non entra nei calcoli. Il tasso giusto, 0.07%, è sotto. Tasti: a, e, r, j/k.", "The wrong value stays out of every total. The right rate, 0.07%, is below. Keys: a, e, r, j/k.")]],
+      T("Questo è un errore reale di lettura su un KID reale (iShares Core S&P 500, italiano). È il motivo per cui una persona controlla ogni valore in dubbio.",
+        "This is a real misread on a real KID (iShares Core S&P 500, Italian). It is why a person checks every doubtful value."));
     src(s, R + ": KID iShares Core S&P 500 UCITS ETF (IT), BlackRock.");
   }
 
   {
-    const s = tutorial(T("Tutorial · 4 Verifica valori", "Tutorial · 4 Check values"), T("Caso limite: una pagina scansionata", "Edge case: a scanned page"), "08-check-scan",
-      [[1, 923, 166], [2, 1217, 333], [3, 745, 468]],
-      [[1, T("«Scansionato · OCR»", "\"Scanned · OCR\""), T("Il testo è stato ricostruito dall'immagine, sul vostro computer, senza servizi esterni.", "The text was rebuilt from the image, on your machine, with no outside service.")],
+    const s = tutorial(T("Tutorial · 5 Verifica valori", "Tutorial · 5 Check values"), T("Caso limite: una pagina scansionata", "Edge case: a scanned page"), "08-check-scan",
+      [[1, 923, 166], [2, 1215, 494], [3, 745, 468]],
+      [[1, T("«Scansionato · OCR»", "\"Scanned · OCR\""), T("Il testo è ricostruito dall'immagine, sul vostro computer, senza servizi esterni.", "The text is rebuilt from the image, on your machine, with no outside service.")],
        [2, T("Chi ha letto e con che sicurezza", "Who read it and how sure"), T("tesseract-ocr, 95%. Stato «stimato» finché una persona non conferma.", "tesseract-ocr, 95%. Status \"estimated\" until a person confirms.")],
        [3, T("Confrontate con l'immagine", "Compare with the image"), T("0.20%: corretto. Accettate e passate al successivo.", "0.20%: correct. Accept and move on.")]]);
     src(s, R + T(": KID iShares Core MSCI World (EN), stampato come immagine per simulare una scansione.", ": iShares Core MSCI World KID (EN), printed to an image to simulate a scan."));
   }
 
-  tutorial(T("Tutorial · 5 Costi", "Tutorial · 5 Costs"), T("La risposta in quattro numeri, poi cosa controllare", "The answer in four numbers, then what to check"), "11-costs",
-    [[1, 700, 268], [2, 745, 318], [3, 1270, 268], [4, 550, 467]],
-    [[1, T("Costo annuo noto", "Known annual cost"), T("CHF 61'450, 1.43% del patrimonio.", "CHF 61,450, 1.43% of assets.")],
-     [2, T("«almeno, incompleto»", "\"at least, incomplete\""), T("5 categorie di costo non hanno ancora un documento: il costo vero è più alto, non lo inventiamo.", "5 cost categories have no document yet: the true cost is higher; we do not invent it.")],
+  tutorial(T("Tutorial · 6 Costi", "Tutorial · 6 Costs"), T("Prima la risposta, poi i documenti da chiedere", "The answer first, then the documents to ask for"), "11-costs",
+    [[1, 330, 282], [2, 690, 333], [3, 1300, 348], [4, 380, 470]],
+    [[1, T("Costo annuo noto", "Known annual cost"), T("CHF 61'450, 1.43% del patrimonio, «almeno».", "CHF 61,450, 1.43% of assets, \"at least\".")],
+     [2, T("5 costi non determinati", "5 costs not determined"), T("Il costo vero è più alto: non lo inventiamo e non lo contiamo zero.", "The true cost is higher: we do not invent it or count it as zero.")],
      [3, T("Copertura delle evidenze", "Evidence coverage"), T("Quanta parte dei costi viene da un documento effettivo.", "How much of the cost comes from an actual document.")],
-     [4, T("Punti da verificare", "Points to review"), T("Ordinati: prima i più importanti. Un clic apre il numero.", "Ranked, most important first. One click opens the number.")]]);
+     [4, T("«Documenti da richiedere»", "\"Documents to ask for\""), T("Per priorità, con il patrimonio interessato. «Copia lettera di richiesta» per cliente o banca.", "By priority, with the assets affected. \"Copy request letter\" for the client or the bank.")]]);
 
   {
-    const s = tutorial(T("Tutorial · 5 Costi", "Tutorial · 5 Costs"), T("Un clic su un numero: calcolo, fonte e chi l'ha controllato", "One click on a number: calculation, source and who checked it"), "13-trace-kid",
-      [[1, 1080, 323], [2, 1138, 487], [3, 1138, 547], [4, 1138, 686], [5, 910, 773]],
+    const s = tutorial(T("Tutorial · 6 Costi", "Tutorial · 6 Costs"), T("Un clic su un numero: calcolo, fonte e chi l'ha controllato", "One click on a number: calculation, source and who checked it"), "13-trace-kid",
+      [[1, 1140, 323], [2, 1140, 487], [3, 1140, 548], [4, 1140, 686], [5, 990, 800]],
       [[1, T("Il calcolo", "The calculation"), T("900'000 × 1.08%: valore della posizione per costo corrente del fondo.", "900,000 × 1.08%: holding value times the fund's ongoing cost.")],
        [2, T("Il tasso, letto dal KID", "The rate, read from the KID"), T("Con documento e pagina.", "With document and page.")],
        [3, T("La base, letta dall'estratto", "The basis, read from the statement"), T("Stessa posizione, stesso ISIN.", "Same holding, same ISIN.")],
@@ -295,14 +314,13 @@ function imgSize(file) {
   }
 
   {
-    const s = content(T("Tutorial · 5 Costi", "Tutorial · 5 Costs"), T("Mancante non vuol dire zero: l'app chiede il documento", "Missing is never zero: the app asks for the document"), T("Tutorial"));
-    const a = shot(s, "c-layer", { x: 0.5, y: 1.45, w: 6.0, h: 2.6 });
-    const b = shot(s, "c-missing", { x: 0.5, y: 1.55 + a.h, w: 6.0, h: 2.8 });
-    void b;
+    const s = content(T("Tutorial · 6 Costi", "Tutorial · 6 Costs"), T("Mancante non vuol dire zero: l'app chiede il documento", "Missing is never zero: the app asks for the document"), T("Tutorial"));
+    const a = shot(s, "c-layer", { x: 0.5, y: 1.45, w: 6.0, h: 2.3 });
+    shot(s, "c-missing", { x: 0.5, y: 1.6 + a.h, w: 6.0, h: 3.0 });
     steps(s, [
-      [1, T("Le barre tratteggiate", "The hatched bars"), T("«+ non determinato»: quella parte del costo non ha ancora un documento. Non è contata come zero.", "\"+ not determined\": that part of the cost has no document yet. It is not counted as zero.")],
-      [2, T("«Cosa manca», con priorità", "\"What is missing\", by priority"), T("Per ogni buco: quale documento serve e quanto patrimonio riguarda (es. CHF 1'100'000).", "For each gap: which document is needed and how much of the assets it affects (e.g. CHF 1,100,000).")],
-      [3, T("«Copia lettera di richiesta»", "\"Copy request letter\""), T("Una lettera pronta da mandare al cliente o alla banca. «Segna come richiesto» tiene traccia.", "A ready letter for the client or the bank. \"Mark requested\" keeps track.")],
+      [1, T("Le barre con «+ non determinato»", "Bars with \"+ not determined\""), T("Quella parte del costo non ha ancora un documento. Non è contata come zero.", "That part of the cost has no document yet. It is not counted as zero.")],
+      [2, T("«Documenti da richiedere», per priorità", "\"Documents to ask for\", by priority"), T("Per ogni buco: quale documento serve e quanto patrimonio riguarda (es. CHF 1'100'000).", "For each gap: which document is needed and how much of the assets it affects (e.g. CHF 1,100,000).")],
+      [3, T("«Copia lettera di richiesta»", "\"Copy request letter\""), T("Una lettera pronta per il cliente o la banca. «Segna come richiesto» tiene traccia.", "A ready letter for the client or the bank. \"Mark requested\" keeps track.")],
     ], 6.9, 1.6, 5.9);
     src(s, S);
   }
@@ -310,51 +328,52 @@ function imgSize(file) {
   {
     const s = content(T("Tutorial · casi limite", "Tutorial · edge cases"), T("Su documenti reali l'app si ferma e lo dice", "On real documents the app stops and says so"), T("Tutorial"));
     const rr = shot(s, "16-real-costs", { x: 0.5, y: 1.45, w: 6.6, h: 4.15 });
-    marks(s, rr, [[1, 840, 283], [2, 520, 737], [3, 520, 797]]);
+    marks(s, rr, [[1, 840, 330], [2, 560, 828]]);
     const v = shot(s, "c-validation", { x: 7.6, y: 1.45, w: 5.0, h: 1.8 });
-    marks(s, v, [[4, 50, 161]], 1170);
+    marks(s, v, [[3, 36, 80], [4, 36, 160]], 1170);
     steps(s, [
-      [1, T("Costi non ancora calcolati", "Costs are not calculated yet"), T("L'estratto è in GBP e non c'è un cambio GBP/CHF nei documenti: nessun totale, invece di un totale sbagliato.", "The statement is in GBP and no GBP/CHF rate is on the documents: no total, rather than a wrong one.")],
-      [2, T("Due persone nello stesso file", "Two people in one file"), T("Da pagina 16 compare un altro cliente. Caricate solo le pagine del vostro cliente.", "Another client appears from page 16. Upload only your prospect's pages.")],
-      [3, T("Nessun cambio inventato", "No invented FX rate"), T("Nessun tasso viene preso da Internet; si chiede la pagina con il cambio.", "No rate is fetched from the internet; the page with the rate is requested.")],
+      [1, T("Costi non ancora calcolati", "Costs are not calculated yet"), T("L'estratto è in GBP senza cambio GBP/CHF nei documenti: nessun totale, invece di un totale sbagliato.", "The statement is in GBP with no GBP/CHF rate on the documents: no total, rather than a wrong one.")],
+      [2, T("Nessun cambio inventato", "No invented FX rate"), T("Nessun tasso preso da Internet: si chiede la pagina con il cambio.", "No rate fetched from the internet: the page with the rate is requested.")],
+      [3, T("Due persone nello stesso file", "Two people in one file"), T("Da pagina 16 compare un altro cliente. Caricate solo le sue pagine.", "Another client appears from page 16. Upload only your prospect's pages.")],
       [4, T("Riconciliazione", "Reconciliation"), T("Somma delle posizioni = totale stampato (660'273.45 GBP): superato.", "Sum of holdings = printed total (660,273.45 GBP): passed.")],
     ], 7.35, 3.4, 5.5, 0.04);
     src(s, R + T(": rapporto demo cliente AJ Bell (UK), 26 pagine, due clienti fittizi.", ": AJ Bell demo client report (UK), 26 pages, two fictitious clients."));
   }
 
   {
-    const s = tutorial(T("Tutorial · 6 Confronto", "Tutorial · 6 Compare"), T("Confronto a parità di posizioni: il risparmio è un minimo", "Like-for-like comparison: the saving is a lower bound"), "18-compare",
-      [[1, 1186, 176], [2, 980, 272], [3, 1210, 280], [4, 1160, 460]],
+    const s = tutorial(T("Tutorial · 7 Confronto", "Tutorial · 7 Compare"), T("Confronto a parità di posizioni: il risparmio è un minimo", "Like-for-like comparison: the saving is a lower bound"), "18-compare",
+      [[1, 1186, 176], [2, 860, 250], [3, 1150, 250], [4, 1160, 460]],
       [[1, T("«Stesse posizioni»", "\"Same holdings\""), T("Stessi titoli, vostra tariffa. «Con modifiche ai prodotti» è un secondo scenario, separato.", "Same securities at your tariff. \"With product changes\" is a separate second scenario.")],
-       [2, T("Risparmio «almeno» CHF 6'520", "Saving \"at least\" CHF 6,520"), T("Calcolato solo sui costi noti, con IVA e bolli trattati uguali sui due lati.", "Worked out on known costs only, with VAT and stamp duty treated the same on both sides.")],
+       [2, T("Risparmio «almeno» CHF 6'520", "Saving \"at least\" CHF 6,520"), T("Solo sui costi noti, con IVA e bolli trattati uguali sui due lati.", "On known costs only, with VAT and stamp duty treated the same on both sides.")],
        [3, T("Costo del cambio", "Switching cost"), T("CHF 1'500, ripagato in 2.8 mesi.", "CHF 1,500, paid back in 2.8 months.")],
-       [4, T("Perché è un limite", "Why it is a bound"), T("Spiegato in parole semplici, da dire al cliente.", "Explained in plain words you can repeat to the client.")]]);
+       [4, T("Perché è un minimo", "Why it is a bound"), T("Spiegato in parole semplici, da dire al cliente.", "Explained in plain words you can repeat to the client.")]]);
     src(s, S);
   }
 
   {
-    const s = tutorial(T("Tutorial · 6 Confronto", "Tutorial · 6 Compare"), T("Caso limite: quando la vostra proposta costa di più, lo dice", "Edge case: when your proposal costs more, it says so"), "20-compare-dearer",
-      [[1, 953, 245], [2, 1152, 448]],
+    const s = tutorial(T("Tutorial · 7 Confronto", "Tutorial · 7 Compare"), T("Caso limite: quando la vostra proposta costa di più, lo dice", "Edge case: when your proposal costs more, it says so"), "20-compare-dearer",
+      [[1, 953, 245], [2, 1160, 458]],
       [[1, T("«La proposta costa di più all'anno»", "\"Proposal costs more per year\""), T("Al massimo CHF 2'588. Mai mostrato come risparmio.", "At most CHF 2,588. Never shown as a saving.")],
        [2, T("Nessun risparmio sui costi noti", "No saving on known costs"), T("Utile prima dell'incontro: meglio saperlo voi che il cliente.", "Useful before the meeting: better you find out than the client.")]]);
     src(s, T("Cliente sintetico P-2077: banca italiana in EUR e broker USA in USD.", "Synthetic prospect P-2077: Italian bank in EUR and US broker in USD."));
   }
 
   {
-    const s = content(T("Tutorial · 7 Rapporto", "Tutorial · 7 Report"), T("Il rapporto per il cliente: un senior approva, poi PDF", "The client report: a senior approves, then PDF"), T("Tutorial"));
+    const s = content(T("Tutorial · 8 Rapporto", "Tutorial · 8 Report"), T("Il rapporto per il cliente: pronto da inviare, approvato da un senior", "The client report: ready to send, approved by a senior"), T("Tutorial"));
     const rr = shot(s, "21-report", { x: 0.5, y: 1.45, w: 7.0, h: 4.4 });
-    marks(s, rr, [[1, 1248, 300], [2, 1180, 176], [3, 345, 717]]);
+    marks(s, rr, [[1, 1105, 240], [2, 1105, 527], [3, 1180, 176], [4, 300, 717]]);
     const p = shot(s, "report-pdf", { x: 7.75, y: 1.45, w: 2.6, h: 3.7 });
     s.addText(T("Pagina 1 del PDF", "PDF page 1"), tb({ x: p.x, y: p.y + p.h + 0.05, w: p.w, h: 0.25, fontSize: 9.5, color: X.muted, align: "center" }));
     steps(s, [
-      [1, T("Approvazione", "Approval"), T("Solo un senior approva, e approva le cifre esatte mostrate.", "Only a senior approves, and approves the exact figures shown.")],
-      [2, T("«PDF in italiano / inglese»", "\"PDF in Italian / English\""), T("Lo stesso contenuto, nella lingua del cliente.", "The same content, in the client's language.")],
-      [3, T("«Non ancora verificato»", "\"Not yet verified\""), T("I costi mancanti sono scritti nel rapporto, non nascosti.", "Missing costs are written in the report, not hidden.")],
-    ], 10.55, 1.5, 2.35);
+      [1, T("«Pronto da inviare?»", "\"Ready to send?\""), T("Cosa manca ancora, con il link per farlo.", "What is still open, with a link to do it.")],
+      [2, T("Approvazione", "Approval"), T("Solo un senior approva le cifre esatte mostrate.", "Only a senior approves the exact figures shown.")],
+      [3, T("PDF in italiano o inglese", "PDF in Italian or English"), T("Lo stesso contenuto, nella lingua del cliente.", "The same content, in the client's language.")],
+      [4, T("«Non ancora verificato»", "\"Not yet verified\""), T("I costi mancanti sono scritti nel rapporto, non nascosti.", "Missing costs are written in the report, not hidden.")],
+    ], 10.55, 1.5, 2.35, 0.1);
     card(s, 0.5, 6.05, 7.0, 0.6, X.tealSoft);
     s.addText(T("Il vostro margine interno è in una pagina separata, solo per i senior, e non entra mai nel rapporto (verificato da test automatici).",
       "Your internal margin is on a separate page, for seniors only, and never enters the report (checked by automated tests)."),
-      tb({ x: 0.7, y: 6.08, w: 6.7, h: 0.55, fontSize: 12, color: X.navy, valign: "middle" }));
+      tb({ x: 0.7, y: 6.1, w: 6.7, h: 0.5, fontSize: 12, color: X.navy, valign: "middle" }));
   }
 
   // ---------- Edge cases summary ----------
@@ -377,29 +396,130 @@ function imgSize(file) {
     s.addTable(data, { x: 0.5, y: 1.45, w: 12.35, colW: cw, fontSize: 12.5, fontFace: "Calibri", rowH: 0.56, border: { type: "solid", color: X.border, pt: 0.5 }, valign: "middle", margin: [0.04, 0.12, 0.04, 0.12] });
   }
 
-  // ---------- Accuracy ----------
+  // ---------- Accuracy: method ----------
+  // Numbers: main re-run of 2026-11-13 (artifacts/eval/20261113T115515Z), arena RESULTS.md, statements RESULTS.md.
+  const flowBox = (s, x, y, w, h, title, sub, strong) => {
+    s.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: strong ? X.tealSoft : X.white }, line: { color: strong ? X.teal : X.border, width: strong ? 1.5 : 0.75 } });
+    s.addText(title, tb({ x: x + 0.1, y: y + 0.12, w: w - 0.2, h: 0.32, fontSize: 13, bold: true, color: X.navy, align: "center" }));
+    if (sub) s.addText(sub, tb({ x: x + 0.1, y: y + 0.44, w: w - 0.2, h: 0.4, fontSize: 10.5, color: X.muted, align: "center" }));
+  };
+  const arrow = (s, x1, y1, x2, y2, label, ly) => {
+    s.addShape(pres.shapes.LINE, { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1) || 0.001, h: Math.abs(y2 - y1) || 0.001,
+      flipH: x2 < x1, line: { color: X.muted, width: 1, endArrowType: "triangle" } });
+    if (label) s.addText(label, tb({ x: Math.min(x1, x2), y: ly, w: Math.max(Math.abs(x2 - x1), 0.9), h: 0.25, fontSize: 10, color: X.muted, align: "center" }));
+  };
   {
-    const s = content(T("Accuratezza", "Accuracy"), T("Quanto è affidabile, misurato su documenti reali", "How accurate it is, measured on real documents"), T("Accuratezza", "Accuracy"));
-    bigNum(s, 0.5, 1.5, 3.0, "~90%", T("dei costi trovati su 63 pagine reali (899 costi controllati a mano)", "of fees found on 63 real pages (899 fees checked by hand)"), X.teal);
-    bigNum(s, 3.6, 1.5, 3.0, "5–6%", T("delle cifre accettate ancora sbagliate: per questo controllano due persone", "of accepted figures still wrong: that is why two people check"), X.amber);
-    bigNum(s, 6.7, 1.5, 3.0, "34/34", T("posizioni lette su un estratto reale (Fidelity USA), patrimonio esatto", "holdings read on a real statement (Fidelity US), assets exact"), X.teal);
-    bigNum(s, 9.8, 1.5, 3.05, "0", T("errori di patrimonio silenziosi su 4 estratti pubblici: ogni scarto dà un allarme", "silent asset errors on 4 public statements: every gap raises an alarm"), X.teal);
-    card(s, 0.5, 3.35, 6.05, 3.25, X.bg);
-    s.addText(T("Cosa vuol dire per voi", "What this means for you"), tb({ x: 0.75, y: 3.5, w: 5.6, h: 0.4, fontSize: 16, bold: true, color: X.navy }));
+    const s = content(T("Metodo", "Method"), T("Ogni cifra è letta due volte, oppure la controlla una persona", "Every figure is read twice, or a person checks it"), T("Accuratezza", "Accuracy"));
+    const y = 1.55, h = 0.85, w = 2.05;
+    flowBox(s, 0.5, y, w, h, T("Caricamento", "Upload"), T("PDF, scansione, Excel", "PDF, scan or Excel"));
+    flowBox(s, 3.0, y, w, h, T("Lettura pagina", "Read each page"), T("testo, o OCR in locale", "text, or local OCR"));
+    flowBox(s, 5.5, y, w, h, T("Ogni costo trovato", "Find every fee"), T("riga, colonna, riquadro", "row, column, page box"));
+    s.addShape(pres.shapes.DIAMOND, { x: 8.0, y: y - 0.15, w: 2.0, h: 1.15, fill: { color: X.white }, line: { color: X.navy, width: 1 } });
+    s.addText(T("Controlli superati?", "Checks pass?"), tb({ x: 8.0, y: y + 0.27, w: 2.0, h: 0.3, fontSize: 12, bold: true, color: X.navy, align: "center" }));
+    flowBox(s, 10.8, y, w, h, T("Accettato", "Accepted"), T("con pagina e riquadro", "with its page and box"), true);
+    arrow(s, 2.55, y + h / 2, 3.0, y + h / 2); arrow(s, 5.05, y + h / 2, 5.5, y + h / 2); arrow(s, 7.55, y + h / 2, 8.0, y + h / 2);
+    arrow(s, 10.0, y + h / 2, 10.8, y + h / 2, T("sì", "yes"), y + 0.1);
+    s.addText(T("seconda lettura uguale, somme che tornano", "second reading agrees, sums tie"), tb({ x: 7.6, y: y + 1.05, w: 2.8, h: 0.25, fontSize: 10, italic: true, color: X.muted, align: "center" }));
+    flowBox(s, 5.5, y + 1.55, w, h, T("Verifica valori", "Check values"), T("l'analista conferma sulla pagina", "analyst confirms on the page"));
+    s.addShape(pres.shapes.LINE, { x: 9.0, y: y + 1.32, w: 0.001, h: 0.65, line: { color: X.muted, width: 1 } });
+    arrow(s, 9.0, y + 1.97, 7.55, y + 1.97, T("in dubbio", "in doubt"), y + 1.68);
+    flowBox(s, 5.5, y + 3.0, 7.35, 0.75, T("Registro dei costi e rapporto", "Cost ledger and client report"), T("ogni costo contato una volta (AMF dentro OCF); un costo ignoto non è mai 0", "each fee counted once (AMF inside OCF); an unknown cost is never shown as 0"));
+    arrow(s, 6.525, y + 2.4, 6.525, y + 3.0); arrow(s, 11.825, y + h, 11.825, y + 3.0);
+    // how it is measured
+    s.addText(T("Come lo misuriamo", "How we measure it"), tb({ x: 0.5, y: 3.1, w: 4.6, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
     s.addText([
-      { text: T("Un rapporto usa decine di cifre: senza controllo, quasi certamente una sarebbe sbagliata.", "A report uses dozens of figures: unchecked, one would almost certainly be wrong."), options: { bullet: true, breakLine: true } },
-      { text: T("Con FeeLens l'analista controlla invece di cercare: ogni cifra è già sulla sua pagina.", "With FeeLens the analyst checks instead of searching: every figure is already on its page."), options: { bullet: true, breakLine: true } },
-      { text: T("Un senior approva il totale, il risparmio e la base del confronto.", "A senior approves the total, the saving and the comparison basis."), options: { bullet: true } },
-    ], tb({ x: 0.75, y: 3.95, w: 5.6, h: 2.5, fontSize: 13.5, paraSpaceAfter: 6 }));
-    card(s, 6.8, 3.35, 6.05, 3.25, X.amberSoft);
-    s.addText(T("Cosa non sappiamo ancora", "What we do not know yet"), tb({ x: 7.05, y: 3.5, w: 5.6, h: 0.4, fontSize: 16, bold: true, color: X.amber }));
+      { text: T("Stesso valutatore per ogni versione (pce.evaluation), dati fissi.", "One scorer for every version (pce.evaluation), fixed data."), options: { bullet: true, breakLine: true } },
+      { text: T("Trovato solo se il valore è identico e sulla riga giusta.", "Found only if the value is identical and on the right row."), options: { bullet: true, breakLine: true } },
+      { text: T("«Sbagliato accettato»: entrerebbe nel totale senza revisione.", "\"Wrong accepted\": would enter a total with no review."), options: { bullet: true, breakLine: true } },
+      { text: T("Intervalli al 95% (bootstrap su 1'000 campioni di pagine).", "95% intervals (bootstrap over 1,000 page samples)."), options: { bullet: true } },
+    ], tb({ x: 0.5, y: 3.5, w: 4.7, h: 2.0, fontSize: 12, paraSpaceAfter: 5 }));
+    const sets = [
+      ["899", T("costi su 63 pagine reali", "fees on 63 real pages"), T("KID, tariffari, rendiconti, estratti; 12 scansioni", "KIDs, price lists, cost reports, statements; 12 scans")],
+      ["4", T("estratti pubblici reali", "real public statements"), T("posizioni e patrimonio per conto", "holdings and assets per account")],
+      ["2", T("clienti sintetici completi", "full synthetic prospects"), T("15 documenti, digitali e scansionati", "15 documents, digital and scanned")],
+    ];
+    sets.forEach(([n, t, d], i) => {
+      const x = 0.5 + i * 4.15;
+      card(s, x, 5.45, 3.95, 1.2, X.white, X.border);
+      s.addText(n, tb({ x: x + 0.2, y: 5.55, w: 1.1, h: 0.6, fontSize: 28, bold: true, color: X.teal }));
+      s.addText(t, tb({ x: x + 1.3, y: 5.6, w: 2.55, h: 0.35, fontSize: 13, bold: true, color: X.navy }));
+      s.addText(d, tb({ x: x + 1.3, y: 5.95, w: 2.55, h: 0.6, fontSize: 11, color: X.muted }));
+    });
+    s.addNotes(T("Documento di dettaglio: «FeeLens accuracy study» (13.11.2026). Tutti i dati sono pubblici o sintetici.",
+      "Detail document: \"FeeLens accuracy study\" (13 Nov 2026). All data is public or synthetic."));
+  }
+
+  // ---------- Accuracy: results ----------
+  {
+    const s = content(T("Accuratezza", "Accuracy"), T("Oggi: l'82% dei costi trovati, il 7% delle cifre accettate da correggere", "Today: 82% of fees found, 7% of accepted figures still to correct"), T("Accuratezza", "Accuracy"));
+    bigNum(s, 0.5, 1.5, 3.0, "82%", T("dei costi trovati su pagine reali", "of fees found on real pages"), X.teal, T("intervallo 76–88%", "range 76 to 88%"));
+    bigNum(s, 3.6, 1.5, 3.0, "7.3%", T("delle cifre accettate senza revisione sono sbagliate", "of figures accepted without review are wrong"), X.amber, T("intervallo 4.4–10.7%", "range 4.4 to 10.7%"));
+    bigNum(s, 6.7, 1.5, 3.0, "23%", T("delle cifre mandate in verifica all'analista", "of figures sent to the analyst to check"), X.navy, T("un clic per confermare", "one click to confirm"));
+    bigNum(s, 9.8, 1.5, 3.05, "0 / 4", T("errori di patrimonio silenziosi su estratti reali", "silent asset errors on real statements"), X.teal, T("ogni scarto dà un allarme", "every gap raises an alarm"));
+    const rows = [
+      [T("Tariffario / custodia", "Price list / custody"), "21", "88%", "40 (9.8%)"],
+      [T("KID (PRIIPs, FIB, assicurativi)", "KID (PRIIPs, FinSA, insurance)"), "16", "79%", "6 (6.0%)"],
+      [T("Estratto / rendiconto costi", "Statement / cost report"), "14", "73%", "5 (3.3%)"],
+      [T("Pagine scansionate", "Scanned pages"), "11", "52%", "1"],
+      [T("Tutte le pagine", "All pages"), "62", "82%", "52 (7.3%)"],
+    ];
+    const hdr = [T("Tipo di documento", "Document type"), T("Pagine", "Pages"), T("Trovati", "Found"), T("Sbagliati accettati", "Wrong accepted")];
+    const data = [hdr.map((h, j) => ({ text: h, options: { bold: true, color: X.navy, align: j ? "right" : "left", border: [{ type: "none" }, { type: "none" }, { type: "solid", color: X.navy, pt: 1 }, { type: "none" }] } }))]
+      .concat(rows.map((r, i) => r.map((c, j) => ({ text: c, options: { bold: i === rows.length - 1, align: j ? "right" : "left", color: X.text,
+        border: [{ type: i === rows.length - 1 ? "solid" : "none", color: X.navy, pt: 0.75 }, { type: "none" }, { type: "solid", color: X.border, pt: 0.5 }, { type: "none" }] } }))));
+    s.addTable(data, { x: 0.5, y: 3.55, w: 7.2, colW: [3.4, 1.0, 1.2, 1.6], fontSize: 12.5, fontFace: "Calibri", rowH: 0.42, valign: "middle", margin: [0.03, 0.08, 0.03, 0.08] });
+    s.addText(T("I tariffari portano 40 dei 52 errori: è il prossimo lavoro. Le scansioni trovano meno, ma mandano in verifica invece di sbagliare.",
+      "Price lists carry 40 of the 52 errors: that is the next piece of work. Scans find less, but send to review instead of getting it wrong."),
+      tb({ x: 0.5, y: 6.2, w: 7.2, h: 0.5, fontSize: 11.5, color: X.muted }));
+    card(s, 8.1, 3.55, 4.75, 3.1, X.amberSoft);
+    s.addText(T("Cosa vuol dire per voi", "What this means for you"), tb({ x: 8.35, y: 3.65, w: 4.3, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
     s.addText([
-      { text: T("Gli estratti di banche svizzere e italiane non sono pubblici: li abbiamo provati solo su esempi sintetici (100%) e su 4 estratti esteri.", "Swiss and Italian bank statements are not public: we tested them only on synthetic examples (100%) and on 4 foreign statements."), options: { bullet: true, breakLine: true } },
-      { text: T("Il pilota misura l'accuratezza vera sui vostri documenti, cifra per cifra.", "The pilot measures the real accuracy on your documents, figure by figure."), options: { bullet: true, breakLine: true } },
-      { text: T("Campione piccolo: i numeri sopra hanno un margine (es. 86-93% per i costi trovati).", "Small sample: the numbers above have a range (e.g. 86 to 93% for fees found)."), options: { bullet: true } },
-    ], tb({ x: 7.05, y: 3.95, w: 5.6, h: 2.5, fontSize: 13.5, paraSpaceAfter: 6 }));
-    s.addNotes(T("Fonti: docs/READINESS.md sezione 3 (arena su 63 pagine reali, 899 costi); data/specimens/statements/RESULTS.md (Fidelity US, Fidelity UK, AJ Bell, Edward Jones). Il 5-6% è sulle cifre non mandate in revisione; con due lettori indipendenti che devono concordare l'errore scende a 0 su 23 pagine, ma il 62% va in revisione.",
-      "Sources: docs/READINESS.md section 3 (arena on 63 real pages, 899 fees); data/specimens/statements/RESULTS.md (Fidelity US, Fidelity UK, AJ Bell, Edward Jones). The 5 to 6% is on figures not sent to review; with two independent readers that must agree, wrong drops to 0 on 23 pages but 62% go to review."));
+      { text: T("L'app trova e mette ogni cifra sulla sua pagina; l'analista controlla invece di cercare.", "The app finds each figure and puts it on its page; the analyst checks instead of searching."), options: { bullet: true, breakLine: true } },
+      { text: T("Nessun rapporto parte senza quattro occhi: un senior approva totale e risparmio.", "No report leaves without four eyes: a senior approves total and saving."), options: { bullet: true, breakLine: true } },
+      { text: T("Estratti svizzeri e italiani non sono pubblici: il pilota misura l'accuratezza sui vostri.", "Swiss and Italian statements are not public: the pilot measures accuracy on yours."), options: { bullet: true } },
+    ], tb({ x: 8.35, y: 4.1, w: 4.3, h: 2.5, fontSize: 12.5, paraSpaceAfter: 6 }));
+    s.addNotes(T("Esecuzione di main del 13.11.2026 su 62 pagine (una pagina BlackRock esclusa: il PDF è stato sostituito dall'editore), 896 costi. Campione scelto per coprire i tipi di documento, un solo annotatore.",
+      "Run of main on 13 Nov 2026 on 62 pages (one BlackRock page left out: the publisher replaced the PDF), 896 fees. Sample chosen to cover document types, one annotator."));
+  }
+
+  // ---------- Accuracy: last week ----------
+  {
+    const s = content(T("Progressi", "Progress"), T("In una settimana: dal 4% all'82% dei costi trovati", "In one week: from 4% to 82% of fees found"), T("Accuratezza", "Accuracy"));
+    const labels = [T("11 nov · app", "11 Nov · app"), T("13 nov · app oggi", "13 Nov · app today"), T("Laboratorio", "Lab")];
+    const chartOpts = (title, max, fmt) => ({
+      x: 0, y: 0, w: 0, h: 0, barDir: "col", barGapWidthPct: 70, chartColors: [X.paleNavy, X.teal, "C9D3DE"], showValue: true, dataLabelFormatCode: fmt,
+      dataLabelColor: X.navy, dataLabelFontSize: 13, dataLabelFontBold: true, dataLabelPosition: "outEnd",
+      catAxisLabelColor: X.text, catAxisLabelFontSize: 11, catAxisLineShow: true, catAxisLineColor: X.border,
+      valAxisHidden: true, valGridLine: { style: "none" }, valAxisMinVal: 0, valAxisMaxVal: max,
+      showTitle: true, title, titleFontSize: 13, titleColor: X.navy, titleFontFace: "Calibri", showLegend: false, varyColors: true,
+    });
+    s.addChart(pres.charts.BAR, [{ name: "recall", labels, values: [4, 82, 90] }],
+      { ...chartOpts(T("Costi trovati (%)", "Fees found (%)"), 100, "0\"%\""), x: 0.5, y: 1.45, w: 4.1, h: 3.6 });
+    s.addChart(pres.charts.BAR, [{ name: "wrong", labels, values: [14.5, 7.3, 5.9] }],
+      { ...chartOpts(T("Sbagliati accettati (%, meno è meglio)", "Wrong accepted (%, lower is better)"), 16, "0.0\"%\""), x: 4.75, y: 1.45, w: 4.1, h: 3.6 });
+    s.addText(T("Stesse pagine controllate a mano ogni volta. «Laboratorio» = miglior flusso provato (trova + verifica), non ancora nell'app. Intervalli: 82% (76–88), 7.3% (4.4–10.7).",
+      "Same hand-checked pages each time. \"Lab\" = best workflow tested (finder + verify), not yet in the app. Ranges: 82% (76 to 88), 7.3% (4.4 to 10.7)."),
+      tb({ x: 0.5, y: 5.1, w: 8.35, h: 0.5, fontSize: 10.5, color: X.muted }));
+    const log = [
+      [T("13 nov", "13 Nov"), T("Rimisurato tutto su main: stessi risultati", "Re-measured everything on main: same results")],
+      [T("12 nov", "12 Nov"), T("Estratti: Fidelity USA da 17 a 34 posizioni su 34, patrimonio esatto", "Statements: Fidelity US from 17 to 34 of 34 holdings, assets exact")],
+      [T("12 nov", "12 Nov"), T("Errori di patrimonio silenziosi da 1 su 4 a 0 su 4", "Silent asset errors from 1 of 4 to 0 of 4")],
+      [T("12 nov", "12 Nov"), T("Lettore che segue righe e colonne: costi trovati dal 4% all'82%", "Reader that follows rows and columns: fees found from 4% to 82%")],
+      [T("11 nov", "11 Nov"), T("899 costi controllati a mano e valutatore automatico", "899 hand-checked fees and an automatic scorer")],
+    ];
+    s.addText(T("Cosa è cambiato", "What changed"), tb({ x: 9.2, y: 1.5, w: 3.65, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    log.forEach(([d, t], i) => {
+      const y = 1.95 + i * 0.72;
+      s.addShape(pres.shapes.LINE, { x: 9.2, y: y - 0.08, w: 3.65, h: 0, line: { color: X.border, width: 0.5 } });
+      s.addText(d, tb({ x: 9.2, y, w: 0.8, h: 0.3, fontSize: 11, bold: true, color: X.teal }));
+      s.addText(t, tb({ x: 10.0, y, w: 2.85, h: 0.75, fontSize: 11.5 }));
+    });
+    card(s, 0.5, 5.75, 12.35, 0.85, X.tealSoft);
+    s.addText([
+      { text: T("Prossimo passo: ", "Next step: "), options: { bold: true, color: X.navy } },
+      { text: T("portare «trova + verifica» nell'app (90% trovati, 5.9% sbagliati) e lavorare sui tariffari. Durante il pilota misuriamo con lo stesso valutatore sulle vostre pagine anonimizzate.",
+        "bring \"finder + verify\" into the app (90% found, 5.9% wrong) and work on price lists. During the pilot we measure with the same scorer on your anonymised pages.") },
+    ], tb({ x: 0.75, y: 5.8, w: 11.9, h: 0.75, fontSize: 12.5, valign: "middle" }));
   }
 
   // ---------- Readiness ----------
@@ -637,9 +757,9 @@ function imgSize(file) {
     const lines = [
       [T("Schermate", "Screenshots"), T("App FeeLens, versione principale del 13.11.2026, eseguita in locale. Clienti P-1042 e P-2077 sintetici (banche, ISIN e importi inventati).", "FeeLens app, main version of 13 Nov 2026, run locally. Prospects P-1042 and P-2077 are synthetic (banks, ISINs and amounts invented).")],
       [T("Documenti reali", "Real documents"), T("AJ Bell, rapporto demo cliente (investcentre.co.uk); BlackRock, KID iShares Core S&P 500 (IT) e Core MSCI World (EN); Julius Baer Europe, tariffario custodia (2025). Documenti pubblici, clienti fittizi.", "AJ Bell demo client report (investcentre.co.uk); BlackRock iShares Core S&P 500 (IT) and Core MSCI World (EN) KIDs; Julius Baer Europe custody price list (2025). Public documents, fictitious clients.")],
-      [T("Accuratezza", "Accuracy"), T("63 pagine reali, 899 costi controllati a mano (arena dei flussi); 4 estratti pubblici (Fidelity USA e UK, AJ Bell, Edward Jones). Repository: docs/READINESS.md, data/specimens/statements/RESULTS.md.", "63 real pages, 899 fees checked by hand (workflow arena); 4 public statements (Fidelity US and UK, AJ Bell, Edward Jones). Repository: docs/READINESS.md, data/specimens/statements/RESULTS.md.")],
+      [T("Accuratezza", "Accuracy"), T("62 pagine reali, 896 costi controllati a mano (main rimisurato il 13.11.2026, arena del 12.11); 4 estratti pubblici (Fidelity USA e UK, AJ Bell, Edward Jones). Repository: docs/READINESS.md, data/specimens/statements/RESULTS.md.", "62 real pages, 896 fees checked by hand (main re-run 13 Nov 2026, arena of 12 Nov); 4 public statements (Fidelity US and UK, AJ Bell, Edward Jones). Repository: docs/READINESS.md, data/specimens/statements/RESULTS.md.")],
       [T("Prezzi", "Prices"), T("Documento «FeeLens pricing for Safe Capital», 13.11.2026: proposta da confermare. Fonti di mercato: stuzz.ch, investglass.com, rfp.wiki, ValIndex, moneyland.ch.", "Doc \"FeeLens pricing for Safe Capital\", 13 Nov 2026: proposal to confirm. Market sources: stuzz.ch, investglass.com, rfp.wiki, ValIndex, moneyland.ch.")],
-      [T("Limiti", "Limits"), T("Alcuni messaggi di controllo nell'app sono ancora in inglese anche nell'interfaccia italiana.", "Some check messages in the app are still in English in the Italian interface.")],
+      [T("Limiti", "Limits"), T("Campione scelto per coprire i tipi di documento, un solo annotatore; estratti svizzeri e italiani non pubblici: il pilota è la prova vera.", "Sample chosen to cover document types, one annotator; Swiss and Italian statements are not public: the pilot is the real test.")],
     ];
     lines.forEach(([h, t], i) => {
       const y = 1.5 + i * 1.02;
