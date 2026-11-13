@@ -30,10 +30,10 @@ decision or signature, not code.
 | G1 | Extraction stack merged: #17, then #15, #16, #21, #27 (#26 independent) | Ale (rule 9) | **Closed 2026-11-12**: all merged on Ale's instruction, after the combined tree passed the full gate (section 3.3) | Done |
 | G2 | Accuracy on real statements measured (holdings, AUM, statement fees) | Engineering | Partial 2026-11-12: 4 public statements checked, no silent AUM error left; Fidelity US 34 of 34 holdings with exact AUM after SC-5.16; AJ Bell overview cash and policies read after SC-5.17, so its AUM matches its account totals exactly; two-client files raise an alarm (`data/specimens/statements/RESULTS.md`); Swiss statements only in the pilot | SC-9.6, SC-5.16 |
 | G3 | Where the pilot runs: Safe Capital machine (recommended) or Swiss host | Ale + Massimo | Open decision | SC-11.6 (local) or SC-11.2 (hosted) |
-| G4 | Named users with MFA and roles; no shared admin password | Engineering, Ale approves (rule 9) | Open. Only one env-seeded admin exists | SC-11.7 |
-| G5 | Delete a prospect and everything derived on request | Engineering | Open. No delete endpoint on main | SC-11.11 |
-| G6 | Encrypted storage, backup with tested restore, retention deletion | Engineering | Open | SC-11.6 |
-| G7 | Audit log of views, downloads, exports, deletions | Engineering | Partial. Writes are audited on main; views and downloads are not | SC-11.8 |
+| G4 | Named users with MFA and roles; no shared admin password | Engineering, Ale approves (rule 9) | Built 2026-11-13, awaits Ale's merge approval: named accounts, admin page, authenticator required in the pilot kit | SC-11.7 |
+| G5 | Delete a prospect and everything derived on request | Engineering | Built 2026-11-13, awaits merge: admin erasure with typed code and fixed reason, one counts-only log entry stays | SC-11.11 |
+| G6 | Encrypted storage, backup with tested restore, retention deletion | Engineering + Safe Capital (disk, backup key, retention days) | Built 2026-11-13, awaits merge: pilot kit with HTTPS, encrypted age backups (restore tested), daily retention job. Needs the encrypted machine (docs/app/PILOT_INSTALL.md) | SC-11.6 |
+| G7 | Audit log of views, downloads, exports, deletions | Engineering | Built 2026-11-13, awaits merge: sign-ins, failed codes, prospect opened and document viewed added; entries cannot be edited | SC-11.8 |
 | G8 | No path for client content to leave the machine | Engineering, Ale approves (rule 9) | Holds by construction today (no outbound call except the demo's public corpus fetch); `PCE_ALLOW_EXTERNAL_AI` is declared but nothing reads it | SC-11.5 before any outbound feature |
 | G9 | DPIA written and signed, consent text agreed, processing record, compliance sign-off | Safe Capital (DPIA owner to name) | Open | SC-11.1 AC #1 |
 

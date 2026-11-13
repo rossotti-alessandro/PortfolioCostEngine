@@ -1,0 +1,9 @@
+# HTTPS in front of FeeLens. FEELENS_HOST is the name analysts type, e.g. feelens.safecapital.local.
+# "tls internal": Caddy runs its own certificate authority; install its root certificate
+# (./caddy/caddy/pki/authorities/local/root.crt) once on each analyst's computer. With a public DNS name,
+# delete that line and Caddy fetches a normal certificate.
+{$FEELENS_HOST:localhost} {
+	tls internal
+	encode gzip
+	reverse_proxy feelens:8000
+}

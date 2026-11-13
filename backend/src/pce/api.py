@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import __version__, security
+from . import __version__, erasure, security
 from .analysis import analyse
 from .crm.router import router as crm_router
 from .db import (
@@ -40,6 +40,7 @@ from .db import (
     make_session_factory,
 )
 from .demo import spec
+from .erasure import Reason
 from .extraction import documents
 from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify
@@ -65,6 +66,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(security.router)
+app.include_router(security.admin_router)
 app.include_router(crm_router)
 SessionFactory = make_session_factory()
 
@@ -512,6 +514,25 @@ def patch_prospect(pid: int, body: ProspectPatch, db: DB, c: C) -> dict:
     return {"ok": True}
 
 
+@app.delete("/api/prospects/{pid}")
+def erase_prospect(
+    pid: int,
+    request: Request,
+    db: DB,
+    c: C,
+    confirm: str,
+    reason: Reason,
+    erase_contact: bool = False,
+) -> dict:
+    """Erase a prospect and everything derived from it (SC-11.11). Admins only; ``confirm`` is its code."""
+    if not request.state.account.admin:
+        raise HTTPException(403, "only an admin can erase a prospect")
+    p = get_prospect(db, c, pid)
+    if confirm != p.code:
+        raise HTTPException(400, "type the prospect code to confirm")
+    return erasure.erase_prospect(db, c.tenant, p.id, c.user, reason, erase_contact)
+
+
 @app.post("/api/demo/seed")
 def seed_demo(db: DB, c: C) -> dict:
     """Create the SYNTHETIC demo prospects from data/synthetic (regenerated if missing).
@@ -571,6 +592,8 @@ def seed_demo(db: DB, c: C) -> dict:
 @app.get("/api/prospects/{pid}")
 def get_one(pid: int, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
+    audit(db, c, p.id, "prospect.opened")  # SC-11.8: who looked at which prospect, and when
+    db.commit()
     return {"id": p.id, "code": p.code, "label": p.label, "domicile": p.domicile, "synthetic": p.synthetic}
 
 
@@ -626,6 +649,8 @@ def get_doc(db: Session, c: Ctx, did: int) -> Document:
 @app.get("/api/documents/{did}/file")
 def document_file(did: int, db: DB, c: C):
     d = get_doc(db, c, did)
+    audit(db, c, d.prospect_id, "document.viewed", document_id=d.id)  # id only: file names can name people
+    db.commit()
     return FileResponse(
         d.storage_path,
         media_type=d.media_type,
@@ -642,6 +667,8 @@ def document_sheet(did: int, db: DB, c: C) -> dict:
     d = get_doc(db, c, did)
     if not d.filename.lower().endswith(".xlsx"):
         raise HTTPException(400, "not a spreadsheet")
+    audit(db, c, d.prospect_id, "document.viewed", document_id=d.id)
+    db.commit()
     wb = load_workbook(d.storage_path, data_only=True, read_only=True)
     sheets = []
     for ws in wb.worksheets:

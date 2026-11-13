@@ -1,9 +1,10 @@
 import { Badge, Button, Card, Dialog, Empty, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
-import { api } from "@/lib/api";
+import { type Me, api } from "@/lib/api";
 import { bps, chf, savingParts } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import type { ProspectRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Building2, FlaskConical, Plus, Upload } from "lucide-react";
+import { ArrowRight, Building2, FlaskConical, Plus, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -19,6 +20,8 @@ export default function ProspectsPage() {
     },
   });
   const [open, setOpen] = useState(false);
+  const [erasing, setErasing] = useState<ProspectRow | null>(null);
+  const isAdmin = qc.getQueryData<Me>(["me"])?.admin ?? false;
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -127,7 +130,23 @@ export default function ProspectsPage() {
                       {p.summary?.approved ? <Badge tone="teal">{t("Approved")}</Badge> : <Badge>{t("Draft")}</Badge>}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <ArrowRight className="ml-auto h-4 w-4 text-subtle" />
+                      <div className="flex items-center justify-end gap-2">
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t("Erase prospect")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setErasing(p);
+                            }}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <ArrowRight className="h-4 w-4 text-subtle" />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -161,6 +180,7 @@ export default function ProspectsPage() {
         ))}
       </div>
       <NewProspectDialog open={open} onOpenChange={setOpen} />
+      {erasing && <EraseDialog p={erasing} onClose={() => setErasing(null)} />}
     </div>
   );
 }
@@ -222,6 +242,76 @@ function NewProspectDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </Button>
           <Button type="submit" loading={m.isPending}>
             <Upload className="h-4 w-4" /> {t("Create and upload documents")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+const REASONS = [
+  ["prospect_request", "The prospect asked for deletion"],
+  ["no_mandate", "No mandate followed"],
+  ["retention_expired", "Retention period ended"],
+  ["uploaded_by_mistake", "Uploaded by mistake"],
+] as const;
+
+/** Erasure on request (SC-11.11): admins only, typed code to confirm, cannot be undone. */
+function EraseDialog({ p, onClose }: { p: ProspectRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [confirm, setConfirm] = useState("");
+  const [reason, setReason] = useState<(typeof REASONS)[number][0]>("prospect_request");
+  const [contact, setContact] = useState(true);
+  const m = useMutation({
+    mutationFn: () => api.eraseProspect(p.id, confirm, reason, contact),
+    onSuccess: () => {
+      qc.invalidateQueries();
+      onClose();
+    },
+  });
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={t("Erase {code}", { code: p.code })}
+      description={t(
+        "Deletes the prospect, every document and extracted figure, reviews, proposals and reports. Only a note that a deletion happened is kept. This cannot be undone. Backups expire on their own schedule.",
+      )}
+    >
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          m.mutate();
+        }}
+      >
+        <Field label={t("Reason")}>
+          <select
+            className={inputCls}
+            value={reason}
+            onChange={(e) => setReason(e.target.value as (typeof REASONS)[number][0])}
+          >
+            {REASONS.map(([k, label]) => (
+              <option key={k} value={k}>
+                {t(label)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={contact} onChange={(e) => setContact(e.target.checked)} />
+          {t("Also delete the linked contact in Clients & pipeline")}
+        </label>
+        <Field label={t("Type {code} to confirm", { code: p.code })}>
+          <input className={inputCls} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        </Field>
+        {m.error && <ErrorBox error={m.error} />}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            {t("Cancel")}
+          </Button>
+          <Button type="submit" variant="danger" loading={m.isPending} disabled={confirm !== p.code}>
+            <Trash2 className="h-4 w-4" /> {t("Erase")}
           </Button>
         </div>
       </form>
