@@ -1,15 +1,15 @@
 ---
 id: SC-8.23
 title: Never show CHF 0 for assets that are not valued yet
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Build FeeLens proposal for Massimo"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/sc-8.23-no-chf-zero"
 pr: ""
 created_date: "2026-11-13 14:25"
-updated_date: "2026-11-13 14:23"
+updated_date: "2026-11-13 14:25"
 labels:
   - ui
 dependencies: []
@@ -52,13 +52,22 @@ No measurable impact.
 
 ## Acceptance Criteria
 
-- [ ] #1 A review with no valued position shows "not valued yet" instead of CHF 0 in the header, contact and per-bank line
-- [ ] #2 A review with valued positions still shows the CHF amount (test)
+- [x] #1 A review with no valued position shows "not valued yet" instead of CHF 0 in the header, contact and per-bank line
+- [x] #2 A review with valued positions still shows the CHF amount (test)
 
 ## Implementation Notes
 
+- `assets(total, valued, notValued)` in `frontend/src/lib/format.ts`; valued = at least one holding (per bank: one holding of that bank).
+- Header drops the amount instead of repeating the badge text.
+- Checked on a local run: R-11 (AJ Bell GBP statement, no FX) shows no amount and "Not valued yet"; P-1042 still shows CHF 4'300'000.
+
 ## Outcome
 
-- **Status**:
+- **Status**: completed
+- Unit test `format.test.ts` "never shows CHF 0 before a position is valued".
+
+## Branch & Commits
+
+- `claude/sc-8.23-no-chf-zero`: c9dd796 fix(ui): never show CHF 0 for assets not valued yet
 
 ## Issues Encountered
