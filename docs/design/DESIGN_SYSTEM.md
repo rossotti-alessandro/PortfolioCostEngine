@@ -98,7 +98,7 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 ## 6. Screens (analyst workspace and client report)
 
 1. **Prospects**: list with AUM, banks, documents, analysis status, last activity. CTA "New analysis".
-2. **Intake**: alias, base currency, domicile, consent; drop zone; live classification; required-documents checklist. CTA "Analyse", secondary "Request missing documents".
+2. **Intake**: alias, base currency, domicile, consent; drop zone; live classification; required-documents checklist. CTA "Analyse", secondary "Request missing documents". Documents list: one line per file (File, Type, Bank or issuer, Date, Values, Status, link to how it was processed), documents needing a check first, 6 shown then "Show all"; read-with, fingerprint, warnings and the type selector open under the row. The drop zone shrinks to one line once documents exist.
 3. **Review**: split screen, low-confidence first, reconciliation banner at top.
 4. **Costs**: answer card first (known annual cost, "at least" when incomplete, one sentence with % and bps of assets and the count of undetermined costs; debited, inside products and evidence coverage beside it), then documents to ask for, points to review, cost by layer, ledger, folded checks/coverage/positions. Each undetermined cost is listed once, as the document that would resolve it.
 5. **Compare**: scenarios side by side, editable proposal tariff, one-off costs, payback, comparability badge.

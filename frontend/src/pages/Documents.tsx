@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronRight,
   CircleDashed,
   Clock,
   FileSpreadsheet,
@@ -16,9 +17,10 @@ import {
   Loader2,
   ScanLine,
   UploadCloud,
+  Workflow,
   XCircle,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 export default function DocumentsPage() {
@@ -64,9 +66,9 @@ export default function DocumentsPage() {
           </Link>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
-          <Dropzone onFiles={uploadAll} busy={busy} />
+          <Dropzone onFiles={uploadAll} busy={busy} compact={!!docs.data?.length} />
           {rows.length > 0 && <UploadProgress rows={rows} docs={docs.data ?? []} pid={pid} busy={busy} />}
           <Card>
             <CardHeader
@@ -188,7 +190,8 @@ function UploadProgress({
   );
 }
 
-function Dropzone({ onFiles, busy }: { onFiles: (f: File[]) => void; busy: boolean }) {
+/** Full height until the first document; then one line, so the list is what the analyst sees. */
+function Dropzone({ onFiles, busy, compact }: { onFiles: (f: File[]) => void; busy: boolean; compact: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   return (
@@ -205,14 +208,19 @@ function Dropzone({ onFiles, busy }: { onFiles: (f: File[]) => void; busy: boole
         if (files.length) onFiles(files);
       }}
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed px-6 py-8 text-center transition-colors",
+        "flex items-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed transition-colors",
+        compact ? "flex-wrap px-5 py-3" : "flex-col justify-center px-6 py-8 text-center",
         over ? "border-teal-600 bg-teal-50" : "border-line-strong bg-surface",
       )}
     >
-      <UploadCloud className="h-8 w-8 text-teal-700" />
-      <div className="text-[15px] font-semibold text-navy-900">{t("Drop documents here")}</div>
-      <div className="text-[13px] text-muted">
-        {t("PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected")}
+      <UploadCloud className={cn("shrink-0 text-teal-700", compact ? "h-5 w-5" : "h-8 w-8")} />
+      <div className={cn("min-w-0", compact && "flex-1")}>
+        <div className={cn("font-semibold text-navy-900", compact ? "text-[13.5px]" : "text-[15px]")}>
+          {t(compact ? "Add more documents" : "Drop documents here")}
+        </div>
+        <div className="text-[12.5px] text-muted">
+          {t("PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected")}
+        </div>
       </div>
       <input
         ref={ref}
@@ -227,104 +235,190 @@ function Dropzone({ onFiles, busy }: { onFiles: (f: File[]) => void; busy: boole
           e.target.value = "";
         }}
       />
-      <Button className="mt-2" onClick={() => ref.current?.click()} loading={busy}>
+      <Button
+        className={compact ? undefined : "mt-2"}
+        variant={compact ? "outline" : "primary"}
+        onClick={() => ref.current?.click()}
+        loading={busy}
+      >
         {t("Choose files")}
       </Button>
     </div>
   );
 }
 
+const SHOWN = 6;
+
+/** One line per document; how it was read, warnings and the type selector open under the row. */
 function DocTable({
   docs,
   pid,
   onType,
 }: { docs: DocumentRow[]; pid: number; onType: (id: number, t: string) => void }) {
+  const [all, setAll] = useState(false);
+  const [open, setOpen] = useState<number | null>(null);
+  // Documents that need a check first, so they are never hidden behind "Show all".
+  const sorted = [...docs].sort((x, y) => Number(y.status === "needs_review") - Number(x.status === "needs_review"));
+  const shown = all ? sorted : sorted.slice(0, SHOWN);
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-[13px]">
+    <div>
+      <table className="w-full table-fixed text-[13px]">
         <thead>
-          <tr className="border-b border-line text-left text-[11.5px] uppercase tracking-wide text-subtle">
-            <th className="min-w-[260px] px-5 py-2 font-medium">{t("File")}</th>
-            <th className="px-3 py-2 font-medium">{t("Type")}</th>
-            <th className="min-w-[180px] px-3 py-2 font-medium">{t("Issuer and date")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("Values")}</th>
+          <tr className="whitespace-nowrap border-b border-line text-left text-[11.5px] uppercase tracking-wide text-subtle">
+            <th className="px-5 py-2 font-medium">{t("File")}</th>
+            <th className="w-[15%] px-3 py-2 font-medium">{t("Type")}</th>
+            <th className="w-[15%] px-3 py-2 font-medium">{t("Bank or issuer")}</th>
+            <th className="w-[112px] px-3 py-2 font-medium">{t("Date")}</th>
+            <th className="w-[64px] px-3 py-2 text-right font-medium">{t("Values")}</th>
+            <th className="w-[148px] px-3 py-2 font-medium">{t("Status")}</th>
           </tr>
         </thead>
         <tbody>
-          {docs.map((d) => (
-            <tr key={d.id} className="border-b border-line align-top last:border-0">
-              <td className="px-5 py-2.5">
-                <Link
-                  to={`/p/${pid}/review?doc=${d.id}`}
-                  className="flex items-start gap-2 font-medium text-navy-900 hover:underline"
-                >
-                  {d.filename.endsWith(".xlsx") ? (
-                    <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" />
-                  ) : (
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-navy-700" />
-                  )}
-                  <span className="[overflow-wrap:anywhere]">{d.filename}</span>
-                </Link>
-                <div className="ml-6 mt-1 flex items-center gap-2 text-[11px] text-subtle">
-                  {d.profile.engines.includes("tesseract-ocr") ? (
-                    <Badge tone="violet">
-                      <ScanLine className="h-3 w-3" /> OCR
-                    </Badge>
-                  ) : d.profile.engines.includes("openpyxl") ? (
-                    <Badge>{t("Spreadsheet cells")}</Badge>
-                  ) : (
-                    <Badge>{t("Digital text")}</Badge>
-                  )}
-                  <span className="font-mono" title={`sha256 ${d.sha256}`}>
-                    {d.sha256.slice(0, 8)}
-                  </span>
-                </div>
-                <Link
-                  to={`/p/${pid}/documents/${d.id}`}
-                  className="ml-6 mt-1 inline-block text-[12px] font-medium text-teal-700 hover:underline"
-                >
-                  {t("How it was processed")} →
-                </Link>
-                {d.profile.warnings.map((w) => (
-                  <div key={w} className="ml-6 mt-1 flex items-start gap-1 text-[12px] text-amber-700">
-                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {w}
-                  </div>
-                ))}
-              </td>
-              <td className="px-3 py-2.5">
-                <select
-                  aria-label={t("Document type for {file}", { file: d.filename })}
-                  className="h-8 rounded-[var(--radius-control)] border border-line-strong bg-surface px-2 text-[12.5px]"
-                  value={d.doc_type}
-                  onChange={(e) => onType(d.id, e.target.value)}
-                >
-                  {Object.entries(DOC_TYPES).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {t(v)}
-                    </option>
-                  ))}
-                </select>
-                {d.doc_type !== d.detected_type && (
-                  <div className="mt-1 text-[11px] text-subtle">{t("set manually")}</div>
-                )}
-              </td>
-              <td className="px-3 py-2.5">
-                <div className="text-ink">
-                  {d.profile.institution ?? "–"}
-                  {d.profile.jurisdiction && <Badge className="ml-1.5">{d.profile.jurisdiction}</Badge>}
-                </div>
-                <div className="num mt-0.5 whitespace-nowrap text-[12px] text-muted">
-                  {d.profile.period_start
-                    ? `${d.profile.period_start} → ${d.profile.period_end}`
-                    : (d.profile.as_of ?? "–")}
-                </div>
-              </td>
-              <td className="num px-3 py-2.5 text-right">{d.fact_count}</td>
-            </tr>
-          ))}
+          {shown.map((d) => {
+            const isOpen = open === d.id;
+            const check = d.status === "needs_review";
+            return (
+              <Fragment key={d.id}>
+                <tr className={cn("border-b border-line hover:bg-paper", isOpen && "bg-paper")}>
+                  <td className="px-5 py-2">
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpen(isOpen ? null : d.id)}
+                      aria-label={t(isOpen ? "Hide details of {file}" : "Show details of {file}", { file: d.filename })}
+                      className="flex w-full min-w-0 items-center gap-2 text-left font-medium text-navy-900"
+                    >
+                      <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 text-subtle", isOpen && "rotate-90")} />
+                      {d.filename.endsWith(".xlsx") ? (
+                        <FileSpreadsheet className="h-4 w-4 shrink-0 text-teal-700" />
+                      ) : (
+                        <FileText className="h-4 w-4 shrink-0 text-navy-700" />
+                      )}
+                      <span className="truncate" title={d.filename}>
+                        {d.filename}
+                      </span>
+                    </button>
+                  </td>
+                  <td className="truncate px-3 py-2 text-ink">{t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}</td>
+                  <td className="truncate px-3 py-2 text-ink" title={d.profile.institution ?? undefined}>
+                    {d.profile.institution ?? <span className="text-subtle">{t("not found")}</span>}
+                  </td>
+                  <td className="num truncate px-3 py-2 text-muted">
+                    {d.profile.period_end ?? d.profile.as_of ?? "–"}
+                  </td>
+                  <td className="num px-3 py-2 text-right">{d.fact_count}</td>
+                  <td className="px-3 py-2">
+                    <span className="flex items-center justify-between gap-1">
+                      {check ? (
+                        <Badge tone="amber">
+                          <AlertTriangle className="h-3 w-3" /> {t("Needs a check")}
+                        </Badge>
+                      ) : (
+                        <Badge tone="teal">
+                          <CheckCircle2 className="h-3 w-3" /> {t("Ready")}
+                        </Badge>
+                      )}
+                      <Link
+                        to={`/p/${pid}/documents/${d.id}`}
+                        aria-label={t("How it was processed")}
+                        title={t("How it was processed")}
+                        className="rounded-[var(--radius-control)] p-1 text-teal-700 hover:bg-teal-50"
+                      >
+                        <Workflow className="h-4 w-4" />
+                      </Link>
+                    </span>
+                  </td>
+                </tr>
+                {isOpen && <DocDetails d={d} pid={pid} onType={onType} />}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
+      {docs.length > SHOWN && (
+        <div className="border-t border-line px-5 py-2.5">
+          <Button variant="ghost" size="sm" onClick={() => setAll(!all)}>
+            {all ? t("Show fewer") : t("Show all {n} documents", { n: docs.length })}
+          </Button>
+        </div>
+      )}
     </div>
+  );
+}
+
+function DocDetails({ d, pid, onType }: { d: DocumentRow; pid: number; onType: (id: number, t: string) => void }) {
+  const period = d.profile.period_start ? `${d.profile.period_start} → ${d.profile.period_end}` : d.profile.as_of;
+  return (
+    <tr className="border-b border-line bg-paper">
+      <td colSpan={6} className="px-5 pb-3 pt-1">
+        <dl className="grid gap-x-6 gap-y-2 pl-6 text-[12.5px] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
+          <div>
+            <dt className="text-subtle">{t("Read with")}</dt>
+            <dd className="mt-0.5">
+              {d.profile.engines.includes("tesseract-ocr") ? (
+                <Badge tone="violet">
+                  <ScanLine className="h-3 w-3" /> OCR
+                </Badge>
+              ) : d.profile.engines.includes("openpyxl") ? (
+                <Badge>{t("Spreadsheet cells")}</Badge>
+              ) : (
+                <Badge>{t("Digital text")}</Badge>
+              )}
+              <span className="num ml-2 text-muted">
+                {d.profile.page_count === 1 ? t("1 page") : t("{n} pages", { n: d.profile.page_count })}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-subtle">{t("Period or date")}</dt>
+            <dd className="num mt-0.5 text-ink">
+              {period ?? "–"}
+              {d.profile.jurisdiction && <Badge className="ml-1.5">{d.profile.jurisdiction}</Badge>}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-subtle">{t("Fingerprint")}</dt>
+            <dd className="mt-0.5 font-mono text-muted" title={`sha256 ${d.sha256}`}>
+              {d.sha256.slice(0, 12)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-subtle">
+              <label htmlFor={`type-${d.id}`}>{t("Document type")}</label>
+            </dt>
+            <dd className="mt-0.5">
+              <select
+                id={`type-${d.id}`}
+                aria-label={t("Document type for {file}", { file: d.filename })}
+                className="h-8 rounded-[var(--radius-control)] border border-line-strong bg-surface px-2 text-[12.5px]"
+                value={d.doc_type}
+                onChange={(e) => onType(d.id, e.target.value)}
+              >
+                {Object.entries(DOC_TYPES).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {t(v)}
+                  </option>
+                ))}
+              </select>
+              {d.doc_type !== d.detected_type && <span className="ml-2 text-subtle">{t("set manually")}</span>}
+            </dd>
+          </div>
+        </dl>
+        {d.profile.warnings.map((w) => (
+          <div key={w} className="ml-6 mt-2 flex items-start gap-1 text-[12px] text-amber-700">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {w}
+          </div>
+        ))}
+        <div className="ml-6 mt-3 flex gap-4 text-[12.5px] font-medium">
+          <Link to={`/p/${pid}/review?doc=${d.id}`} className="text-teal-700 hover:underline">
+            {t("Check its values")} →
+          </Link>
+          <Link to={`/p/${pid}/documents/${d.id}`} className="text-teal-700 hover:underline">
+            {t("How it was processed")} →
+          </Link>
+        </div>
+      </td>
+    </tr>
   );
 }
 
