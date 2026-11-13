@@ -86,3 +86,20 @@ DECK_LANG=en node build_deck.js               # ../FeeLens_Deck_EN.pptx
 # optional theme colours: APPLY_THEME_JS=<pptx skill>/scripts/apply_theme.js NODE_PATH=$PWD/node_modules
 soffice --headless --convert-to pdf --outdir .. ../FeeLens_Presentazione_IT.pptx ../FeeLens_Deck_EN.pptx
 ```
+
+## Proposal deck for Safe Capital (2026-11-13)
+
+`FeeLens_Proposta_IT.pptx` / `.pdf` and `FeeLens_Proposal_EN.pptx` / `.pdf`: the proposal for Massimo. A visual
+tutorial of the current app (what to click and why, with edge cases), accuracy stated as measured, readiness,
+where the code runs, personal data, how Safe Capital uses it, the pilot, and the price proposal. 29 slides.
+
+- Build: `cd slides/source && DECK_LANG=it node build_proposal.js && DECK_LANG=en node build_proposal.js`, then
+  `soffice --headless --convert-to pdf --outdir .. ../FeeLens_Proposta_IT.pptx ../FeeLens_Proposal_EN.pptx`.
+- Screenshots: `source/img/proposal/{it,en}/`, taken from `main` at 7487a2f run locally (Playwright, 1440x900 at 2x).
+  P-1042 and P-2077 are the SYNTHETIC demo prospects. "Public sample documents (real)" holds real public
+  documents: the AJ Bell demo client report (`sample-investcentre-demo-client-report.pdf`), the iShares Core
+  S&P 500 KID in Italian and the iShares Core MSCI World KID in English (printed to an image to show OCR), and
+  the Julius Baer Europe custody price list; URLs in `data/reference/specimen_corpus.csv`.
+- Accuracy figures: `docs/READINESS.md` section 3 and `data/specimens/statements/RESULTS.md`.
+- Prices: the pricing thread's doc "FeeLens pricing for Safe Capital" (2026-11-13); the slide says "proposal, to
+  confirm" until Ale approves them.
