@@ -66,8 +66,11 @@ No measurable impact.
 - **Status**: completed
 - Unit test `format.test.ts` "never shows CHF 0 before a position is valued".
 
-## Branch & Commits
-
-- `claude/sc-8.23-no-chf-zero`: c9dd796 fix(ui): never show CHF 0 for assets not valued yet
 
 ## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/sc-8.23-no-chf-zero | c9dd796 | 2026-11-13 | Never show CHF 0 for assets not valued yet |
