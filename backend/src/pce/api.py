@@ -590,6 +590,8 @@ def seed_demo(db: DB, c: C) -> dict:
 @app.get("/api/prospects/{pid}")
 def get_one(pid: int, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
+    audit(db, c, p.id, "prospect.opened")  # SC-11.8: who looked at which prospect, and when
+    db.commit()
     return {"id": p.id, "code": p.code, "label": p.label, "domicile": p.domicile, "synthetic": p.synthetic}
 
 
@@ -640,6 +642,8 @@ def get_doc(db: Session, c: Ctx, did: int) -> Document:
 @app.get("/api/documents/{did}/file")
 def document_file(did: int, db: DB, c: C):
     d = get_doc(db, c, did)
+    audit(db, c, d.prospect_id, "document.viewed", document_id=d.id)  # id only: file names can name people
+    db.commit()
     return FileResponse(
         d.storage_path,
         media_type=d.media_type,
@@ -656,6 +660,8 @@ def document_sheet(did: int, db: DB, c: C) -> dict:
     d = get_doc(db, c, did)
     if not d.filename.lower().endswith(".xlsx"):
         raise HTTPException(400, "not a spreadsheet")
+    audit(db, c, d.prospect_id, "document.viewed", document_id=d.id)
+    db.commit()
     wb = load_workbook(d.storage_path, data_only=True, read_only=True)
     sheets = []
     for ws in wb.worksheets:

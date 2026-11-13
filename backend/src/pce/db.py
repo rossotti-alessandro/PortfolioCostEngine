@@ -170,4 +170,12 @@ def make_session_factory(url: str | None = None):
         json_serializer=lambda o: json.dumps(o, default=str),
     )
     Base.metadata.create_all(engine)
+    if url.startswith("sqlite"):
+        # Audit entries are append-only (SC-11.8): the database itself refuses to change one. Deletion
+        # stays possible only because erasure (SC-11.11) must remove entries that name a prospect.
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "CREATE TRIGGER IF NOT EXISTS audit_event_no_update BEFORE UPDATE ON audit_event "
+                "BEGIN SELECT RAISE(ABORT, 'audit entries cannot be changed'); END"
+            )
     return sessionmaker(engine, expire_on_commit=False)
