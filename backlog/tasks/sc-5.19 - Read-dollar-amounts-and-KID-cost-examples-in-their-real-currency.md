@@ -7,9 +7,9 @@ owner: "Validate accuracy and speed up processing"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/sc-5.19-currency-misreads"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/46"
 created_date: "2026-11-13 13:23"
-updated_date: "2026-11-13 13:41"
+updated_date: "2026-11-13 13:43"
 labels:
   - extraction
 dependencies: []
