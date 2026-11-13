@@ -172,8 +172,8 @@ export const IT: Record<string, string> = {
   "Client saves and the mandate meets the firm's margin threshold.":
     "Il cliente risparmia e il mandato raggiunge la soglia di margine della società.",
   "Restricted to senior reviewers and relationship managers": "Riservato ai revisori senior e ai relationship manager",
-  "Internal revenue and margin are never shown to analysts or included in client documents. Switch the demo role in the sidebar to view.":
-    "Ricavi e margine interni non sono mai mostrati agli analisti né inclusi nei documenti per il cliente. Cambiate il ruolo demo nella barra laterale per visualizzarli.",
+  "Internal revenue and margin are never shown to analysts or included in client documents. Switch the demo role in the account menu to view.":
+    "Ricavi e margine interni non sono mai mostrati agli analisti né inclusi nei documenti per il cliente. Cambiate il ruolo demo nel menu account per visualizzarli.",
   "Is this mandate worth it for the firm, and is it good for the client? Visible only to senior reviewers and relationship managers.":
     "Questo mandato conviene alla società ed è vantaggioso per il cliente? Visibile solo ai revisori senior e ai relationship manager.",
   "Internal only, never client-facing": "Solo uso interno, mai destinato al cliente",
@@ -544,8 +544,8 @@ export const IT: Record<string, string> = {
     "Un revisore senior approva le cifre esatte mostrate (istantanea {hash}).",
   "Approval note (optional)": "Nota di approvazione (facoltativa)",
   "Approve for client use": "Approva per l'uso con il cliente",
-  "Only a senior reviewer can approve. Switch the demo role in the sidebar.":
-    "Solo un revisore senior può approvare. Cambiate il ruolo demo nella barra laterale.",
+  "Only a senior reviewer can approve. Switch the demo role in the account menu.":
+    "Solo un revisore senior può approvare. Cambiate il ruolo demo nel menu account.",
   "Audit trail": "Registro delle attività",
   // CRM (pages/crm)
   "A lead or prospect. It becomes a client when you mark it as won.":
@@ -984,4 +984,40 @@ export const IT: Record<string, string> = {
   "Costs that are not determined yet, ranked by how much of the portfolio they affect. Each request names the exact document that would close the gap.":
     "Costi non ancora determinati, ordinati per quota di portafoglio interessata. Ogni richiesta indica il documento esatto che colma la lacuna.",
   "{n} documents to ask for": "{n} documenti da richiedere",
+  "Needs you": "Serve il tuo controllo",
+  "Confirmed by checks": "Confermati dai controlli",
+  "Values to show": "Valori da mostrare",
+  reject: "rifiuta",
+  "Why you: {reasons}": "Perché tu: {reasons}",
+  "Nothing in this document needs you.": "In questo documento nulla richiede il tuo controllo.",
+  "No values here.": "Nessun valore qui.",
+  "the automatic checks could not confirm it": "i controlli automatici non l'hanno confermato",
+  "scanned page, read with OCR": "pagina scansionata, letta con OCR",
+  "reading confidence {pct}%": "affidabilità di lettura {pct}%",
+  "{n} values not yet checked by a person": "{n} valori non ancora verificati da una persona",
+  "Ready to send?": "Pronto da inviare?",
+  open: "aperto",
+  "Internal margin and analyst notes are never in the PDF.":
+    "Margine interno e note dell'analista non sono mai nel PDF.",
+  "Decision log": "Registro delle decisioni",
+  "{n} values still need a person": "{n} valori richiedono ancora una persona",
+  "Check now": "Verifica ora",
+  "Every value checked by a person": "Ogni valore verificato da una persona",
+  "See the list": "Vedi l'elenco",
+  "No document requests open": "Nessuna richiesta di documenti aperta",
+  "{n} unknown costs listed, not counted as zero": "{n} costi ignoti elencati, non contati come zero",
+  "Approved by {user}": "Approvato da {user}",
+  "Not approved by a senior reviewer": "Non approvato da un revisore senior",
+  "Document uploaded": "Documento caricato",
+  "{n} documents uploaded": "{n} documenti caricati",
+  "Cost review created": "Analisi dei costi creata",
+  "Prospect details changed": "Dati del prospect modificati",
+  "Prospect details changed {n} times": "Dati del prospect modificati {n} volte",
+  "Proposal saved": "Proposta salvata",
+  "Proposal saved {n} times": "Proposta salvata {n} volte",
+  "Document request updated": "Richiesta di documento aggiornata",
+  "{n} document requests updated": "{n} richieste di documenti aggiornate",
+  "Approved for client use": "Approvato per il cliente",
+  "Internal economics viewed": "Economia interna consultata",
+  "Internal economics viewed {n} times": "Economia interna consultata {n} volte",
 };
