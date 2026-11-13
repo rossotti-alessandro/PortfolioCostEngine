@@ -7,9 +7,9 @@ owner: "Validate accuracy and speed up processing"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/sc-5.20-parallel-documents"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/47"
 created_date: "2026-11-13 13:11"
-updated_date: "2026-11-13 14:05"
+updated_date: "2026-11-13 13:58"
 labels:
   - extraction
   - backend
