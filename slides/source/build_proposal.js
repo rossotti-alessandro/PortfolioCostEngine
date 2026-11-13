@@ -161,7 +161,7 @@ function imgSize(file) {
     const items = [
       ["LuFileSearch", T("Cosa fa", "What it does"), T("Legge estratti, rendiconti costi, tariffari e KID di qualsiasi banca. Calcola il costo annuo completo e lo confronta con la vostra proposta.", "Reads statements, cost reports, price lists and KIDs from any bank. Works out the all-in annual cost and compares it with your proposal.")],
       ["LuMousePointerClick", T("Ogni cifra ha la sua fonte", "Every figure has its source"), T("Un clic su un numero mostra il calcolo e il punto esatto della pagina da cui viene. Un costo mancante resta mancante, mai zero.", "One click on a number shows the calculation and the exact spot on the page it came from. A missing cost stays missing, never zero.")],
-      ["LuUserCheck", T("Aiuta l'analista, non lo sostituisce", "It assists the analyst, it does not replace them"), T("Trova l'82% dei costi su pagine reali (86% su pagine mai viste). Una persona accetta ogni cifra prima che conti, e due persone controllano ogni rapporto.", "Finds 82% of fees on real pages (86% on pages it had never seen). A person accepts each figure before it counts, and two people check every report.")],
+      ["LuUserCheck", T("Aiuta l'analista, non lo sostituisce", "It assists the analyst, it does not replace them"), T("Trova l'87% dei costi su pagine reali (91% su pagine mai viste). Una persona accetta ogni cifra prima che conti, e due persone controllano ogni rapporto.", "Finds 87% of fees on real pages (91% on pages it had never seen). A person accepts each figure before it counts, and two people check every report.")],
       ["LuFlag", T("Proposta: pilota di 3 mesi", "Proposal: a 3-month pilot"), T("Su un computer di Safe Capital, 10 potenziali clienti, CHF 3'000. Poi licenza annuale da CHF 9'000.", "On a Safe Capital machine, 10 prospects, CHF 3,000. Then an annual licence from CHF 9,000.")],
     ];
     for (let i = 0; i < 4; i++) {
@@ -488,19 +488,19 @@ function imgSize(file) {
 
   // ---------- Accuracy: results ----------
   {
-    const s = content(T("Accuratezza", "Accuracy"), T("Oggi: trova l'82% dei costi, e una persona conferma prima che contino", "Today: 82% of fees found, and a person confirms them before they count"), T("Accuratezza", "Accuracy"));
-    bigNum(s, 0.5, 1.5, 3.0, "82%", T("dei costi trovati su 62 pagine reali", "of fees found on 62 real pages"), X.teal, T("intervallo 74–88%", "range 74 to 88%"));
-    bigNum(s, 3.6, 1.5, 3.0, "86%", T("su pagine mai viste prima", "on pages it had never seen"), X.teal, T("intervallo 77–91%", "range 77 to 91%"));
-    bigNum(s, 6.7, 1.5, 3.0, "7.3%", T("delle cifre segnate verificate sono sbagliate", "of figures marked verified are wrong"), X.amber, T("intervallo 4.5–10.7%", "range 4.5 to 10.7%"));
+    const s = content(T("Accuratezza", "Accuracy"), T("Oggi: trova l'87% dei costi, e una persona conferma prima che contino", "Today: 87% of fees found, and a person confirms them before they count"), T("Accuratezza", "Accuracy"));
+    bigNum(s, 0.5, 1.5, 3.0, "87%", T("dei costi trovati su 62 pagine reali", "of fees found on 62 real pages"), X.teal, T("intervallo 80–92%", "range 80 to 92%"));
+    bigNum(s, 3.6, 1.5, 3.0, "91%", T("su pagine mai viste prima", "on pages it had never seen"), X.teal, T("19 pagine annotate dopo", "19 pages labelled later"));
+    bigNum(s, 6.7, 1.5, 3.0, "7.3%", T("delle cifre segnate verificate sono sbagliate", "of figures marked verified are wrong"), X.amber, T("intervallo 4.6–10.5%", "range 4.6 to 10.5%"));
     bigNum(s, 9.8, 1.5, 3.05, "91%", T("costi correnti letti da soli su 130 KID", "fund ongoing costs read automatically, 130 KIDs"), X.teal, T("nessuno sbagliato", "none wrong"));
-    s.addText(T("Cosa sono le 51 cifre «sbagliate» (prime 53 pagine)", "What the 51 \"wrong\" figures are (first 53 pages)"), tb({ x: 0.5, y: 3.45, w: 7.2, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    s.addText(T("Cosa sono le cifre «sbagliate» (controllo del 13.11, 51 cifre)", "What the \"wrong\" figures are (13 Nov check, 51 figures)"), tb({ x: 0.5, y: 3.45, w: 7.2, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
     table(s, [T("Tipo", "Kind"), T("Cifre", "Figures"), T("Cosa facciamo", "What we do")], [
       [T("Non sono costi (importo d'esempio, limiti carta, prezzo massimo)", "Not fees (example amount, card limit, 52-week high)"), "22", T("Le filtriamo (prossimo lavoro)", "Filter them out (next piece of work)")],
       [T("Costi veri che mancano nelle risposte attese", "Real fees missing from the answer key"), "26", T("Aggiungerle: l'errore vero è più basso", "Add them: the true error is lower")],
       [T("Letture davvero sbagliate (es. «0 ,20%» letto 20)", "True misreads (e.g. \"0 ,20%\" read as 20)"), "3", T("Le ferma la verifica di una persona", "Stopped by a person's check")],
     ], { x: 0.5, y: 3.85, colW: [3.9, 0.8, 2.5], align: ["left", "right", "left"], rowH: 0.5, fontSize: 11.5 });
-    s.addText(T("Trovati per tipo: tariffari 89%, tariffe di custodia 87%, KID 77%, rendiconti costi 56%, factsheet 14%.",
-      "Found by type: price lists 89%, custody tariffs 87%, KIDs 77%, cost reports 56%, factsheets 14%."),
+    s.addText(T("Trovati per tipo: tariffari e custodia 91%, KID 90%, estratti e rendiconti 74%, scansioni 54% (70% con il lettore RapidOCR opzionale).",
+      "Found by type: price lists and custody 91%, KIDs 90%, statements and cost reports 74%, scans 54% (70% with the optional RapidOCR reader)."),
       tb({ x: 0.5, y: 5.95, w: 7.2, h: 0.5, fontSize: 11.5, color: X.muted }));
     card(s, 8.1, 3.45, 4.75, 3.2, X.amberSoft);
     s.addText(T("Cosa vuol dire per voi", "What this means for you"), tb({ x: 8.35, y: 3.6, w: 4.3, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
@@ -509,14 +509,14 @@ function imgSize(file) {
       T("Il resto è mostrato con la sua pagina: l'analista conferma invece di cercare. Un senior approva ogni rapporto.", "The rest is shown on its page: the analyst confirms instead of searching. A senior approves every report."),
       T("Estratti svizzeri e italiani non sono pubblici: il pilota misura sui vostri.", "Swiss and Italian statements are not public: the pilot measures on yours."),
     ]), tb({ x: 8.35, y: 4.05, w: 4.3, h: 2.5, fontSize: 12, paraSpaceAfter: 6 }));
-    s.addNotes(T("Esecuzione di main del 13.11.2026, ricontrollata in modo indipendente lo stesso giorno: stessi numeri, nessuna contaminazione. «82%» conta ogni cifra che l'app mostra, anche quelle che una persona deve ancora accettare. Il 90% citato prima veniva dal laboratorio, non dall'app.",
-      "Run of main on 13 Nov 2026, independently re-checked the same day: same numbers, no leakage. \"82%\" counts every figure the app shows, including those a person must still accept. The 90% quoted before came from the lab harness, not the app."));
+    s.addNotes(T("Esecuzione di main del 14.11.2026 (dopo il miglioramento del 13 sera), stesso metodo ricontrollato in modo indipendente il 13.11: nessuna contaminazione. «87%» conta ogni cifra che l'app mostra, anche quelle che una persona deve ancora accettare. Il 90% citato prima veniva dal laboratorio, non dall'app.",
+      "Run of main on 14 Nov 2026 (after the 13 Nov evening improvement), same method independently re-checked on 13 Nov: no leakage. \"87%\" counts every figure the app shows, including those a person must still accept. The 90% quoted before came from the lab harness, not the app."));
   }
 
   // ---------- Accuracy: last week ----------
   {
-    const s = content(T("Progressi", "Progress"), T("In una settimana: dal 4% all'82% dei costi trovati", "In one week: from 4% to 82% of fees found"), T("Accuratezza", "Accuracy"));
-    const labels = [T("11 nov · app", "11 Nov · app"), T("13 nov · app oggi", "13 Nov · app today"), T("13 nov · pagine nuove", "13 Nov · unseen pages")];
+    const s = content(T("Progressi", "Progress"), T("In una settimana: dal 4% all'87% dei costi trovati", "In one week: from 4% to 87% of fees found"), T("Accuratezza", "Accuracy"));
+    const labels = [T("11 nov", "11 Nov"), T("13 nov, mattina", "13 Nov, morning"), T("14 nov, oggi", "14 Nov, today")];
     const chartOpts = (title, max, fmt) => ({
       x: 0, y: 0, w: 0, h: 0, barDir: "col", barGapWidthPct: 70, chartColors: [X.paleNavy, X.teal, "7FB8B0"], showValue: true, dataLabelFormatCode: fmt,
       dataLabelColor: X.navy, dataLabelFontSize: 13, dataLabelFontBold: true, dataLabelPosition: "outEnd",
@@ -524,32 +524,33 @@ function imgSize(file) {
       valAxisHidden: true, valGridLine: { style: "none" }, valAxisMinVal: 0, valAxisMaxVal: max,
       showTitle: true, title, titleFontSize: 13, titleColor: X.navy, titleFontFace: "Calibri", showLegend: false, varyColors: true,
     });
-    s.addChart(pres.charts.BAR, [{ name: "recall", labels, values: [4, 82, 86] }],
+    s.addChart(pres.charts.BAR, [{ name: "recall", labels, values: [4, 82, 87] }],
       { ...chartOpts(T("Costi trovati (%)", "Fees found (%)"), 100, "0\"%\""), x: 0.5, y: 1.45, w: 4.1, h: 3.6 });
-    s.addChart(pres.charts.BAR, [{ name: "wrong", labels, values: [14.5, 7.3, 5.9] }],
+    s.addChart(pres.charts.BAR, [{ name: "wrong", labels, values: [14.5, 7.3, 7.3] }],
       { ...chartOpts(T("Verificate ma sbagliate (%, meno è meglio)", "Verified but wrong (%, lower is better)"), 16, "0.0\"%\""), x: 4.75, y: 1.45, w: 4.1, h: 3.6 });
-    s.addText(T("Stesse pagine controllate a mano ogni volta. «Pagine nuove» = 19 pagine annotate dopo aver fissato il lettore. Intervalli oggi: 82% (74–88), 7.3% (4.5–10.7).",
-      "Same hand-checked pages each time. \"Unseen pages\" = 19 pages labelled after the reader was frozen. Ranges today: 82% (74 to 88), 7.3% (4.5 to 10.7)."),
+    s.addText(T("Stesse 62 pagine controllate a mano ogni volta, sempre l'app vera. Intervalli oggi: 87% (80–92), 7.3% (4.6–10.5). Su 19 pagine mai viste: 91%.",
+      "The same 62 hand-checked pages each time, always the real app. Ranges today: 87% (80 to 92), 7.3% (4.6 to 10.5). On 19 unseen pages: 91%."),
       tb({ x: 0.5, y: 5.1, w: 8.35, h: 0.5, fontSize: 10.5, color: X.muted }));
     const log = [
+      [T("13 nov", "13 Nov"), T("Lettore di scansioni RapidOCR (opzionale): scansioni dal 54% al 70%", "Optional RapidOCR scan reader: scans from 54% to 70%")],
+      [T("13 nov", "13 Nov"), T("Vocabolario dei costi e titoli delle tabelle: dall'82% all'87%", "Fee vocabulary and table headings: from 82% to 87%")],
       [T("13 nov", "13 Nov"), T("Più documenti letti insieme: 29 file in 12 s invece di 43 s", "Several documents read at once: 29 files in 12 s instead of 43 s")],
       [T("13 nov", "13 Nov"), T("Ricontrollo indipendente: stessi numeri, nessuna contaminazione", "Independent re-check: same numbers, no leakage")],
-      [T("13 nov", "13 Nov"), T("«$» tiene il dollaro del documento; importi d'esempio dei KID non sono costi", "\"$\" keeps the document's dollar; KID example amounts are not costs")],
       [T("12 nov", "12 Nov"), T("Estratti: Fidelity USA 34 posizioni su 34; 0 errori di patrimonio silenziosi", "Statements: Fidelity US 34 of 34 holdings; 0 silent asset errors")],
       [T("12 nov", "12 Nov"), T("Lettore che segue righe e colonne: dal 4% all'82%", "Reader that follows rows and columns: from 4% to 82%")],
     ];
     s.addText(T("Cosa è cambiato", "What changed"), tb({ x: 9.2, y: 1.5, w: 3.65, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
     log.forEach(([d, t], i) => {
-      const y = 1.95 + i * 0.72;
+      const y = 1.95 + i * 0.62;
       s.addShape(pres.shapes.LINE, { x: 9.2, y: y - 0.08, w: 3.65, h: 0, line: { color: X.border, width: 0.5 } });
       s.addText(d, tb({ x: 9.2, y, w: 0.8, h: 0.3, fontSize: 11, bold: true, color: X.teal }));
-      s.addText(t, tb({ x: 10.0, y, w: 2.85, h: 0.75, fontSize: 11.5 }));
+      s.addText(t, tb({ x: 10.0, y, w: 2.85, h: 0.6, fontSize: 11 }));
     });
     card(s, 0.5, 5.75, 12.35, 0.85, X.tealSoft);
     s.addText([
       { text: T("Prossimo passo: ", "Next step: "), options: { bold: true, color: X.navy } },
-      { text: T("togliere i numeri che non sono costi (22 dei 51 errori), portare «trova + verifica» nell'app (90% in laboratorio), migliorare i rendiconti costi. Nel pilota misuriamo con lo stesso valutatore sulle vostre pagine.",
-        "drop numbers that are not fees (22 of the 51 errors), bring \"finder + verify\" into the app (90% in the lab), improve cost reports. In the pilot we measure with the same scorer on your pages.") },
+      { text: T("togliere i numeri che non sono costi, un lettore di tabelle per le tariffe a scaglioni, RapidOCR nell'installazione standard, migliorare i rendiconti costi. Nel pilota misuriamo con lo stesso valutatore sulle vostre pagine.",
+        "drop numbers that are not fees, a table reader for tiered tariffs, RapidOCR in the standard install, better cost reports. In the pilot we measure with the same scorer on your pages.") },
     ], tb({ x: 0.75, y: 5.8, w: 11.9, h: 0.75, fontSize: 12.5, valign: "middle" }));
   }
 
@@ -814,7 +815,7 @@ function imgSize(file) {
     const lines = [
       [T("Schermate", "Screenshots"), T("App FeeLens, versione principale del 13.11.2026 con la tariffa della società, eseguita in locale. Clienti P-1042 e P-2077 sintetici (banche, ISIN e importi inventati).", "FeeLens app, main version of 13 Nov 2026 with the firm tariff, run locally. Prospects P-1042 and P-2077 are synthetic (banks, ISINs and amounts invented).")],
       [T("Documenti reali", "Real documents"), T("AJ Bell, rapporto demo cliente (investcentre.co.uk); BlackRock, KID iShares Core S&P 500 (IT) e Core MSCI World (EN); Julius Baer Europe, tariffario custodia (2025). Documenti pubblici, clienti fittizi.", "AJ Bell demo client report (investcentre.co.uk); BlackRock iShares Core S&P 500 (IT) and Core MSCI World (EN) KIDs; Julius Baer Europe custody price list (2025). Public documents, fictitious clients.")],
-      [T("Accuratezza", "Accuracy"), T("62 pagine reali, 813 costi distinti controllati a mano; main rimisurato e ricontrollato in modo indipendente il 13.11.2026; 130 KID pubblici; 4 estratti pubblici (Fidelity USA e UK, AJ Bell, Edward Jones). Velocità: 4 core, 13.11.2026.", "62 real pages, 813 distinct fees checked by hand; main re-run and independently re-checked on 13 Nov 2026; 130 public KIDs; 4 public statements (Fidelity US and UK, AJ Bell, Edward Jones). Speed: 4 cores, 13 Nov 2026.")],
+      [T("Accuratezza", "Accuracy"), T("62 pagine reali, 813 costi distinti controllati a mano; main rimisurato il 14.11.2026 (metodo ricontrollato in modo indipendente il 13.11); 130 KID pubblici; 4 estratti pubblici (Fidelity USA e UK, AJ Bell, Edward Jones). Velocità: 4 core, 13.11.2026.", "62 real pages, 813 distinct fees checked by hand; main re-run on 14 Nov 2026 (method independently re-checked on 13 Nov); 130 public KIDs; 4 public statements (Fidelity US and UK, AJ Bell, Edward Jones). Speed: 4 cores, 13 Nov 2026.")],
       [T("Prezzi", "Prices"), T("Documento «FeeLens pricing for Safe Capital», 13.11.2026: proposta da confermare. Riferimento di mercato: investglass.com.", "Doc \"FeeLens pricing for Safe Capital\", 13 Nov 2026: proposal to confirm. Market reference: investglass.com.")],
       [T("Limiti", "Limits"), T("Campione scelto per coprire i tipi di documento, un solo annotatore; estratti svizzeri e italiani non pubblici: il pilota è la prova vera.", "Sample chosen to cover document types, one annotator; Swiss and Italian statements are not public: the pilot is the real test.")],
     ];
