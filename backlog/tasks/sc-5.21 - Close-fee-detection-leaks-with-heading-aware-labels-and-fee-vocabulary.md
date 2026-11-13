@@ -1,15 +1,15 @@
 ---
 id: SC-5.21
 title: Close fee detection leaks with heading-aware labels and fee vocabulary
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Raise fee detection toward 100%"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-o8nuus"
 pr: ""
 created_date: "2026-11-13 16:55"
-updated_date: "2026-11-13 16:55"
+updated_date: "2026-11-13 16:56"
 labels:
   - extraction
 dependencies: []
