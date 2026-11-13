@@ -55,6 +55,12 @@ NOT_FEE = re.compile(
     r"schlusskurs|cours de cl[ôo]ture",
     re.I,
 )
+# A section of performance scenarios: its rows are returns, whatever cost words the title holds.
+SCENARIO = re.compile(
+    r"scenari|szenari|sc[ée]nari|possibile rimborso|rimborso al netto|might get back|what you get|"
+    r"zur[üu]ckerhalten|pourriez obtenir|potreste ottenere",
+    re.I,
+)
 # A security's ISIN in the label: the row is a position (its price or value), not a fee.
 ISIN_CODE = re.compile(r"\b[A-Z]{2}[A-Z0-9]{9}\d\b")
 INVESTED = re.compile(
@@ -366,8 +372,11 @@ def find_fees(
                 heading = _heading_above(lines, i, vals_by_line, top)
                 context = " ".join(x for x in (label, header, heading) if x)
                 # A fee label wins over a column header found further away ("Einstiegskosten" under
-                # "Max. Gewinn (%)" in a two-column factsheet); the header vetoes only an unnamed row.
-                vetoed = NOT_FEE.search(label) or (not FEE_WORDS.search(label) and NOT_FEE.search(header))
+                # "Max. Gewinn (%)" in a two-column factsheet); header and section title ("Possibile
+                # rimborso al netto dei costi" over KID scenario rows) veto only a row that names no fee.
+                vetoed = NOT_FEE.search(label) or (
+                    not FEE_WORDS.search(label) and (NOT_FEE.search(header) or SCENARIO.search(heading))
+                )
                 if not FEE_WORDS.search(context) or vetoed or ISIN_CODE.search(label):
                     continue
                 in_table = region is not None or len(ln.cells) >= 2

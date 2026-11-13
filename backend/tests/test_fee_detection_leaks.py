@@ -115,3 +115,14 @@ def test_margin_interest_paid_is_a_cost_and_credit_interest_is_not():
     """SYNTHETIC statement: interest charged on a margin loan is a cost; interest earned is not."""
     page = _page([[("Margin Interest", 50), ("-1,673.75", 300)], [("Credit interest", 50), ("12.50", 300)]])
     assert [f.value for f in finder.find_fees([page])] == ["-1673.75"]
+
+
+def test_rows_under_a_scenario_section_title_are_not_fees():
+    """SYNTHETIC KID: the scenario table's title names costs ("al netto dei costi"); its rows are returns."""
+    page = _page(
+        [
+            [("Possibile rimborso al netto dei costi", 50)],
+            [("Rendimento medio per ciascun anno", 50), ("-12,3 %", 400)],
+        ]
+    )
+    assert finder.find_fees([page]) == []
