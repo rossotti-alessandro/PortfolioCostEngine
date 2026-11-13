@@ -1,15 +1,15 @@
 ---
 id: SC-8.22
 title: Italian for Compare notes, fee names and cost lines
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Validate accuracy and speed up processing"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/sc-8.22-italian-notes"
 pr: ""
 created_date: "2026-11-13 13:32"
-updated_date: "2026-11-13 13:32"
+updated_date: "2026-11-13 13:37"
 labels:
   - ui
   - i18n
@@ -58,14 +58,22 @@ No measurable impact (string lookups).
 
 ## Acceptance Criteria
 
-- [ ] #1 The Italian crawl shows no server English on Compare, Costs, Report and review points (only document-printed labels)
-- [ ] #2 Vitest i18n tests pass, including the taxonomy coverage test; English UI unchanged
+- [x] #1 The Italian crawl shows no server English on Compare, Costs, Report and review points (only document-printed labels)
+- [x] #2 Vitest i18n tests pass, including the taxonomy coverage test; English UI unchanged
 
 ## Implementation Notes
 
 ## Outcome
 
-- **Status**:
+- **Status**: Done.
+- `it.ts` now covers every `label_en` in `data/taxonomy/fee_taxonomy.csv` (51 new entries), the saving
+  caveats, the stamp-duty reason and the server-built proposal lines ("X · Y", VAT, "(maximum)").
+- `translate()` prefers a whole known sentence before patterns.
+- Compare, Costs, Report, Review, Trace and ReviewPoints pass server strings through `tm()`.
+- Italian Playwright crawl of both SYNTHETIC prospects: remaining English lines are labels printed on
+  the documents or typed as proposal inputs. The Catalogue reference table stays English (out of scope).
+- Vitest: new taxonomy coverage test and pattern samples pass; English UI unchanged (`tm()` returns the
+  input when the language is English).
 
 ## Issues Encountered
 
@@ -73,3 +81,4 @@ No measurable impact (string lookups).
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/sc-8.22-italian-notes | f50d12e | 2026-11-13 | Italian for Compare notes, fee names and cost lines |
