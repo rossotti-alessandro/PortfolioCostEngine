@@ -35,7 +35,9 @@ FEE_WORDS = re.compile(
     r"fee|cost|charge|commission|expense|\bter\b|\bocf\b|spread|custody|brokerage|safekeeping|tariff|price|"
     r"minimum|geb[üu]hr|kosten|kommission|courtage|depot|spesen|entgelt|aufschlag|preis|tarif|minimal|"
     r"frais|co[uû]ts?\b|droits?\b|garde|tenue|commission|prix|minimum|"
-    r"cost[io]|commission[ei]|spes[ae]|oner[ei]|custodia|diritt[oi]|tenuta|prezz[oi]|tariff|minim[oa]|incidenza",
+    r"cost[io]|commission[ei]|spes[ae]|oner[ei]|custodia|diritt[oi]|tenuta|prezz[oi]|tariff|minim[oa]|incidenza|"
+    # interest the client pays on a loan or margin is a cost; credit interest earned is not
+    r"margin interest|debit interest|sollzins|interessi (?:passivi|debitori)|int[ée]r[êe]ts d[ée]biteurs",
     re.I,
 )
 # Rows that print numbers next to fee words but are not fees: KID performance scenarios, returns,
@@ -70,6 +72,16 @@ BAND_WORD = re.compile(
 PHONE = re.compile(r"(?:tel|fax|phone|t[ée]l[ée]phone|telefon)\b[^\n]{0,12}$|\+\d{0,3}\s*$", re.I)
 MILLION = re.compile(r"^\s*(?:mio|million|millionen|milioni|mln|mn|mrd|bn|billion)\b", re.I)
 THRESHOLD = 10_000  # a band limit is a large amount; a fee "up to EUR 300" is not
+# Printed right after a rate, these make it a return, not a fee ("1.91% before costs and 1.15% after costs").
+RETURN_AFTER = re.compile(
+    r"\W{0,3}(?:(?:before|after) costs|(?:apr[èe]s|avant) d[ée]duction|(?:vor|nach) (?:abzug der )?kosten|"
+    r"(?:prima|dopo) (?:la deduzione )?dei costi|al (?:netto|lordo) dei costi)",
+    re.I,
+)
+# The base a fee is charged on, not a fee: "per ogni 100 Euro di capitale", "for every EUR 1,000".
+PER_BASE = re.compile(
+    r"(?:per ogni|for every|pour chaque|f[üu]r jede[nm]?)\W*(?:CHF|EUR|USD|Euro|€)?\s*$", re.I
+)
 
 
 @dataclass
@@ -111,6 +123,8 @@ def _num_bbox(cell: Cell, n: PrintedNumber) -> tuple[float, float, float, float]
 def _accepted(n: PrintedNumber, before: str, after: str = "") -> bool:
     """A rate or a money-looking amount. Bare integers (counts, years, footnotes, page numbers),
     rates above 100 % and tier thresholds are not fee values."""
+    if RETURN_AFTER.match(after) or PER_BASE.search(before[-25:]):
+        return False
     if n.unit == "bp":
         return n.value <= 1000
     if n.is_rate:
@@ -249,7 +263,7 @@ def _header_above(
 
 
 def _heading_above(
-    lines: list[Line], i: int, vals_by_line: list[list[_Val]], top: float, limit: int = 40
+    lines: list[Line], i: int, vals_by_line: list[list[_Val]], top: float, limit: int = 120
 ) -> str:
     """Section path above the row: the nearest title line (one cell, short, no values) and, when that
     title has no fee word, the nearest fee-word title above it ("Transaction fees › Equities and bonds").
@@ -260,7 +274,9 @@ def _heading_above(
         t = ln.text
         if ln.bbox[3] > top + 1:
             continue
-        if vals_by_line[j] or len(ln.cells) != 1 or not _has_letters(t) or len(t.split()) > 10:
+        # Titles are short; an all-caps title may be long ("BUONI ORDINARI DEL TESORO ... COMMISSIONE ...").
+        long = len(t.split()) > (20 if t.isupper() else 10)
+        if vals_by_line[j] or len(ln.cells) != 1 or not _has_letters(t) or long:
             continue
         if not path:
             path.append(t)
@@ -349,11 +365,10 @@ def find_fees(
                 top = min([v.bbox[1], *(c.bbox[1] for c in label_cells)])
                 heading = _heading_above(lines, i, vals_by_line, top)
                 context = " ".join(x for x in (label, header, heading) if x)
-                if (
-                    not FEE_WORDS.search(context)
-                    or NOT_FEE.search(f"{label} {header}")
-                    or ISIN_CODE.search(label)
-                ):
+                # A fee label wins over a column header found further away ("Einstiegskosten" under
+                # "Max. Gewinn (%)" in a two-column factsheet); the header vetoes only an unnamed row.
+                vetoed = NOT_FEE.search(label) or (not FEE_WORDS.search(label) and NOT_FEE.search(header))
+                if not FEE_WORDS.search(context) or vetoed or ISIN_CODE.search(label):
                     continue
                 in_table = region is not None or len(ln.cells) >= 2
                 full = " › ".join(x for x in (heading, " | ".join(y for y in (label, header) if y)) if x)
