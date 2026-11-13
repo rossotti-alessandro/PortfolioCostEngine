@@ -24,6 +24,22 @@ MIN_TEXT_CHARS = 25  # below this a page is treated as scanned
 MAX_OCR_WORKERS = 4  # each worker holds one ~26 MB page image plus a Tesseract process
 CGROUP_CPU_MAX = Path("/sys/fs/cgroup/cpu.max")
 _PDFIUM_LOCK = threading.Lock()
+# Tesseract processes running at once in this process, or across document workers (SC-5.20): a worker
+# process gets one shared semaphore from documents.py, so OCR never runs more processes than cores.
+_OCR_SLOTS: threading.BoundedSemaphore | None = None
+
+
+def use_ocr_slots(slots: threading.BoundedSemaphore) -> None:
+    global _OCR_SLOTS
+    _OCR_SLOTS = slots
+
+
+def ocr_slot() -> threading.BoundedSemaphore:
+    """Hold one while a page image is rendered for and read by Tesseract."""
+    global _OCR_SLOTS
+    if _OCR_SLOTS is None:
+        _OCR_SLOTS = threading.BoundedSemaphore(ocr_workers())
+    return _OCR_SLOTS
 
 
 def ocr_workers() -> int:
@@ -137,9 +153,13 @@ def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float 
 def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -> list[Line]:
     import pytesseract
 
-    with _PDFIUM_LOCK:
-        img = pdf[index].render(scale=OCR_DPI / 72).to_pil()
-    data = pytesseract.image_to_data(img, lang=lang, output_type=pytesseract.Output.DICT, config="--psm 6")
+    with ocr_slot():
+        with _PDFIUM_LOCK:
+            img = pdf[index].render(scale=OCR_DPI / 72).to_pil()
+        data = pytesseract.image_to_data(
+            img, lang=lang, output_type=pytesseract.Output.DICT, config="--psm 6"
+        )
+        del img
     scale = 72.0 / OCR_DPI
     groups: dict[tuple[int, int, int], list[tuple[str, tuple[float, float, float, float], float]]] = {}
     for i, word in enumerate(data["text"]):

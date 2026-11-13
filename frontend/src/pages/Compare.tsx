@@ -5,7 +5,7 @@ import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { Badge, Button, Card, CardHeader, ErrorBox, Kpi, Spinner, StatGrid, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { BOUND_TEXT, LAYER, chf, cn, savingParts } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t, tm } from "@/lib/i18n";
 import type { Analysis, Atom, Comparison, Ledger, ProposalConfig } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, History } from "lucide-react";
@@ -143,16 +143,16 @@ export default function ComparePage() {
             {cmp.caveats.map((c) => (
               <li key={c} className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-700" />
-                {c}
+                {tm(c)}
               </li>
             ))}
             {a.comparison_exclusions.map((e) => (
               <li key={e.fee_code} className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
                 {t("{label} ({amount}) is left out of both sides: {reason}", {
-                  label: e.label,
+                  label: tm(e.label),
                   amount: chf(e.amount),
-                  reason: e.reason,
+                  reason: tm(e.reason),
                 })}
               </li>
             ))}
@@ -334,7 +334,7 @@ function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: A
               className="cursor-pointer hover:bg-teal-50 focus:bg-teal-50 focus:outline-none"
             >
               <td className="px-5 py-2">
-                <div className="font-medium">{x.label}</div>
+                <div className="font-medium">{tm(x.label)}</div>
                 <div className="font-mono text-[11.5px] text-subtle">{x.formula}</div>
               </td>
               <td className="px-3 py-2 text-[12.5px] text-muted">{LAYER[x.layer] && t(LAYER[x.layer].short)}</td>

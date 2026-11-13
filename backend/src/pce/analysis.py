@@ -738,7 +738,9 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         Incidence.EMBEDDED,
                         instrument_id=isin,
                         evidence_ids=(str(f["id"]),),
-                        formula="manufacturer example on a 10'000 investment",
+                        # the KID's own currency, not CHF: "USD 7 on USD 10'000" (SC-5.19)
+                        formula=f"manufacturer example: {f.get('currency') or ''} {f['value']} on a "
+                        f"{f.get('currency') or ''} 10'000 investment".replace("  ", " "),
                         note="Hypothetical example from the KID; never a cost actually paid.",
                     )
                 )

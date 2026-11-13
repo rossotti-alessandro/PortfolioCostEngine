@@ -491,7 +491,7 @@ function LedgerTable({
                           <td className="py-2 pl-12 pr-3">
                             <div className={cn("font-medium", muted ? "text-subtle" : "text-ink")}>{x.label}</div>
                             <div className="text-[12px] text-muted">
-                              {x.fee_label}
+                              {tm(x.fee_label)}
                               {x.role === "included_in_parent" &&
                                 ` · ${t("included in the fund's ongoing charge, not added")}`}
                               {x.role === "corroborating" &&
@@ -546,9 +546,9 @@ function LedgerTable({
             <div key={e.fee_code}>
               <Info className="mr-1 inline h-3.5 w-3.5" />
               {t("{label} {amount} is in this total but excluded from the comparison: {reason}", {
-                label: e.label,
+                label: tm(e.label),
                 amount: chf(e.amount),
-                reason: e.reason,
+                reason: tm(e.reason),
               })}
             </div>
           ))}
