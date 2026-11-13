@@ -37,18 +37,31 @@ export function ReadSummary({ a }: { a: Analysis }) {
   );
 }
 
-/** No statement of assets yet: there is nothing to put costs in proportion to, so no total is shown at all. */
-export function NotStarted({ pid, docs }: { pid: number; docs: number }) {
+/**
+ * No holdings valued yet, so there is nothing to put costs in proportion to and no total is shown at all.
+ * Either no statement of assets was uploaded, or its positions could not be valued in CHF (a currency
+ * without a rate on the documents, say): the second case points to the checks instead of asking for
+ * a statement that is already there.
+ */
+export function NotStarted({ pid, docs }: { pid: number; docs: { doc_type: string }[] }) {
+  const statements = docs.filter((d) => d.doc_type === "portfolio_statement").length;
   return (
     <Card>
       <Empty icon={<FileText className="h-8 w-8" />} title={t("Costs are not calculated yet")}>
         <p className="mx-auto max-w-[520px]">
-          {docs
+          {statements
             ? t(
-                "None of the {n} documents is a statement of assets. Without the positions no cost can be put in proportion to assets, so no total is shown (not zero).",
-                { n: docs },
+                statements === 1
+                  ? "A statement of assets is uploaded, but none of its positions could be valued in CHF, for example because a currency has no exchange rate on the documents. “Validation and reconciliation” on the Costs page says why. No total is shown (not zero)."
+                  : "{n} statements of assets are uploaded, but none of their positions could be valued in CHF, for example because a currency has no exchange rate on the documents. “Validation and reconciliation” on the Costs page says why. No total is shown (not zero).",
+                { n: statements },
               )
-            : t("Upload a statement of assets for each bank to start.")}
+            : docs.length
+              ? t(
+                  "None of the {n} documents is a statement of assets. Without the positions no cost can be put in proportion to assets, so no total is shown (not zero).",
+                  { n: docs.length },
+                )
+              : t("Upload a statement of assets for each bank to start.")}
         </p>
         <Link to={`/p/${pid}/documents`} className="mt-3 inline-block">
           <Button>{t("Upload documents")}</Button>

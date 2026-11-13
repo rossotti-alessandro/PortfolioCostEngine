@@ -6,7 +6,7 @@ import { ViewMenu, useHidden } from "@/components/ViewMenu";
 import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Money, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t, tm } from "@/lib/i18n";
 import type { Analysis, Atom, Check, MissingRequest } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Copy, Info, XCircle } from "lucide-react";
@@ -49,7 +49,7 @@ export default function CostsPage() {
         actions={<ViewMenu sections={COST_SECTIONS} hidden={hidden} onChange={setHidden} />}
       />
       {a.holdings.length === 0 ? (
-        <NotStarted pid={id} docs={a.documents.length} />
+        <NotStarted pid={id} docs={a.documents} />
       ) : (
         <>
           <Answer a={a} onTrace={setTrace} />
@@ -590,8 +590,8 @@ function Checks({ checks, onOpen }: { checks: Check[]; onOpen: (c: Check) => voi
           <li key={c.key} className="flex gap-3 px-5 py-2.5 text-[13px]">
             <span className="mt-0.5 shrink-0">{CHECK_ICON[c.status]()}</span>
             <div className="min-w-0">
-              <div className="font-medium text-ink">{c.title}</div>
-              <div className="text-muted">{c.detail}</div>
+              <div className="font-medium text-ink">{tm(c.title)}</div>
+              <div className="text-muted">{tm(c.detail)}</div>
               {c.sources && c.sources.length > 0 && (
                 <button
                   type="button"
@@ -674,7 +674,7 @@ function Requests({ a }: { a: Analysis }) {
                 <div className="text-[11.5px] font-semibold uppercase tracking-wide text-amber-700">
                   {t("Priority {n} · {amount} affected", { n: r.priority, amount: chf(r.assets_affected) })}
                 </div>
-                <div className="mt-0.5 font-semibold text-navy-900">{r.title}</div>
+                <div className="mt-0.5 font-semibold text-navy-900">{tm(r.title)}</div>
               </div>
               {r.status !== "open" && (
                 <Badge tone={r.status === "sent" ? "navy" : "grey"}>
@@ -682,8 +682,8 @@ function Requests({ a }: { a: Analysis }) {
                 </Badge>
               )}
             </div>
-            <p className="mt-1.5 text-[13px] text-ink">{r.ask_for}</p>
-            <p className="mt-1 text-[12.5px] text-muted">{r.reason}</p>
+            <p className="mt-1.5 text-[13px] text-ink">{tm(r.ask_for)}</p>
+            <p className="mt-1 text-[12.5px] text-muted">{tm(r.reason)}</p>
             <div className="mt-2.5 flex gap-2">
               {r.status === "open" ? (
                 <>

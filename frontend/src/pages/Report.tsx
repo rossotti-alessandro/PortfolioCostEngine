@@ -62,7 +62,7 @@ export default function ReportPage() {
         }
       />
       {a.holdings.length === 0 ? (
-        <NotStarted pid={pid} docs={a.documents.length} />
+        <NotStarted pid={pid} docs={a.documents} />
       ) : (
         <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
           <Card className="overflow-hidden">
