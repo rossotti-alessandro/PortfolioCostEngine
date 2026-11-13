@@ -138,6 +138,24 @@ class Approval(Base):
     note: Mapped[str] = mapped_column(Text, default="")
 
 
+class UserAccount(Base):
+    """A named person who signs in (SC-11.7). No email or real name: the username is enough to audit."""
+
+    __tablename__ = "user_account"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    roles: Mapped[list] = mapped_column(JSON, default=list)
+    admin: Mapped[bool] = mapped_column(default=False)
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    must_change_password: Mapped[bool] = mapped_column(default=True)
+    active: Mapped[bool] = mapped_column(default=True)
+    session_version: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(32), default=now)
+    created_by: Mapped[str] = mapped_column(String(100), default="")
+
+
 def data_dir() -> Path:
     d = Path(os.environ.get("PCE_DATA_DIR", Path(__file__).resolve().parents[3] / "var"))
     d.mkdir(parents=True, exist_ok=True)

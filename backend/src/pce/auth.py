@@ -1,13 +1,16 @@
 """Accounts, password hashing, signed session cookies, CSRF tokens and login throttling.
 
 Why this shape (docs/app/SECURITY.md):
-- Accounts come from the environment, not the database: the Render free plan has an ephemeral disk,
-  so an account stored in SQLite would vanish on every restart. The admin is seeded from
+- The break-glass admin comes from the environment, so the Render demo (ephemeral disk) still has a
+  login. It is seeded from
   ``PCE_ADMIN_USERNAME`` plus ``PCE_ADMIN_PASSWORD`` (hashed in memory at start) or
   ``PCE_ADMIN_PASSWORD_HASH`` (made with ``python -m pce.auth hash``).
 - Sessions are stateless HMAC-signed cookies, so they survive restarts and the free plan's sleep
   as long as ``PCE_SECRET_KEY`` is stable. Rotating the key or the password signs everyone out.
 - Passwords use stdlib scrypt: no new dependency, memory-hard, constant-time comparison.
+- Named people sign in with accounts stored in the database (``pce.users``, SC-11.7); the env admin stays
+  as break-glass. A second factor is a TOTP code from an authenticator app (RFC 6238, stdlib only).
+  ``PCE_REQUIRE_MFA=1`` (pilot and production) keeps an account without one in account setup.
 """
 
 from __future__ import annotations
@@ -75,6 +78,10 @@ class Account:
     tenant: str
     roles: tuple[str, ...]
     admin: bool = False
+    totp_secret: str | None = None
+    session_version: int = 0  # bumped to sign this account out everywhere
+    must_change_password: bool = False
+    stored: bool = False  # True: a database account (pce.users), False: env or test account in memory
 
 
 _accounts: dict[str, Account] = {}
@@ -98,7 +105,21 @@ def _register(username: str, pw_hash: str, tenant: str, roles: tuple[str, ...], 
 
 
 def get_account(username: str) -> Account | None:
-    return _accounts.get(username.strip().lower())
+    name = username.strip().lower()
+    if name in _accounts:
+        return _accounts[name]
+    from . import users  # late import: users needs the database, auth must not at import time
+
+    return users.load(name)
+
+
+def require_mfa() -> bool:
+    return os.environ.get("PCE_REQUIRE_MFA", "0") == "1"
+
+
+def setup_required(acc: Account) -> bool:
+    """A signed-in account that must set a password or a second factor before it can use the app."""
+    return acc.must_change_password or (require_mfa() and not acc.totp_secret)
 
 
 def load_env_accounts() -> None:
@@ -118,6 +139,10 @@ def load_env_accounts() -> None:
         except ValueError as exc:
             log.error("auth: admin account not created: %s", exc)
             return
+    totp = os.environ.get("PCE_ADMIN_TOTP_SECRET", "").strip().upper()
+    if totp:
+        acc = _accounts[user.lower()]
+        _accounts[acc.username] = Account(**{**acc.__dict__, "totp_secret": totp})
     log.info("auth: admin account loaded")  # never log the username's password or hash
 
 
@@ -148,8 +173,9 @@ def _sign(msg: bytes) -> bytes:
 
 
 def _pw_version(acc: Account) -> str:
-    # Changing the password invalidates every session issued before the change.
-    return _b64(_sign(b"pv:" + acc.password_hash.encode()))[:16]
+    # Changing the password, the second factor or the session version ends every earlier session.
+    state = f"{acc.password_hash}|{acc.totp_secret or ''}|{acc.session_version}"
+    return _b64(_sign(b"pv:" + state.encode()))[:16]
 
 
 def issue_session(acc: Account, now: float | None = None) -> str:
@@ -193,6 +219,40 @@ def csrf_token(session_token: str) -> str:
 
 def check_csrf(session_token: str, sent: str | None) -> bool:
     return bool(sent) and hmac.compare_digest(csrf_token(session_token), sent or "")
+
+
+# ------------------------------------------------------------------ second factor (TOTP, RFC 6238)
+TOTP_STEP_S = 30
+_last_step: dict[str, int] = {}  # per account: a code is accepted once (no replay within its window)
+
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode()
+
+
+def totp_code(secret: str, step: int) -> str:
+    key = base64.b32decode(secret.upper() + "=" * (-len(secret) % 8))
+    mac = hmac.new(key, step.to_bytes(8, "big"), hashlib.sha1).digest()
+    off = mac[-1] & 0x0F
+    return f"{(int.from_bytes(mac[off : off + 4], 'big') & 0x7FFFFFFF) % 1_000_000:06d}"
+
+
+def totp_uri(secret: str, username: str) -> str:
+    """What authenticator apps read (as a QR code or a link); the key can also be typed in."""
+    return f"otpauth://totp/FeeLens:{username}?secret={secret}&issuer=FeeLens&digits=6&period=30"
+
+
+def verify_totp(secret: str, code: str, key: str, now: float | None = None) -> bool:
+    """Accept the current code or one step either side (clock drift), each code only once per key."""
+    code = "".join(c for c in code if c.isdigit())
+    if len(code) != 6:
+        return False
+    step = int((time.time() if now is None else now) // TOTP_STEP_S)
+    for s in (step - 1, step, step + 1):
+        if s > _last_step.get(key, -1) and hmac.compare_digest(totp_code(secret, s), code):
+            _last_step[key] = s
+            return True
+    return False
 
 
 # ------------------------------------------------------------------ throttling

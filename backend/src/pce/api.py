@@ -63,6 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(security.router)
+app.include_router(security.admin_router)
 app.include_router(crm_router)
 SessionFactory = make_session_factory()
 
