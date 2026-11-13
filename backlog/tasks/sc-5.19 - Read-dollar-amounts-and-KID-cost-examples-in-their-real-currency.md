@@ -1,15 +1,15 @@
 ---
 id: SC-5.19
 title: Read "$" amounts and KID cost examples in their real currency
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Validate accuracy and speed up processing"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/sc-5.19-currency-misreads"
 pr: ""
 created_date: "2026-11-13 13:23"
-updated_date: "2026-11-13 13:23"
+updated_date: "2026-11-13 13:41"
 labels:
   - extraction
 dependencies: []
@@ -54,18 +54,29 @@ One regex pass over the document text when a fact was read from a bare "$". No m
 
 ## Acceptance Criteria
 
-- [ ] #1 Edward Jones statement amounts read as CAD; iShares IT KID example reads USD 7 (unit tests on SYNTHETIC lines)
-- [ ] #2 Statement scorer unchanged (Fidelity US 34/34 USD) and `python -m pce.evaluation` gates still pass
+- [x] #1 Edward Jones statement amounts read as CAD; iShares IT KID example reads USD 7 (unit tests on SYNTHETIC lines)
+- [x] #2 Statement scorer unchanged (Fidelity US 34/34 USD) and `python -m pce.evaluation` gates still pass
 
 ## Implementation Notes
 
 ## Outcome
 
-- **Status**:
+- **Status**: Done.
+- A bare "$" takes the one dollar the document names (CAD, AUD, SGD, HKD, NZD; "US$" next to another
+  dollar resolves to the other one). No named dollar keeps USD. Several named dollars: no currency,
+  `needs_review` with reason `dollar_unclear`, and a document warning.
+- Real public statements (local only, not in git): Edward Jones amounts now CAD; Fidelity US unchanged
+  (34/34 holdings, USD); statement scorer otherwise unchanged.
+- KID cost example keeps its currency: iShares IT "USD 7", FR "EUR 13", DE "USD 20". The Costs formula
+  reads "manufacturer example: USD 7 on a USD 10'000 investment". No amount or counting change.
+- `python -m pce.evaluation` synthetic gates PASS; `tests/test_currency_misreads.py` passes.
 
 ## Issues Encountered
+
+- None.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/sc-5.19-currency-misreads | f37f5e8 | 2026-11-13 | "$" and KID examples keep their currency |
