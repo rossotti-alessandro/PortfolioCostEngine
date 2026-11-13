@@ -916,10 +916,15 @@ export const IT: Record<string, string> = {
   "Costs are not calculated yet": "I costi non sono ancora calcolati",
   "None of the {n} documents is a statement of assets. Without the positions no cost can be put in proportion to assets, so no total is shown (not zero).":
     "Nessuno dei {n} documenti è un estratto patrimoniale. Senza le posizioni nessun costo può essere rapportato al patrimonio, quindi non viene mostrato alcun totale (non zero).",
+  "A statement of assets is uploaded, but none of its positions could be valued in CHF, for example because a currency has no exchange rate on the documents. “Validation and reconciliation” on the Costs page says why. No total is shown (not zero).":
+    "Un estratto patrimoniale è caricato, ma nessuna sua posizione è stata valutata in CHF, per esempio perché una valuta non ha un cambio nei documenti. “Validazione e riconciliazione” nella pagina Costi ne indica il motivo. Nessun totale è mostrato (non zero).",
+  "{n} statements of assets are uploaded, but none of their positions could be valued in CHF, for example because a currency has no exchange rate on the documents. “Validation and reconciliation” on the Costs page says why. No total is shown (not zero).":
+    "{n} estratti patrimoniali sono caricati, ma nessuna loro posizione è stata valutata in CHF, per esempio perché una valuta non ha un cambio nei documenti. “Validazione e riconciliazione” nella pagina Costi ne indica il motivo. Nessun totale è mostrato (non zero).",
   "Upload a statement of assets for each bank to start.":
     "Carica un estratto patrimoniale per ogni banca per iniziare.",
   "Upload documents": "Carica documenti",
   "No statement of assets yet": "Ancora nessun estratto patrimoniale",
+  "No position valued in CHF yet": "Ancora nessuna posizione valutata in CHF",
   "Proposal costs more per year": "La proposta costa di più all'anno",
   "costs more": "costa di più",
   "PDF in English": "PDF in inglese",
@@ -1021,3 +1026,186 @@ export const IT: Record<string, string> = {
   "Internal economics viewed": "Economia interna consultata",
   "Internal economics viewed {n} times": "Economia interna consultata {n} volte",
 };
+
+/**
+ * Italian for sentences the server writes (checks, document requests, ledger warnings), as
+ * full-match patterns: $1… are the variable parts, translated again in turn. Kept in step with
+ * pce/analysis.py, pce/finance/ledger.py, pce/finance/tariff.py and the parsers; i18n.test.ts holds
+ * one sample per pattern, so a changed backend sentence shows up as a test to update.
+ */
+export const IT_MESSAGES: [RegExp, string][] = [
+  // checks
+  [/^(.+): the file holds statements of more than one person$/, "$1: il file contiene estratti di più persone"],
+  [
+    /^(.+)\. Their holdings are added together here\. Upload only the prospect's pages, or split the file\.$/,
+    "$1. I loro patrimoni vengono sommati qui. Caricate solo le pagine del cliente o dividete il file.",
+  ],
+  [/^A different client is named from page (\d+)$/, "Da pagina $1 compare un altro cliente"],
+  [/^(.+): positions add up to the statement total$/, "$1: le posizioni corrispondono al totale dell'estratto"],
+  [
+    /^Sum of positions (\S+) vs printed total (\S+)( [A-Z]{3})? \(difference (\S+)\)\. Check for missing rows or accrued interest$/,
+    "Somma delle posizioni $1 contro totale stampato $2$3 (differenza $4). Verificate righe mancanti o interessi maturati",
+  ],
+  [
+    /^Sum of positions (\S+) vs printed total (\S+)( [A-Z]{3})?$/,
+    "Somma delle posizioni $1 contro totale stampato $2$3",
+  ],
+  [
+    /^(.+): the statement prints a larger total than the holdings read$/,
+    "$1: l'estratto riporta un totale più alto delle posizioni lette",
+  ],
+  [
+    /^Printed total (\S+) vs holdings read (\S+)\. Look for cash, policies or accounts that were not read, or a second client in the same file\.$/,
+    "Totale stampato $1 contro posizioni lette $2. Cercate liquidità, polizze o conti non letti, o un secondo cliente nello stesso file.",
+  ],
+  [/^(.+): statement total$/, "$1: totale dell'estratto"],
+  [
+    /^No printed total found; completeness of the position list cannot be confirmed\.$/,
+    "Nessun totale stampato trovato; non si può confermare che l'elenco delle posizioni sia completo.",
+  ],
+  [/^Valuation dates are aligned$/, "Le date di valutazione coincidono"],
+  [/^Statements have different valuation dates: (.+)\.$/, "Gli estratti hanno date di valutazione diverse: $1."],
+  [/^All holdings valued at (.+)\.$/, "Tutte le posizioni sono valutate al $1."],
+  [/^(\S+) appears (\d+) times$/, "$1 compare $2 volte"],
+  [
+    /^Same instrument in several statements: confirm these are separate holdings, not a consolidated report repeating another bank's positions\.$/,
+    "Stesso strumento in più estratti: confermate che siano posizioni distinte e non un rapporto consolidato che ripete le posizioni di un'altra banca.",
+  ],
+  [/^(.+): cost report covers 12 months$/, "$1: il rapporto sui costi copre 12 mesi"],
+  [
+    /^Report covers (\d+) days; amounts are annualised \(× 365\/(\d+)\)\.$/,
+    "Il rapporto copre $1 giorni; gli importi sono annualizzati (× 365/$2).",
+  ],
+  [/^(.+): tariff applicability$/, "$1: applicabilità della tariffa"],
+  [
+    /^No holdings found for this institution, so the booking jurisdiction is unknown\.$/,
+    "Nessuna posizione trovata per questo istituto, quindi la giurisdizione di contabilizzazione è ignota.",
+  ],
+  [/^(.+): price schedule rejected$/, "$1: tariffario scartato"],
+  [
+    /^(.+?) The document was kept for reference but is not used in any calculation\.$/,
+    "$1 Il documento è conservato come riferimento ma non entra in alcun calcolo.",
+  ],
+  [
+    /^Tariff issued by a (.+) entity cannot be applied to an account booked in (.+)\.$/,
+    "Una tariffa emessa da un'entità $1 non si applica a un conto contabilizzato in $2.",
+  ],
+  [
+    /^Tariff not in force on (.+) \(stale or future source\)\.$/,
+    "Tariffa non in vigore al $1 (fonte scaduta o futura).",
+  ],
+  [/^(.+): price schedule applies$/, "$1: il tariffario si applica"],
+  [
+    /^Issued by a (.+) entity, account booked in (.+), in force on (.+)\.$/,
+    "Emesso da un'entità $1, conto contabilizzato in $2, in vigore al $3.",
+  ],
+  [/^(.+): (.+) matches the price schedule$/, "$1: $2 corrisponde al tariffario"],
+  [
+    /^Schedule implies (\S+) \((.+)\); observed (\S+); difference (\S+) — individual conditions or a different fee base\?$/,
+    "Il tariffario implica $1 ($2); osservato $3; differenza $4: condizioni individuali o una base di calcolo diversa?",
+  ],
+  [/^Schedule implies (\S+) \((.+)\); observed (\S+)$/, "Il tariffario implica $1 ($2); osservato $3"],
+  [/^(.+): product document is older than 18 months$/, "$1: il documento del prodotto ha più di 18 mesi"],
+  [
+    /^Document dated (.+); costs may have changed\. Request the current version\.$/,
+    "Documento datato $1; i costi potrebbero essere cambiati. Richiedete la versione attuale.",
+  ],
+  [/^(.+): product costs vs the bank's own estimate$/, "$1: costi dei prodotti rispetto alla stima della banca"],
+  [
+    /^KID-based estimate (\S+) vs bank-reported (\S+) \((.+)%\)\. The bank figure is used as a cross-check only, never added\.$/,
+    "Stima dai KID $1 contro dato della banca $2 ($3%). Il dato della banca serve solo come controllo, non viene mai sommato.",
+  ],
+  [/^(.+): retrocessions received$/, "$1: retrocessioni ricevute"],
+  [
+    /^(.+) reports CHF (\S+) of retrocessions paid out of product costs\. Not an extra client cost; under Swiss law they generally belong to the client unless validly waived \(to verify with counsel\)\.$/,
+    "$1 riporta CHF $2 di retrocessioni pagate dai costi dei prodotti. Non è un costo aggiuntivo per il cliente; secondo il diritto svizzero spettano in genere al cliente salvo valida rinuncia (da verificare con un legale).",
+  ],
+  [/^Duplicate or inclusion check$/, "Controllo di duplicati e inclusioni"],
+  [/^Cash debits match the annual cost report$/, "Gli addebiti sul conto corrispondono al rapporto annuale sui costi"],
+  [
+    /^Quarterly debits × 4 equal the annual amounts; counted once\.$/,
+    "Addebiti trimestrali × 4 pari agli importi annui; contati una sola volta.",
+  ],
+  [/^(.+): ([A-Z]{3}) amounts converted at the printed rate$/, "$1: importi in $2 convertiti al cambio stampato"],
+  [
+    /^([A-Z]{3})\/([A-Z]{3}) (\S+) as printed on the document\. Fees for the year are converted at this valuation-date rate \(an approximation for a whole period\)\.$/,
+    "$1/$2 $3 come stampato sul documento. Le commissioni dell'anno sono convertite a questo cambio della data di valutazione (un'approssimazione per l'intero periodo).",
+  ],
+  [/^(.+): no ([A-Z]{3})\/([A-Z]{3}) rate on the documents$/, "$1: nessun cambio $2/$3 nei documenti"],
+  [
+    /^([A-Z]{3}) (\S+) could not be converted and is left out of every total\. No external rate is fetched\.$/,
+    "$1 $2 non può essere convertito ed è escluso da ogni totale. Nessun cambio esterno viene recuperato.",
+  ],
+  // ledger warnings
+  [
+    /^(.+): (\S+) does not match (.+) (\S+) \(difference (\S+)\); review which source is correct\.$/,
+    "$1: $2 non corrisponde a $3 $4 (differenza $5); verificate quale fonte è corretta.",
+  ],
+  [
+    /^(.+) is a sub-component of an unknown parent; parent total still required\.$/,
+    "$1 è una componente di una voce superiore ignota; serve ancora il totale della voce superiore.",
+  ],
+  [
+    /^(.+) exceeds its inclusive parent (.+); check the disclosure\.$/,
+    "$1 supera la voce che lo include ($2); verificate l'informativa.",
+  ],
+  // document requests
+  [/^Statement of assets for every bank$/, "Estratto patrimoniale per ogni banca"],
+  [
+    /^Statement of assets \/ portfolio valuation at the same date for each account$/,
+    "Estratto patrimoniale o valutazione del portafoglio alla stessa data per ogni conto",
+  ],
+  [
+    /^Without holdings no cost can be put in proportion to assets\.$/,
+    "Senza le posizioni nessun costo può essere rapportato al patrimonio.",
+  ],
+  [
+    /^(.+): price schedule of the Swiss booking entity$/,
+    "$1: tariffario dell'entità svizzera che contabilizza il conto",
+  ],
+  [
+    /^Individual fee agreement or current price schedule issued by the (.+) entity that books the account$/,
+    "Accordo commissionale individuale o tariffario attuale emesso dall'entità $1 che contabilizza il conto",
+  ],
+  [
+    /^The uploaded schedule belongs to another legal entity\/jurisdiction\.$/,
+    "Il tariffario caricato appartiene a un'altra entità giuridica o giurisdizione.",
+  ],
+  [/^(.+): annual cost and charges report$/, "$1: rapporto annuale su costi e oneri"],
+  [
+    /^Annual report on costs and charges \(ex-post\) for the last 12 months, or all fee debit advices for the same period, plus the mandate\/advisory agreement$/,
+    "Rapporto annuale su costi e oneri (ex post) degli ultimi 12 mesi, o tutti gli avvisi di addebito delle commissioni dello stesso periodo, più il contratto di mandato o di consulenza",
+  ],
+  [
+    /^No charged fee is documented for (.+) \((.+)% of assets\)\. Service, custody and trading costs are shown as UNKNOWN, not zero\.$/,
+    "Nessuna commissione addebitata è documentata per $1 ($2% del patrimonio). I costi di servizio, custodia e negoziazione sono mostrati come IGNOTI, non come zero.",
+  ],
+  [/^KID for (.+)$/, "KID per $1"],
+  [
+    /^Key Information Document \(PRIIPs KID or FinSA BIB\) for ISIN (\S+), exact share class, current version$/,
+    "Documento contenente le informazioni chiave (KID PRIIPs o FIB LSerFi) per l'ISIN $1, classe di quote esatta, versione attuale",
+  ],
+  [/^Product documentation for (.+)$/, "Documentazione del prodotto per $1"],
+  [
+    /^Embedded costs of a CHF (\S+) position are unknown\.$/,
+    "I costi incorporati di una posizione di CHF $1 sono ignoti.",
+  ],
+  [/^Issuer cost data for (.+)$/, "Dati sui costi dell'emittente per $1"],
+  [
+    /^Issuer KID or SSPA cost data showing the issue price vs fair value for ISIN (\S+)$/,
+    "KID dell'emittente o dati SSPA con prezzo di emissione e fair value per l'ISIN $1",
+  ],
+  [
+    /^The termsheet does not disclose the issuer margin; this embedded cost stays UNKNOWN\.$/,
+    "Il termsheet non indica il margine dell'emittente; questo costo incorporato resta IGNOTO.",
+  ],
+  [/^(.+): ([A-Z]{3})\/([A-Z]{3}) exchange rate at the valuation date$/, "$1: cambio $2/$3 alla data di valutazione"],
+  [
+    /^Statement page showing the ([A-Z]{3})\/([A-Z]{3}) rate used for the valuation$/,
+    "Pagina dell'estratto con il cambio $1/$2 usato per la valutazione",
+  ],
+  [
+    /^Amounts in a foreign currency are not converted with a guessed rate\.$/,
+    "Gli importi in valuta estera non vengono convertiti con un cambio stimato.",
+  ],
+];

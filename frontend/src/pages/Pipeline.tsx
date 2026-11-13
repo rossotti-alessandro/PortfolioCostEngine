@@ -3,7 +3,7 @@ import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, ErrorBox, InfoTip, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, LAYER, chf, cn, num } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t, tm } from "@/lib/i18n";
 import type { DocumentPipeline, PipelineStage, StageStatus } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, XCircle } from "lucide-react";
@@ -273,8 +273,8 @@ function StageDetails({ s, doc }: { s: PipelineStage; doc: Doc }) {
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" aria-label={t("Check")} />
           )}
           <div>
-            <div className="text-ink">{c.title}</div>
-            <div className="text-muted">{c.detail}</div>
+            <div className="text-ink">{tm(c.title)}</div>
+            <div className="text-muted">{tm(c.detail)}</div>
           </div>
         </div>
       ))}
