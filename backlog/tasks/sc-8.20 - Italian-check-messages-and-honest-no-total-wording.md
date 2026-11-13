@@ -1,15 +1,15 @@
 ---
 id: SC-8.20
 title: Italian check messages and honest "no total" wording
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Build FeeLens proposal for Massimo"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/sc-8.20-italian-messages"
 pr: ""
 created_date: "2026-11-13 12:30"
-updated_date: "2026-11-13 12:30"
+updated_date: "2026-11-13 12:22"
 labels:
   - ui
   - i18n
