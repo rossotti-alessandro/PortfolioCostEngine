@@ -3,7 +3,7 @@ import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, ErrorBox, Money, Spinner, StatGrid, inputCls } from "@/components/ui";
 import { api, getRole } from "@/lib/api";
 import { LAYER, chf, savingParts } from "@/lib/format";
-import { getLang, t } from "@/lib/i18n";
+import { getLang, t, tm } from "@/lib/i18n";
 import type { Analysis } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleDashed, Download, ShieldCheck } from "lucide-react";
@@ -116,7 +116,7 @@ export default function ReportPage() {
                     .filter((x) => x.role === "unknown")
                     .map((x) => (
                       <li key={x.id}>
-                        {x.label}: {x.fee_label}{" "}
+                        {tm(x.label)}: {tm(x.fee_label)}{" "}
                         <span className="text-red-700">({t("not determined, not counted as zero")})</span>
                       </li>
                     ))}
@@ -124,7 +124,7 @@ export default function ReportPage() {
               </div>
               <ul className="space-y-0.5 text-[12.5px] text-subtle">
                 {s.comparison.caveats.map((c) => (
-                  <li key={c}>{c}</li>
+                  <li key={c}>{tm(c)}</li>
                 ))}
                 <li>
                   {s.comparison.payback_months

@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from .db import Document, FactRow
+from .extraction.layout import OCR_ENGINES
 
 KIND_LABELS = {
     "position": "Holdings",
@@ -84,7 +85,7 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
         )
     )
 
-    ocr = "tesseract-ocr" in engines
+    ocr = bool(set(engines) & set(OCR_ENGINES))
     sheet = "openpyxl" in engines or d.filename.lower().endswith(".xlsx")
     pages = d.pages or []
     stages.append(
@@ -99,7 +100,7 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
             details=[
                 {
                     "label": f"Page {pg['number']}",
-                    "value": "OCR" if pg["engine"] == "tesseract-ocr" else "text",
+                    "value": "OCR" if pg["engine"] in OCR_ENGINES else "text",
                 }
                 for pg in pages
             ],

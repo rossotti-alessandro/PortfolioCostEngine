@@ -6,10 +6,15 @@ after viewport scaling). Rotated text (watermarks, side notes) is ignored.
 
 Scanned pages are OCR'd on a small thread pool (SC-5.11): Tesseract runs as a subprocess, so threads
 overlap without the GIL; pdfium rendering is not thread safe and is serialised by a lock.
+
+When the optional ``rapidocr`` extra is installed, scans are read with RapidOCR (PP-OCR models as ONNX,
+bundled in the wheel, CPU, no network) instead of Tesseract: on the ocrbench scan pages it found 70% of the
+printed fees against 53%, with fewer misreads (SC-5.22, ADR 0003).
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +29,26 @@ MIN_TEXT_CHARS = 25  # below this a page is treated as scanned
 MAX_OCR_WORKERS = 4  # each worker holds one ~26 MB page image plus a Tesseract process
 CGROUP_CPU_MAX = Path("/sys/fs/cgroup/cpu.max")
 _PDFIUM_LOCK = threading.Lock()
+# Tesseract processes running at once in this process, or across document workers (SC-5.20): a worker
+# process gets one shared semaphore from documents.py, so OCR never runs more processes than cores.
+_OCR_SLOTS: threading.BoundedSemaphore | None = None
+# Page readers for scans; anything that asks "was this page OCR'd?" checks membership here.
+OCR_ENGINES = ("tesseract-ocr", "rapidocr")
+_RAPID = None
+_RAPID_LOCK = threading.Lock()
+
+
+def use_ocr_slots(slots: threading.BoundedSemaphore) -> None:
+    global _OCR_SLOTS
+    _OCR_SLOTS = slots
+
+
+def ocr_slot() -> threading.BoundedSemaphore:
+    """Hold one while a page image is rendered for and read by Tesseract."""
+    global _OCR_SLOTS
+    if _OCR_SLOTS is None:
+        _OCR_SLOTS = threading.BoundedSemaphore(ocr_workers())
+    return _OCR_SLOTS
 
 
 def ocr_workers() -> int:
@@ -57,7 +82,7 @@ class Cell:
 class Line:
     page: int  # 1-based
     cells: list[Cell]
-    engine: str  # "pdfplumber-text" | "tesseract-ocr"
+    engine: str  # "pdfplumber-text" or one of OCR_ENGINES
     confidence: float = 1.0
 
     @property
@@ -134,12 +159,51 @@ def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float 
     return [Line(number, sorted(ln, key=lambda c: c.bbox[0]), engine, conf) for ln in lines]
 
 
+def ocr_engine() -> str:
+    """The reader used for scanned pages on this machine."""
+    return "rapidocr" if importlib.util.find_spec("rapidocr") else "tesseract-ocr"
+
+
+def _rapid_lines(pdf: pypdfium2.PdfDocument, index: int, number: int) -> list[Line]:
+    import numpy as np
+    from rapidocr import RapidOCR
+
+    global _RAPID
+    with ocr_slot():
+        with _PDFIUM_LOCK:
+            img = np.array(pdf[index].render(scale=OCR_DPI / 72).to_pil().convert("RGB"))
+        # One engine per process (loading the models takes about a second); onnxruntime already uses
+        # every core per call, so calls are serialised rather than run side by side.
+        with _RAPID_LOCK:
+            if _RAPID is None:
+                _RAPID = RapidOCR(params={"Global.log_level": "critical"})
+            res = _RAPID(img)
+        del img
+    scale = 72.0 / OCR_DPI
+    cells, confs = [], []
+    boxes = [] if res.boxes is None else res.boxes  # None on a blank page
+    for box, text, score in zip(boxes, res.txts or (), res.scores or (), strict=True):
+        if text.strip():
+            xs, ys = [p[0] for p in box], [p[1] for p in box]
+            bbox = tuple(round(float(v) * scale, 2) for v in (min(xs), min(ys), max(xs), max(ys)))
+            cells.append(Cell(text.strip(), bbox))
+            confs.append(float(score))
+    # RapidOCR boxes one text run each and does not group them into lines; group by vertical centre.
+    return _group(cells, number, "rapidocr", round(sum(confs) / len(confs), 3) if confs else 0.0, tol=4.0)
+
+
 def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -> list[Line]:
+    if ocr_engine() == "rapidocr":
+        return _rapid_lines(pdf, index, number)
     import pytesseract
 
-    with _PDFIUM_LOCK:
-        img = pdf[index].render(scale=OCR_DPI / 72).to_pil()
-    data = pytesseract.image_to_data(img, lang=lang, output_type=pytesseract.Output.DICT, config="--psm 6")
+    with ocr_slot():
+        with _PDFIUM_LOCK:
+            img = pdf[index].render(scale=OCR_DPI / 72).to_pil()
+        data = pytesseract.image_to_data(
+            img, lang=lang, output_type=pytesseract.Output.DICT, config="--psm 6"
+        )
+        del img
     scale = 72.0 / OCR_DPI
     groups: dict[tuple[int, int, int], list[tuple[str, tuple[float, float, float, float], float]]] = {}
     for i, word in enumerate(data["text"]):
@@ -199,7 +263,8 @@ def read_pdf(path_or_bytes, ocr_lang: str = "eng+ita+deu+fra", max_pages: int = 
                 if routes[i]:
                     lines, engine = _digital_lines(page, i + 1), "pdfplumber-text"
                 else:
-                    lines, engine = ocr[i].result(), "tesseract-ocr"
+                    lines = ocr[i].result()
+                    engine = lines[0].engine if lines else ocr_engine()
                 pages.append(
                     PageInfo(i + 1, round(float(page.width), 2), round(float(page.height), 2), engine, lines)
                 )

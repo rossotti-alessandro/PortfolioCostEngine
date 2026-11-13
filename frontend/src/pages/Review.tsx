@@ -3,8 +3,8 @@ import { SourceCrop } from "@/components/SourceCrop";
 import { Badge, Button, Card, Dialog, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, cn, num } from "@/lib/format";
-import { t } from "@/lib/i18n";
-import { whyYou } from "@/lib/trail";
+import { t, tm } from "@/lib/i18n";
+import { isOcrEngine, whyYou } from "@/lib/trail";
 import type { Fact } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, FileSpreadsheet, FileText, History, Pencil, ScanLine, X } from "lucide-react";
@@ -166,7 +166,7 @@ export default function ReviewPage() {
               {doc?.sha256.slice(0, 10)}…
             </div>
           </div>
-          {doc?.profile.engines.includes("tesseract-ocr") && (
+          {doc?.profile.engines.some(isOcrEngine) && (
             <Badge tone="violet">
               <ScanLine className="h-3 w-3" /> {t("Scanned · OCR")}
             </Badge>
@@ -240,7 +240,8 @@ export default function ReviewPage() {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-[12px] text-subtle">
-                  {active.fee_label ?? (KIND_LABEL[active.kind] && t(KIND_LABEL[active.kind]))}
+                  {(active.fee_label && tm(active.fee_label)) ??
+                    (KIND_LABEL[active.kind] && t(KIND_LABEL[active.kind]))}
                 </div>
                 <div className="truncate text-[13.5px] font-medium text-ink">{active.label}</div>
               </div>
@@ -356,7 +357,7 @@ export default function ReviewPage() {
                     <span className={cn("block truncate", f.status === "rejected" && "text-subtle line-through")}>
                       {f.label}
                     </span>
-                    {f.fee_label && <span className="block truncate text-[11px] text-subtle">{f.fee_label}</span>}
+                    {f.fee_label && <span className="block truncate text-[11px] text-subtle">{tm(f.fee_label)}</span>}
                   </span>
                   <span className="flex min-w-0 max-w-[60%] items-center gap-2">
                     <span className="num truncate font-medium text-ink" title={displayValue(f)}>

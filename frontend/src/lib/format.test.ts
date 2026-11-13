@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEASUREMENT, chf, savingParts } from "./format";
+import { MEASUREMENT, assets, chf, savingParts } from "./format";
 
 describe("chf", () => {
   it("uses the Swiss apostrophe and a true minus sign", () => {
@@ -9,6 +9,13 @@ describe("chf", () => {
   it("never renders a missing amount as zero", () => {
     expect(chf(null)).toBe("–");
     expect(chf(undefined)).toBe("–");
+  });
+});
+
+describe("assets", () => {
+  it("never shows CHF 0 before a position is valued", () => {
+    expect(assets("0", false, "Not valued yet")).toBe("Not valued yet");
+    expect(assets("4300000", true, "Not valued yet")).toBe("CHF 4'300'000");
   });
 });
 

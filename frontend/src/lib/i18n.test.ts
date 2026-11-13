@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import taxonomyCsv from "../../../data/taxonomy/fee_taxonomy.csv?raw";
 import { setLang, t, tm } from "./i18n";
 import { IT, IT_MESSAGES } from "./it";
 
@@ -82,6 +83,13 @@ const SERVER_SAMPLES = [
   "AJ Bell: GBP/CHF exchange rate at the valuation date",
   "Statement page showing the GBP/CHF rate used for the valuation",
   "Amounts in a foreign currency are not converted with a guessed rate.",
+  "Emerging Markets Opportunities Fund A · product costs",
+  "Safe Capital (proposal) · management fee (EAM)",
+  "Partner custodian (CH) · custody fee",
+  "iShares Core S&P 500 · KID cost illustration",
+  "iShares Core S&P 500 · Entry charge (maximum)",
+  "Swiss VAT 8.1% on management and custody fees",
+  "Bank Alpha (Synthetic) · Custody fee",
 ];
 
 describe("server messages", () => {
@@ -104,5 +112,16 @@ describe("server messages", () => {
     expect(tm("Something new from the server")).toBe("Something new from the server");
     setLang("en");
     expect(tm(SERVER_SAMPLES[0])).toBe(SERVER_SAMPLES[0]);
+  });
+});
+
+describe("fee taxonomy labels", () => {
+  it("has Italian for every fee label the server can send (data/taxonomy/fee_taxonomy.csv)", () => {
+    const [head, ...rows] = taxonomyCsv.trim().split("\n");
+    const en = head.split(",").indexOf("label_en");
+    const labels = rows.map((r) => r.split(",")[en]).filter(Boolean);
+    setLang("it");
+    expect(labels.filter((l) => tm(l) === l)).toEqual([]);
+    setLang("en");
   });
 });

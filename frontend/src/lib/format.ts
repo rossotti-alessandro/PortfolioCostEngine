@@ -14,6 +14,9 @@ export function chf(v: string | number | null | undefined, decimals = 0, prefix 
   return `${n < 0 ? "−" : ""}${prefix}${s}`;
 }
 
+/** Until a position is valued in CHF the total is 0, which would read as an empty portfolio; say so instead. */
+export const assets = (total: string, valued: boolean, notValued: string) => (valued ? chf(total) : notValued);
+
 export const num = (v: string | number | null | undefined, decimals = 0) => chf(v, decimals, "");
 
 export function bps(v: string | null | undefined): string {

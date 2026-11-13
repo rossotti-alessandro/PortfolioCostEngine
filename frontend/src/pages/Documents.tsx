@@ -1,8 +1,9 @@
 import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, Empty, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
-import { DOC_TYPES, chf, cn } from "@/lib/format";
+import { DOC_TYPES, assets, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { isOcrEngine } from "@/lib/trail";
 import type { Analysis, DocumentRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,6 +24,9 @@ import {
 import { Fragment, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+/** Files sent at once. The server caps real parallel work at its CPU count; more requests only queue. */
+const UPLOADS_AT_ONCE = 3;
+
 export default function DocumentsPage() {
   const pid = Number(useParams().id);
   const qc = useQueryClient();
@@ -30,23 +34,29 @@ export default function DocumentsPage() {
   const analysis = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
   const [rows, setRows] = useState<UploadRow[]>([]);
   const busy = rows.some((r) => r.state === "waiting" || r.state === "reading");
-  // One request per file, in order: the analyst sees each document finish instead of one long spinner.
+  // One request per file, up to UPLOADS_AT_ONCE at a time (the server reads them in parallel, SC-5.20):
+  // each row moves on as its own document finishes, in whatever order that happens.
   const uploadAll = async (files: File[]) => {
     const start = rows.length;
     setRows((r) => [...r, ...files.map((f) => ({ filename: f.name, state: "waiting" as const }))]);
-    for (const [i, f] of files.entries()) {
-      const at = start + i;
-      const set = (patch: Partial<UploadRow>) =>
-        setRows((r) => r.map((row, j) => (j === at ? { ...row, ...patch } : row)));
-      set({ state: "reading" });
-      try {
-        const res = (await api.upload(pid, [f])).results[0];
-        set({ state: "done", ...res });
-      } catch (e) {
-        set({ state: "done", status: "rejected", error: e instanceof Error ? e.message : String(e) });
+    let next = 0;
+    const worker = async () => {
+      while (next < files.length) {
+        const i = next++;
+        const at = start + i;
+        const set = (patch: Partial<UploadRow>) =>
+          setRows((r) => r.map((row, j) => (j === at ? { ...row, ...patch } : row)));
+        set({ state: "reading" });
+        try {
+          const res = (await api.upload(pid, [files[i]])).results[0];
+          set({ state: "done", ...res });
+        } catch (e) {
+          set({ state: "done", status: "rejected", error: e instanceof Error ? e.message : String(e) });
+        }
+        await qc.invalidateQueries({ queryKey: ["documents", pid] });
       }
-      await qc.invalidateQueries({ queryKey: ["documents", pid] });
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(UPLOADS_AT_ONCE, files.length) }, worker));
     qc.invalidateQueries();
   };
   const setType = useMutation({
@@ -355,7 +365,7 @@ function DocDetails({ d, pid, onType }: { d: DocumentRow; pid: number; onType: (
           <div>
             <dt className="text-subtle">{t("Read with")}</dt>
             <dd className="mt-0.5">
-              {d.profile.engines.includes("tesseract-ocr") ? (
+              {d.profile.engines.some(isOcrEngine) ? (
                 <Badge tone="violet">
                   <ScanLine className="h-3 w-3" /> OCR
                 </Badge>
@@ -448,7 +458,13 @@ function Checklist({ analysis, docs }: { analysis?: Analysis; docs: DocumentRow[
             <div key={i.name}>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="font-semibold text-navy-900">{i.name}</span>
-                <span className="num text-[12px] text-subtle">{chf(i.assets)}</span>
+                <span className="num text-[12px] text-subtle">
+                  {assets(
+                    i.assets,
+                    analysis.holdings.some((h) => h.institution === i.name),
+                    t("Not valued yet"),
+                  )}
+                </span>
               </div>
               <Item ok={has("portfolio_statement", key)} label={t("Statement of assets")} required />
               <Item ok={has("cost_report", key)} label={t("Annual costs & charges report")} required />

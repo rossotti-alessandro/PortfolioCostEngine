@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, chf, cn } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t, tm } from "@/lib/i18n";
 import type { Atom, EvidenceRef, Ledger } from "@/lib/types";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
@@ -113,7 +113,7 @@ function TraceStack({ root, onClose }: { root: TraceTarget; onClose: () => void 
 
 function describe(x: TraceTarget): string {
   if (x.kind === "atom")
-    return `${x.atom.fee_label} · ${LAYER[x.atom.layer] ? t(LAYER[x.atom.layer].name) : x.atom.layer}`;
+    return `${tm(x.atom.fee_label)} · ${LAYER[x.atom.layer] ? t(LAYER[x.atom.layer].name) : x.atom.layer}`;
   if (x.kind === "sum") return t("How this number is calculated");
   if (x.kind === "diff") return t("Difference between the two totals");
   return t("Where this was read");
@@ -138,7 +138,7 @@ function SumView({ x, onPick }: { x: SumTarget; onPick: (t: TraceTarget) => void
       <td className="py-2 pr-3">
         <div className={cn("font-medium", muted ? "text-subtle" : "text-ink")}>{a.label}</div>
         <div className="text-[12px] text-muted">
-          {a.fee_label}
+          {tm(a.fee_label)}
           {a.institution && ` · ${a.institution}`}
         </div>
       </td>
@@ -299,7 +299,7 @@ function AtomView({ atom, ledger, onPick }: { atom: Atom; ledger: Ledger; onPick
                     onClick={() => go(c)}
                     className="flex w-full justify-between gap-2 text-[12.5px] hover:text-teal-700"
                   >
-                    <span className="text-muted">{c.fee_label}</span>
+                    <span className="text-muted">{tm(c.fee_label)}</span>
                     <span className="num">{chf(c.amount, 2)}</span>
                   </button>
                 </li>

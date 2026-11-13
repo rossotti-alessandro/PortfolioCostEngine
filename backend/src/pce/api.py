@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import __version__, security
@@ -39,8 +40,9 @@ from .db import (
     make_session_factory,
 )
 from .demo import spec
+from .extraction import documents
 from .extraction.models import DOC_TYPE_LABELS, DocType
-from .extraction.parsers import PARSERS, classify, extract
+from .extraction.parsers import PARSERS, classify
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
 from .finance.money import D
 from .pipeline_view import document_pipeline
@@ -339,7 +341,7 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
         path.write_bytes(data)
     stored_ms = round((time.perf_counter() - t0) * 1000)
     try:
-        res, pages = extract(filename, data)
+        res, pages = documents.extract(filename, data)  # several uploads read at once (SC-5.20)
     except ValueError as exc:
         raise HTTPException(422, f"{filename}: {exc}") from exc
     res.profile.timings_ms = {"upload": stored_ms, **res.profile.timings_ms}
@@ -582,7 +584,12 @@ def upload(pid: int, db: DB, c: C, files: Annotated[list[UploadFile], File()]) -
     for uf in files:
         data = uf.file.read(MAX_UPLOAD_BYTES + 1)
         try:
-            d, new = ingest(db, c, p, uf.filename or "upload", data)
+            try:
+                d, new = ingest(db, c, p, uf.filename or "upload", data)
+                db.commit()  # per file: a lost race below rolls back this file only
+            except IntegrityError:  # the same file uploaded twice at once (SC-5.20): the other copy won
+                db.rollback()
+                d, new = ingest(db, c, p, uf.filename or "upload", data)
             out.append(
                 {
                     "filename": uf.filename,

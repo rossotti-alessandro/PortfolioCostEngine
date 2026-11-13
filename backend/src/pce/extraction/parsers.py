@@ -18,8 +18,8 @@ from openpyxl.utils import get_column_letter
 from ..finance.isin import ISIN_RE, is_valid_isin
 from ..finance.money import parse_amount, parse_percent
 from . import finder, revalidate, verify
-from .layout import Line, PageInfo, read_pdf
-from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact
+from .layout import OCR_ENGINES, Line, PageInfo, read_pdf
+from .models import DocType, DocumentProfile, Evidence, ExtractionResult, Fact, Review
 from .vocab import (
     AMOUNT,
     DOC_TYPE_KEYWORDS,
@@ -961,6 +961,20 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     return facts
 
 
+# The KID example's currency: on the amount ("7 USD", "€ 12"), else on the example line ("USD 10.000 di
+# investimento", "Investment EUR 10 000", "10 000 CHF").
+_AMOUNT_CCY = re.compile(r"\b(USD|EUR|CHF|GBP)\b|(€|£|\$)")
+_EXAMPLE_CCY = re.compile(
+    r"\b(USD|EUR|CHF|GBP)\s?10[.,'’ ]?000\b|\b10[.,'’ ]?000\s?(USD|EUR|CHF|GBP)\b|(€|£|\$)\s?10[.,'’ ]?000\b"
+)
+
+
+def _example_currency(cell: str, page: PageInfo) -> str | None:
+    m = _AMOUNT_CCY.search(cell) or _EXAMPLE_CCY.search("\n".join(x.text for x in page.lines))
+    g = next((g for g in m.groups() if g), None) if m else None
+    return _SYMBOL_CCY.get(g, g) if g else None
+
+
 def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     facts: list[Fact] = []
     isin = None
@@ -1019,6 +1033,8 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                     except ValueError:
                         amt = []
                 if amt:
+                    # "7 USD" on a USD 10 000 example is not CHF 7 (SC-5.19): keep the example's currency
+                    ccy = _example_currency(ln.cells[amt[-1][0]].text, page)
                     facts.append(
                         Fact(
                             key="kid:illustration_1y",
@@ -1026,10 +1042,11 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                             field="illustration_amount",
                             label=label,
                             value=str(amt[-1][1]),
+                            currency=ccy,
                             isin=isin,
                             fee_code="KID_ILLUSTRATION",
                             measurement="illustrative",
-                            extra={"example_investment": "10000"},
+                            extra={"example_investment": "10000", "example_currency": ccy},
                             evidence=_ev(ln, page),
                         )
                     )
@@ -1302,8 +1319,8 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
     printed pixels, zero, range and separator checks). A type parser's fee fact at the same spot gets
     the finder's review when both read the same value (the finder's twin is then dropped); when they
     differ, both stay, both ``needs_review``, each naming the other reading. Finder values no parser
-    produced are returned as ``fee_mention`` facts: visible and clickable for the analyst, not in the
-    totals until accepted."""
+    produced (total rows included) are returned as ``fee_mention`` facts: visible and clickable for the
+    analyst, not in the totals until accepted, so a total beside its components cannot double count."""
     verify.verify(found, [], verify.second_reading(data, found))
     if os.environ.get("PCE_REVALIDATE") == "1":  # SC-5.14: page arithmetic may confirm, never change
         revalidate.revalidate(found, revalidate.Specialists(checks=revalidate.BACKEND_CHECKS))
@@ -1315,12 +1332,6 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
             for f in parsed
         ):
             continue  # a parser already holds this exact value at this spot (a total, a rate): no twin
-        if (
-            twin is None
-            and verify.TOTAL_WORDS.search(g.label.split("|")[0].split("›")[-1])
-            and any(f.kind in REVIEWED_KINDS and f.evidence.page == g.evidence.page for f in parsed)
-        ):
-            continue  # a total row beside parser-read components is their sum: one more line double counts
         if twin is None:
             g.extra["review"] = g.review.model_dump() if g.review else None
             extra.append(g)
@@ -1342,13 +1353,60 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
             extra.append(g)
         twin.review = review
         twin.extra["review"] = review.model_dump()
-        # The parser's label stays: replacing it with the finder's label turned 9 parser misreads into
-        # confident wrong values on the accuracy protocol (ocrbench, 2026-11-11). Shown as context only.
+        # The parser's label stays: it feeds the ledger, the report and the Italian fee names, and replacing
+        # it turned 9 parser misreads into confident wrong values (ocrbench, 2026-11-11). The finder's label
+        # carries the section and column ("Transaction fees › Equities | Minimum"): kept as context.
         twin.extra["finder_label"] = g.label
         for k in ("label_bbox", "row_bbox", "region"):
             if getattr(twin.evidence, k) is None:
                 setattr(twin.evidence, k, getattr(g.evidence, k))
     return extra
+
+
+# Which dollar a bare "$" means (SC-5.19). Canadian, Australian, Singapore and Hong Kong statements print
+# "$" too; reading every "$" as USD silently mislabels their amounts.
+_DOLLAR_SIGNS = {
+    "USD": re.compile(r"\bUSD\b|\bUS\s?\$|\bU\.S\. dollars?|dollars? (?:US|américains?)\b", re.I),
+    "CAD": re.compile(r"\bCAD\b|\bCA?\$|canadian (?:funds|dollars?)|(?:dollars?|fonds) canadiens?", re.I),
+    "AUD": re.compile(r"\bAUD\b|\bAU?\$|australian dollars?", re.I),
+    "SGD": re.compile(r"\bSGD\b|\bSG?\$|singapore dollars?", re.I),
+    "HKD": re.compile(r"\bHKD\b|\bHK\$|hong kong dollars?", re.I),
+    "NZD": re.compile(r"\bNZD\b|\bNZ\$|new zealand dollars?", re.I),
+}
+_BARE_DOLLAR = re.compile(r"(?<![A-Za-z])\$")
+
+
+def _dollar_currency(pages: list[PageInfo]) -> str | None:
+    """The currency of a bare "$" in this document: the one dollar it names, USD when it names none,
+    ``None`` when it names several (a Canadian account holding US stocks): then a person decides."""
+    text = "\n".join(ln.text for pg in pages for ln in pg.lines)
+    named = {ccy for ccy, sign in _DOLLAR_SIGNS.items() if sign.search(text)}
+    if len(named) > 1 and "USD" in named:  # "US$" next to another dollar: the bare "$" is the other one
+        named.discard("USD")
+    return named.pop() if len(named) == 1 else ("USD" if not named else None)
+
+
+def _resolve_dollars(pages: list[PageInfo], facts: list[Fact], prof: DocumentProfile) -> None:
+    """Facts read as USD from a bare "$" take the document's dollar; an unclear dollar is no currency."""
+    bare = [
+        f
+        for f in facts
+        if f.currency == "USD"
+        and _BARE_DOLLAR.search(f.evidence.snippet or "")
+        and not _DOLLAR_SIGNS["USD"].search(f.evidence.snippet or "")
+    ]
+    ccy = _dollar_currency(pages) if bare else "USD"
+    if ccy == "USD":
+        return
+    for f in bare:
+        f.currency = ccy
+        if ccy is None:
+            f.review = f.review or Review()
+            f.review.status = "needs_review"
+            f.review.reasons.append("dollar_unclear")
+            f.extra["review"] = f.review.model_dump()
+    if ccy is None:
+        prof.warnings.append('Amounts in "$" but the document names more than one dollar currency: set it.')
 
 
 def _ms(start: float, end: float | None = None) -> int:
@@ -1379,6 +1437,7 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
         "extract": _ms(t2, t3),
         "find_and_verify": _ms(t3),
     }
+    _resolve_dollars(pages, facts, prof)
     prof.possible_misses = _possible_misses(pages, facts)
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None
@@ -1387,6 +1446,6 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
         prof.institution = ent["entity"]
     if prof.doc_type == DocType.UNKNOWN:
         prof.warnings.append("Could not classify this document; choose its type manually.")
-    if "tesseract-ocr" in prof.engines:
+    if set(prof.engines) & set(OCR_ENGINES):
         prof.warnings.append("Scanned pages were read with OCR: confirm each value against the image.")
     return ExtractionResult(profile=prof, facts=facts, extractor_version=EXTRACTOR_VERSION), pages
