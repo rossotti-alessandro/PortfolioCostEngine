@@ -1,6 +1,7 @@
-# FeeLens security (hosted demo)
+# FeeLens security
 
-Scope: the single-container deployment (`Dockerfile`, `render.yaml`) and local development. Story SC-9.4.
+Scope: the single-container deployment (`Dockerfile`, `render.yaml`), the pilot kit (`deployment/local/`,
+[PILOT_INSTALL.md](PILOT_INSTALL.md)) and local development. Stories SC-9.4, SC-11.6, SC-11.7, SC-11.8, SC-11.11.
 Privacy policy for client content is ADR 0004 and `.claude/rules/privacy.md`; this page covers access and
 the web surface. Engineering notes, not a certification.
 
@@ -14,10 +15,23 @@ the web surface. Engineering notes, not a certification.
 | `PCE_SECRET_KEY` | 32+ random characters. Signs session cookies and CSRF tokens. Must stay the same across restarts. |
 | `PCE_COOKIE_SECURE` | `1` (default): `__Host-` cookie, `Secure`, HSTS. `0` only for plain-HTTP local development and tests. |
 
-- Accounts live in the environment, not the database, because the Render free plan has an ephemeral disk.
-  No admin configured means nobody can sign in (fail closed).
+| `PCE_ADMIN_TOTP_SECRET` | Authenticator secret for the env admin (`python -m pce.users new-totp-secret`). Without it, with `PCE_REQUIRE_MFA=1`, the env admin cannot finish setup. |
+| `PCE_REQUIRE_MFA` | `1` (pilot kit): every account must link an authenticator app before it reaches anything but account setup. |
+
+- **Named accounts (SC-11.7)** live in the database (`user_account`): one per person, roles, admin flag,
+  scrypt password hash, TOTP secret, `session_version`. Created by an admin (Users page or
+  `python -m pce.users create`) with a one-time password; the first sign-in forces a new password and, with
+  `PCE_REQUIRE_MFA=1`, an authenticator (RFC 6238, 30 s, ±1 step, a code is accepted once). Admins manage
+  only their own firm's accounts and cannot reset or disable themselves.
+- The env admin is break-glass only (and the Render demo's login, whose free disk is ephemeral). Leave it
+  empty in the pilot once two personal admins exist. No admin configured and no stored account means
+  nobody can sign in (fail closed).
+- **Audit (SC-11.8)**: sign-ins, failed codes, prospect opened, document viewed, every write, exports and
+  deletions, with ids only. `audit_event` rows cannot be updated (SQLite trigger).
+- **Erasure (SC-11.11)**: `DELETE /api/prospects/{id}`, admins only, typed prospect code, reason from a
+  fixed list; leaves one `prospect.erased` entry with counts. Retention (SC-11.6): `python -m pce.retention`.
 - Sessions are stateless: an HMAC-SHA256-signed cookie with username, expiry (12 h) and a fingerprint of
-  the password hash. `HttpOnly`, `SameSite=Strict`, `Path=/`. They survive restarts and the free plan's sleep.
+  the password hash, TOTP secret and `session_version` (bumped by reset, disable and "sign out everywhere"). `HttpOnly`, `SameSite=Strict`, `Path=/`. They survive restarts and the free plan's sleep.
 - Sign everyone out: change `PCE_SECRET_KEY`. Changing the password also ends that account's sessions.
 - Tenant and user come from the session only. `X-Role` picks among the roles the account holds (the demo
   role switch); a role the account lacks returns 403. `X-Tenant-Id` and `X-User` are ignored.
@@ -62,7 +76,7 @@ leave the server (ADR 0004).
 
 ## Known limits
 
-- One admin account. More users or SSO: SC-11.2.
-- Stateless sessions cannot be revoked one by one (rotate the key instead).
+- Single sign-on (OIDC) and Postgres: SC-11.2.
+- Sessions are revoked per account (`session_version`), not per device.
 - `--forwarded-allow-ips '*'` trusts `X-Forwarded-For`; a client can spoof its address to dodge the
   per-client limit, which is why the per-username limit exists.
