@@ -35,7 +35,9 @@ FEE_WORDS = re.compile(
     r"fee|cost|charge|commission|expense|\bter\b|\bocf\b|spread|custody|brokerage|safekeeping|tariff|price|"
     r"minimum|geb[üu]hr|kosten|kommission|courtage|depot|spesen|entgelt|aufschlag|preis|tarif|minimal|"
     r"frais|co[uû]ts?\b|droits?\b|garde|tenue|commission|prix|minimum|"
-    r"cost[io]|commission[ei]|spes[ae]|oner[ei]|custodia|diritt[oi]|tenuta|prezz[oi]|tariff|minim[oa]|incidenza",
+    r"cost[io]|commission[ei]|spes[ae]|oner[ei]|custodia|diritt[oi]|tenuta|prezz[oi]|tariff|minim[oa]|incidenza|"
+    # interest the client pays on a loan or margin is a cost; credit interest earned is not
+    r"margin interest|debit interest|sollzins|interessi (?:passivi|debitori)|int[ée]r[êe]ts d[ée]biteurs",
     re.I,
 )
 # Rows that print numbers next to fee words but are not fees: KID performance scenarios, returns,

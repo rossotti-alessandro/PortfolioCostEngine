@@ -109,3 +109,9 @@ def test_returns_and_charging_bases_are_not_fees(row):
     """SYNTHETIC: a return quoted before/after costs, and the base a commission is charged on, under a
     section title that names costs."""
     assert finder.find_fees([_page([[("Costs over time", 50)], row])]) == []
+
+
+def test_margin_interest_paid_is_a_cost_and_credit_interest_is_not():
+    """SYNTHETIC statement: interest charged on a margin loan is a cost; interest earned is not."""
+    page = _page([[("Margin Interest", 50), ("-1,673.75", 300)], [("Credit interest", 50), ("12.50", 300)]])
+    assert [f.value for f in finder.find_fees([page])] == ["-1673.75"]
