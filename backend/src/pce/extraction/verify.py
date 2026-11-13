@@ -218,7 +218,7 @@ def second_reading(data: bytes, facts: list[Fact], lang: str = "eng+ita+deu+fra"
     import pytesseract
     from PIL import Image
 
-    from .layout import Cell, Line
+    from .layout import Cell, Line, ocr_slot
 
     by_page: dict[int, list[Fact]] = {}
     for f in facts:
@@ -253,9 +253,10 @@ def second_reading(data: bytes, facts: list[Fact], lang: str = "eng+ita+deu+fra"
             strip = Image.new("L", (max(c.width for c, _ in crops) + 20, y + 10), 255)
             for crop, top in crops:
                 strip.paste(crop, (10, top))
-            d = pytesseract.image_to_data(
-                strip, lang=lang, config=f"--psm {_PSM}", output_type=pytesseract.Output.DICT
-            )
+            with ocr_slot():
+                d = pytesseract.image_to_data(
+                    strip, lang=lang, config=f"--psm {_PSM}", output_type=pytesseract.Output.DICT
+                )
             texts: dict[int, list[str]] = {}
             for i, word in enumerate(d["text"]):
                 if not (word or "").strip():
