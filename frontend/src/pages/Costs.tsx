@@ -3,7 +3,7 @@ import { ReviewPoints } from "@/components/ReviewPoints";
 import { PageTitle } from "@/components/Shell";
 import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { ViewMenu, useHidden } from "@/components/ViewMenu";
-import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Kpi, Spinner, StatGrid, StatusBadge } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Money, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -15,9 +15,9 @@ import { useParams } from "react-router-dom";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const COST_SECTIONS = [
+  { key: "requests", label: "Documents to ask for" },
   { key: "review", label: "Points to review" },
   { key: "layers", label: "Cost by layer" },
-  { key: "requests", label: "What is missing" },
   { key: "ledger", label: "Cost ledger" },
   { key: "checks", label: "Validation and reconciliation" },
   { key: "coverage", label: "Evidence coverage by bank" },
@@ -52,55 +52,15 @@ export default function CostsPage() {
         <NotStarted pid={id} docs={a.documents.length} />
       ) : (
         <>
-          <StatGrid>
-            <Kpi
-              label={t("Assets reviewed")}
-              value={chf(a.aum.total)}
-              sub={t("{banks} banks · {positions} positions", {
-                banks: a.institutions.length,
-                positions: a.holdings.length,
-              })}
-            />
-            <Kpi
-              label={t("Known annual cost")}
-              value={chf(L.total_known)}
-              onClick={() => setTrace(sumOf(t("Known annual cost"), L.total_known, L))}
-              sub={
-                <>
-                  {L.total_bps ? `${pct(String(Number(L.total_bps) / 100), 2)} (${bps(L.total_bps)})` : "–"}
-                  {!L.is_complete && <span className="text-amber-700"> · {t("at least, incomplete")}</span>}
-                </>
-              }
-            />
-            <Kpi
-              label={t("Debited vs inside products")}
-              value={`${chf(L.billed_known)}`}
-              onClick={() =>
-                setTrace(sumOf(t("Debited from account"), L.billed_known, L, (x) => x.incidence !== "embedded"))
-              }
-              sub={
-                <button
-                  type="button"
-                  className="text-left decoration-dotted underline-offset-4 hover:underline"
-                  onClick={() =>
-                    setTrace(
-                      sumOf(t("Inside product price (NAV)"), L.embedded_known, L, (x) => x.incidence === "embedded"),
-                    )
-                  }
-                >
-                  {t("plus {amount} inside fund and product prices", { amount: chf(L.embedded_known) })}
-                </button>
-              }
-            />
-            <CoverageMeter ledger={L} />
-          </StatGrid>
+          <Answer a={a} onTrace={setTrace} />
           <ReadSummary a={a} />
         </>
       )}
 
+      {show("requests") && <Requests a={a} />}
       {show("review") && (
         <ReviewPoints
-          points={a.review_points}
+          points={a.requests.length ? a.review_points.filter((p) => p.kind !== "not_determined") : a.review_points}
           onOpen={(p) => {
             const x = p.atom_id && L.atoms.find((y) => y.id === p.atom_id);
             if (x) return pick(x);
@@ -116,8 +76,7 @@ export default function CostsPage() {
           }}
         />
       )}
-      {a.holdings.length > 0 && show("layers") && <LayerBreakdown a={a} onPick={pick} onLayer={layer} />}
-      {show("requests") && <Requests a={a} />}
+      {a.holdings.length > 0 && show("layers") && <LayerBreakdown a={a} onLayer={layer} />}
       {a.holdings.length > 0 && show("ledger") && (
         <LedgerTable
           a={a}
@@ -158,37 +117,94 @@ export default function CostsPage() {
   );
 }
 
-function CoverageMeter({ ledger }: { ledger: Analysis["current"] }) {
-  const share = Number(ledger.verified_share ?? 0);
-  const n = ledger.unknown.length;
+/** The answer first: the known annual cost in one sentence, then what it is made of and how well it is evidenced. */
+function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void }) {
+  const L = a.current;
+  const share = Number(L.verified_share ?? 0);
+  const n = L.unknown.length;
+  const sum = (title: string, amount: string, f?: (x: Atom) => boolean) => onTrace(sumOf(title, amount, L, f));
   return (
-    <div className="flex min-h-[116px] flex-col rounded-[var(--radius-card)] border border-line bg-surface px-5 py-4">
-      <div className="truncate text-[12.5px] font-medium text-muted">{t("Evidence coverage")}</div>
-      <div className="money num mt-2 text-[26px] font-semibold leading-none tracking-tight text-navy-900">
-        {t("{pct}% observed", { pct: (share * 100).toFixed(0) })}
+    <Card className="grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="px-6 py-5">
+        <div className="text-[13px] font-medium text-muted">
+          {t("Known annual cost today")}
+          {!L.is_complete && <span className="text-amber-700"> · {t("at least")}</span>}
+        </div>
+        <button
+          type="button"
+          onClick={() => sum(t("Known annual cost"), L.total_known)}
+          title={t("How is this calculated?")}
+          className="mt-2 block text-left text-[40px] font-semibold leading-none tracking-tight text-navy-900 decoration-dotted decoration-2 underline-offset-8 hover:underline"
+        >
+          <Money value={chf(L.total_known)} />
+        </button>
+        <p className="mt-3 max-w-[560px] text-[13.5px] leading-relaxed text-muted">
+          {t("{pct} ({bps}) of {aum} across {banks} banks and {positions} positions.", {
+            pct: L.total_bps ? pct(String(Number(L.total_bps) / 100), 2) : "–",
+            bps: L.total_bps ? bps(L.total_bps) : "–",
+            aum: chf(a.aum.total),
+            banks: a.institutions.length,
+            positions: a.holdings.length,
+          })}{" "}
+          {n > 0 ? (
+            <span className="text-red-700">
+              {t(
+                "{n} costs are not determined yet, so the real figure is higher. Nothing unknown is counted as zero.",
+                {
+                  n,
+                },
+              )}
+            </span>
+          ) : (
+            t("Every cost category is evidenced.")
+          )}
+        </p>
       </div>
-      <div className="mt-3 flex h-1.5 overflow-hidden rounded-[2px] bg-paper" aria-hidden>
-        <div className="bg-green-700" style={{ width: `${share * 100}%` }} />
-        <div className="hatch flex-1" />
-      </div>
-      <div className="mt-auto pt-2 text-[12.5px] text-muted">
-        {n === 0 ? (
-          t("All cost categories evidenced")
-        ) : (
-          <span className="text-red-700">{t("{n} cost categories not determined", { n })}</span>
-        )}
-      </div>
-    </div>
+      <dl className="grid grid-cols-1 divide-y divide-line border-t border-line text-[13px] lg:border-l lg:border-t-0">
+        <div className="flex items-baseline justify-between gap-3 px-6 py-3.5">
+          <dt className="text-muted">{t("Debited from the accounts")}</dt>
+          <dd>
+            <button
+              type="button"
+              className="text-[17px] font-semibold text-navy-900 hover:underline"
+              onClick={() => sum(t("Debited from account"), L.billed_known, (x) => x.incidence !== "embedded")}
+            >
+              <Money value={chf(L.billed_known)} />
+            </button>
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3 px-6 py-3.5">
+          <dt className="text-muted">{t("Inside fund and product prices")}</dt>
+          <dd>
+            <button
+              type="button"
+              className="text-[17px] font-semibold text-navy-900 hover:underline"
+              onClick={() => sum(t("Inside product price (NAV)"), L.embedded_known, (x) => x.incidence === "embedded")}
+            >
+              <Money value={chf(L.embedded_known)} />
+            </button>
+          </dd>
+        </div>
+        <div className="px-6 py-3.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-muted">{t("Evidence coverage")}</dt>
+            <dd className="money num text-[17px] font-semibold text-navy-900">
+              {t("{pct}% observed", { pct: (share * 100).toFixed(0) })}
+            </dd>
+          </div>
+          <div className="mt-2 flex h-1.5 overflow-hidden rounded-[2px] bg-paper" aria-hidden>
+            <div className="bg-green-700" style={{ width: `${share * 100}%` }} />
+            <div className="hatch flex-1" />
+          </div>
+        </div>
+      </dl>
+    </Card>
   );
 }
 
 /* --------------------------------------------------------------- layer chart + table twin */
 
-function LayerBreakdown({
-  a,
-  onPick,
-  onLayer,
-}: { a: Analysis; onPick: (x: Atom) => void; onLayer: (k: string) => void }) {
+function LayerBreakdown({ a, onLayer }: { a: Analysis; onLayer: (k: string) => void }) {
   const [view, setView] = useState<"chart" | "table">("chart");
   const L = a.current;
   const unknownLayers = new Set(L.atoms.filter((x) => x.role === "unknown").map((x) => x.layer));
@@ -322,20 +338,6 @@ function LayerBreakdown({
               </tr>
             </tbody>
           </table>
-        )}
-        {unknownLayers.size > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5 border-t border-line pt-3 text-[12.5px]">
-            <span className="text-muted">{t("Not determined:")}</span>
-            {L.atoms
-              .filter((x) => x.role === "unknown")
-              .map((x) => (
-                <button key={x.id} type="button" onClick={() => onPick(x)} className="rounded-full">
-                  <Badge tone="red" className="hover:ring-red-700/50">
-                    {x.label} · {x.fee_label}
-                  </Badge>
-                </button>
-              ))}
-          </div>
         )}
       </div>
     </Card>
@@ -638,9 +640,9 @@ function Requests({ a }: { a: Analysis }) {
   return (
     <Card>
       <CardHeader
-        title={t("What is missing")}
+        title={t("Documents to ask for")}
         subtitle={t(
-          "Ranked by how much of the portfolio each gap affects. Each request names the exact document that would close it.",
+          "Costs that are not determined yet, ranked by how much of the portfolio they affect. Each request names the exact document that would close the gap.",
         )}
         actions={
           <Button

@@ -983,4 +983,16 @@ export const IT: Record<string, string> = {
     "Fasce di commissione, custodia, negoziazione, margine sui cambi e IVA, come li applichereste al cliente.",
   "Save firm tariff": "Salva la tariffa",
   "Only a senior reviewer can change it.": "Solo un revisore senior può modificarla.",
+  "Documents to ask for": "Documenti da richiedere",
+  "Known annual cost today": "Costo annuo noto oggi",
+  "{pct} ({bps}) of {aum} across {banks} banks and {positions} positions.":
+    "{pct} ({bps}) di {aum} su {banks} banche e {positions} posizioni.",
+  "{n} costs are not determined yet, so the real figure is higher. Nothing unknown is counted as zero.":
+    "{n} costi non sono ancora determinati, quindi la cifra reale è più alta. Nulla di ignoto è contato come zero.",
+  "Every cost category is evidenced.": "Ogni categoria di costo è documentata.",
+  "Debited from the accounts": "Addebitato sui conti",
+  "Inside fund and product prices": "Incluso nei prezzi di fondi e prodotti",
+  "Costs that are not determined yet, ranked by how much of the portfolio they affect. Each request names the exact document that would close the gap.":
+    "Costi non ancora determinati, ordinati per quota di portafoglio interessata. Ogni richiesta indica il documento esatto che colma la lacuna.",
+  "{n} documents to ask for": "{n} documenti da richiedere",
 };
