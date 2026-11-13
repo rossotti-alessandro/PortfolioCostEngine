@@ -8,7 +8,7 @@ model: "claude-opus-5-5"
 progress: 5
 branch: "claude/sc-5.19-currency-misreads"
 pr: ""
-created_date: "2026-11-13 13:25"
+created_date: "2026-11-13 13:23"
 updated_date: "2026-11-13 13:23"
 labels:
   - extraction
