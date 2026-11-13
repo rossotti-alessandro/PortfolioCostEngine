@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type HistoryEntry, readKind, trailSteps } from "./trail";
-import type { EvidenceRef } from "./types";
+import { type HistoryEntry, readKind, trailSteps, whyYou } from "./trail";
+import type { EvidenceRef, Fact } from "./types";
 
 const base: EvidenceRef = {
   fact_id: 1,
@@ -100,5 +100,57 @@ describe("trailSteps", () => {
 
   it("an accepted review with nothing else says it passed the checks at reading", () => {
     expect(titles({ ...base, review: { status: "accepted" } })[1]).toBe("Passed the checks made while reading");
+  });
+});
+
+describe("whyYou", () => {
+  const fact: Fact = {
+    id: 1,
+    document_id: 1,
+    key: "k",
+    kind: "fee_observed",
+    field: "amount",
+    label: "Custody fee",
+    value: "1500.00",
+    value_extracted: "1500.00",
+    currency: "CHF",
+    isin: null,
+    fee_code: null,
+    fee_label: null,
+    measurement: null,
+    extra: {},
+    evidence: {
+      page: 1,
+      bbox: [0, 0, 1, 1],
+      page_width: 595,
+      page_height: 842,
+      sheet: null,
+      cell: null,
+      snippet: "",
+      engine: "pdfplumber-text",
+      confidence: 1,
+    },
+    status: "extracted",
+  };
+
+  it("is empty for a confident digital value the checks confirmed", () => {
+    expect(whyYou({ ...fact, extra: { review: { status: "accepted" } } })).toEqual([]);
+  });
+
+  it("names the extraction flags, a scanned page and low confidence", () => {
+    const f: Fact = {
+      ...fact,
+      extra: { review: { status: "needs_review", reasons: ["separator_ambiguous"] } },
+      evidence: { ...fact.evidence, engine: "tesseract-ocr", confidence: 0.82 },
+    };
+    expect(whyYou(f)).toEqual([
+      "the thousands separator is ambiguous",
+      "scanned page, read with OCR",
+      "reading confidence 82%",
+    ]);
+  });
+
+  it("never asks again once a person handled the value", () => {
+    expect(whyYou({ ...fact, status: "accepted", evidence: { ...fact.evidence, confidence: 0.5 } })).toEqual([]);
   });
 });

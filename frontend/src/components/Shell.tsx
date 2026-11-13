@@ -189,7 +189,10 @@ function StepBar({ pid }: { pid: number }) {
               </span>
               {t(s.label)}
               {s.to === "review" && toCheck > 0 && (
-                <span className="num rounded-[3px] bg-amber-50 px-1.5 text-[11.5px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-700/20">
+                <span
+                  title={t("{n} values not yet checked by a person", { n: toCheck })}
+                  className="num rounded-[3px] bg-amber-50 px-1.5 text-[11.5px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-700/20"
+                >
                   {toCheck}
                 </span>
               )}
