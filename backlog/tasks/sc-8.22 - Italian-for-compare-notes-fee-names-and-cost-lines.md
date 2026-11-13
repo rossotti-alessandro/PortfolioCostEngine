@@ -1,12 +1,12 @@
 ---
 id: SC-8.22
 title: Italian for Compare notes, fee names and cost lines
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Validate accuracy and speed up processing"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/sc-8.22-italian-notes"
 pr: ""
 created_date: "2026-11-13 13:32"
 updated_date: "2026-11-13 13:32"
