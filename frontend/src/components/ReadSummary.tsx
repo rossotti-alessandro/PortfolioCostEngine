@@ -11,7 +11,9 @@ import { Button, Card, Empty } from "./ui";
  */
 export function ReadSummary({ a }: { a: Analysis }) {
   const checked = a.review.reviewed + a.review.rejected;
-  const open = a.review_points.length;
+  // Unknown costs are listed once, as documents to ask for, so they are not counted again as points.
+  const open = a.review_points.filter((p) => !(a.requests.length && p.kind === "not_determined")).length;
+  const ask = a.requests.filter((r) => r.status === "open").length;
   const all = a.review.facts > 0 && checked >= a.review.facts;
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted" data-testid="read-summary">
@@ -25,6 +27,12 @@ export function ReadSummary({ a }: { a: Analysis }) {
       <span className={all ? "text-teal-700" : "text-amber-700"}>{t("{n} checked by a person", { n: checked })}</span>
       <span aria-hidden>·</span>
       <span>{t("{n} points to review", { n: open })}</span>
+      {ask > 0 && (
+        <>
+          <span aria-hidden>·</span>
+          <span>{t("{n} documents to ask for", { n: ask })}</span>
+        </>
+      )}
     </p>
   );
 }
