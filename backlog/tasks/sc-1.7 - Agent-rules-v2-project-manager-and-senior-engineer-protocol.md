@@ -1,12 +1,12 @@
 ---
 id: SC-1.7
 title: "Agent rules v2: project manager and senior engineer protocol"
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Update Claude rules and dev protocol"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-ph3wca"
 pr: ""
 created_date: "2026-11-13 23:55"
 updated_date: "2026-11-13 23:55"
