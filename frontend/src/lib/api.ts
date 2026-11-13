@@ -159,6 +159,11 @@ export const api = {
     req<{ id: number }>("/api/prospects", json(b)),
   patchProspect: (id: number, b: { label?: string; domicile?: string }) =>
     req(`/api/prospects/${id}`, json(b, "PATCH")),
+  eraseProspect: (id: number, confirm: string, reason: string, eraseContact: boolean) =>
+    req<Record<string, number>>(
+      `/api/prospects/${id}?${new URLSearchParams({ confirm, reason, erase_contact: String(eraseContact) })}`,
+      { method: "DELETE" },
+    ),
   seed: () => req<{ id: number; documents_added: number }>("/api/demo/seed", { method: "POST" }),
   documents: (id: number) => req<DocumentRow[]>(`/api/prospects/${id}/documents`),
   upload: (id: number, files: File[]) => {

@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import __version__, security
+from . import __version__, erasure, security
 from .analysis import analyse
 from .crm.router import router as crm_router
 from .db import (
@@ -39,6 +39,7 @@ from .db import (
     make_session_factory,
 )
 from .demo import spec
+from .erasure import Reason
 from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify, extract
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
@@ -509,6 +510,25 @@ def patch_prospect(pid: int, body: ProspectPatch, db: DB, c: C) -> dict:
     audit(db, c, p.id, "prospect.updated", before=before, after={"label": p.label, "domicile": p.domicile})
     db.commit()
     return {"ok": True}
+
+
+@app.delete("/api/prospects/{pid}")
+def erase_prospect(
+    pid: int,
+    request: Request,
+    db: DB,
+    c: C,
+    confirm: str,
+    reason: Reason,
+    erase_contact: bool = False,
+) -> dict:
+    """Erase a prospect and everything derived from it (SC-11.11). Admins only; ``confirm`` is its code."""
+    if not request.state.account.admin:
+        raise HTTPException(403, "only an admin can erase a prospect")
+    p = get_prospect(db, c, pid)
+    if confirm != p.code:
+        raise HTTPException(400, "type the prospect code to confirm")
+    return erasure.erase_prospect(db, c.tenant, p.id, c.user, reason, erase_contact)
 
 
 @app.post("/api/demo/seed")

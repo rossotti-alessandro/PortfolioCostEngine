@@ -722,6 +722,17 @@ export const IT: Record<string, string> = {
   "Show details": "Mostra dettagli",
   "Hide details": "Nascondi dettagli",
   "Sign in": "Accedi",
+  "Erase prospect": "Cancella potenziale cliente",
+  "Erase {code}": "Cancella {code}",
+  "Deletes the prospect, every document and extracted figure, reviews, proposals and reports. Only a note that a deletion happened is kept. This cannot be undone. Backups expire on their own schedule.":
+    "Elimina il potenziale cliente, tutti i documenti e i valori estratti, le verifiche, le proposte e i rapporti. Resta solo una nota che la cancellazione è avvenuta. Non si può annullare. I backup scadono secondo il loro calendario.",
+  "The prospect asked for deletion": "Il potenziale cliente ha chiesto la cancellazione",
+  "No mandate followed": "Nessun mandato concluso",
+  "Retention period ended": "Periodo di conservazione scaduto",
+  "Uploaded by mistake": "Caricato per errore",
+  "Also delete the linked contact in Clients & pipeline": "Elimina anche il contatto collegato in Clienti e pipeline",
+  "Type {code} to confirm": "Digita {code} per confermare",
+  Erase: "Cancella",
   "Code from your authenticator app": "Codice dell'app di autenticazione",
   "Wrong code. Use the newest code in your authenticator app.":
     "Codice errato. Usa il codice più recente dell'app di autenticazione.",
