@@ -78,3 +78,4 @@ Templates follow the backend wording: a changed backend sentence silently falls 
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/sc-8.20-italian-messages | d029b44 | 2026-11-13 | Italian server messages, honest no-total wording |
