@@ -1,6 +1,6 @@
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
-import { BOUND_TEXT, chf, cn } from "@/lib/format";
+import { BOUND_TEXT, assets, chf, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, ChevronRight, FileSearch, Info, MessageSquarePlus, Trophy, XCircle } from "lucide-react";
@@ -128,7 +128,7 @@ function CostReviewPanel({ pid, code }: { pid: number; code: string | null }) {
       {a && (
         <div className="grid grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-4">
           {[
-            [t("Assets"), chf(a.aum.total)],
+            [t("Assets"), assets(a.aum.total, a.holdings.length > 0, t("Not valued yet"))],
             [
               t("Known annual cost"),
               a.current.total_bps

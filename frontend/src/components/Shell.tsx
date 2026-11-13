@@ -291,8 +291,12 @@ export function ProspectLayout() {
           </div>
           {data && (
             <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-              <span className="num font-medium text-ink">{chf(data.aum.total)}</span>
-              <span>·</span>
+              {data.holdings.length > 0 && (
+                <>
+                  <span className="num font-medium text-ink">{chf(data.aum.total)}</span>
+                  <span>·</span>
+                </>
+              )}
               <span>{t("{n} banks", { n: data.institutions.length })}</span>
               <span>·</span>
               <span>{t("Domicile {code}", { code: data.client_domicile })}</span>

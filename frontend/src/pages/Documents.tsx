@@ -1,7 +1,7 @@
 import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, Empty, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
-import { DOC_TYPES, chf, cn } from "@/lib/format";
+import { DOC_TYPES, assets, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { Analysis, DocumentRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -457,7 +457,13 @@ function Checklist({ analysis, docs }: { analysis?: Analysis; docs: DocumentRow[
             <div key={i.name}>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="font-semibold text-navy-900">{i.name}</span>
-                <span className="num text-[12px] text-subtle">{chf(i.assets)}</span>
+                <span className="num text-[12px] text-subtle">
+                  {assets(
+                    i.assets,
+                    analysis.holdings.some((h) => h.institution === i.name),
+                    t("Not valued yet"),
+                  )}
+                </span>
               </div>
               <Item ok={has("portfolio_statement", key)} label={t("Statement of assets")} required />
               <Item ok={has("cost_report", key)} label={t("Annual costs & charges report")} required />

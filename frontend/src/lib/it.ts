@@ -925,6 +925,7 @@ export const IT: Record<string, string> = {
   "Upload documents": "Carica documenti",
   "No statement of assets yet": "Ancora nessun estratto patrimoniale",
   "No position valued in CHF yet": "Ancora nessuna posizione valutata in CHF",
+  "Not valued yet": "Non ancora valutato",
   "Proposal costs more per year": "La proposta costa di più all'anno",
   "costs more": "costa di più",
   "PDF in English": "PDF in inglese",
