@@ -41,6 +41,7 @@ PYTHON_ENGINES: tuple[tuple[str, str, str, bool], ...] = (
     ("magic", "python-magic", "MIME sniffing at intake", True),
     ("stdnum", "python-stdnum", "ISIN check-digit validation", True),
     ("docling", "docling", "layout and table structure model (optional extra)", False),
+    ("rapidocr", "rapidocr", "scan reader, PP-OCR ONNX models in the wheel (optional extra)", False),
     ("paddleocr", "paddleocr", "OCR/VLM benchmark candidate (optional extra)", False),
 )
 

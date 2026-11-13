@@ -21,6 +21,7 @@ Engines, tried per page in this order (`.claude/rules/extraction.md`):
 | Page rendering (OCR input, thumbnails) | pypdfium2 5.15.0 | Apache-2.0 / BSD-3 |
 | Layout, reading order, complex tables (second opinion) | Docling 2.148.0, optional extra | MIT (check each model card) |
 | Scans: add text layer | OCRmyPDF 17.13.0 → Tesseract 5 (`eng+ita+deu+fra`), via CLI subprocess | MPL-2.0 / Apache-2.0 |
+| Scans: page reader when installed (SC-5.22) | RapidOCR 3.10.0 (PP-OCR ONNX models bundled in the wheel) + onnxruntime 1.32.0, extra `rapidocr`; Tesseract otherwise | Apache-2.0 / MIT |
 | Word boxes on a crop | pytesseract 0.3.13 | Apache-2.0 |
 | XLSX / XLS / CSV | openpyxl 3.1.5, xlrd 2.0.2, pandas 3.1.1 | MIT / BSD |
 | Identifiers | python-stdnum 2.2 (ISIN check digit) | LGPL-2.1+ (library use) |
@@ -46,6 +47,15 @@ vendor benchmarks.
   bundles NVIDIA CUDA libraries under NVIDIA's proprietary redistributable licence and ~6 GB; CPU wheels
   avoid both (docs/SETUP.md).
 - Dependency upgrades go in `deps:` PRs with a licence line per new package.
+
+## Amendment 2026-11-13: RapidOCR reads scans (SC-5.22)
+
+On the 11 scan pages of the ocrbench gold, production `extract()` found 69.7% of the printed fees with
+RapidOCR against 52.8% with Tesseract, with 3 wrong values against 10, at 4.3 s/page against 6.9 s/page
+on CPU. RapidOCR runs locally (ONNX, no GPU, no network: models ship in the wheel), so ADR 0004 is
+unaffected. It is an optional extra; without it Tesseract reads scans as before. The Tesseract crop
+re-read (`verify.second_reading`) stays, and is now an independent engine from the page reader.
+OCRmyPDF still adds text layers where a searchable PDF is wanted.
 
 ## Alternatives rejected
 

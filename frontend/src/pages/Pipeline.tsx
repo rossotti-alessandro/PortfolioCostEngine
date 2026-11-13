@@ -4,6 +4,7 @@ import { Badge, Button, Card, ErrorBox, InfoTip, Spinner } from "@/components/ui
 import { api } from "@/lib/api";
 import { DOC_TYPES, LAYER, chf, cn, num } from "@/lib/format";
 import { t, tm } from "@/lib/i18n";
+import { isOcrEngine } from "@/lib/trail";
 import type { DocumentPipeline, PipelineStage, StageStatus } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, XCircle } from "lucide-react";
@@ -234,7 +235,7 @@ function StageDetails({ s, doc }: { s: PipelineStage; doc: Doc }) {
               </td>
               <td className="py-1 pr-3 font-mono text-[11.5px] text-subtle">{v.where}</td>
               <td className="py-1 pr-3 text-muted">
-                {v.engine === "tesseract-ocr" ? "OCR" : v.engine === "openpyxl" ? t("cell") : t("text")}
+                {isOcrEngine(v.engine) ? "OCR" : v.engine === "openpyxl" ? t("cell") : t("text")}
                 {v.confidence !== null && v.confidence < 1 && ` · ${Math.round(v.confidence * 100)}%`}
               </td>
               <td className="py-1 pr-3 text-muted">{t(REVIEW[v.status] ?? v.status)}</td>
