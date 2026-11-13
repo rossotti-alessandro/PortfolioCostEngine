@@ -249,7 +249,7 @@ def _header_above(
 
 
 def _heading_above(
-    lines: list[Line], i: int, vals_by_line: list[list[_Val]], top: float, limit: int = 40
+    lines: list[Line], i: int, vals_by_line: list[list[_Val]], top: float, limit: int = 120
 ) -> str:
     """Section path above the row: the nearest title line (one cell, short, no values) and, when that
     title has no fee word, the nearest fee-word title above it ("Transaction fees › Equities and bonds").
@@ -260,7 +260,9 @@ def _heading_above(
         t = ln.text
         if ln.bbox[3] > top + 1:
             continue
-        if vals_by_line[j] or len(ln.cells) != 1 or not _has_letters(t) or len(t.split()) > 10:
+        # Titles are short; an all-caps title may be long ("BUONI ORDINARI DEL TESORO ... COMMISSIONE ...").
+        long = len(t.split()) > (20 if t.isupper() else 10)
+        if vals_by_line[j] or len(ln.cells) != 1 or not _has_letters(t) or long:
             continue
         if not path:
             path.append(t)
@@ -349,11 +351,10 @@ def find_fees(
                 top = min([v.bbox[1], *(c.bbox[1] for c in label_cells)])
                 heading = _heading_above(lines, i, vals_by_line, top)
                 context = " ".join(x for x in (label, header, heading) if x)
-                if (
-                    not FEE_WORDS.search(context)
-                    or NOT_FEE.search(f"{label} {header}")
-                    or ISIN_CODE.search(label)
-                ):
+                # A fee label wins over a column header found further away ("Einstiegskosten" under
+                # "Max. Gewinn (%)" in a two-column factsheet); the header vetoes only an unnamed row.
+                vetoed = NOT_FEE.search(label) or (not FEE_WORDS.search(label) and NOT_FEE.search(header))
+                if not FEE_WORDS.search(context) or vetoed or ISIN_CODE.search(label):
                     continue
                 in_table = region is not None or len(ln.cells) >= 2
                 full = " › ".join(x for x in (heading, " | ".join(y for y in (label, header) if y)) if x)

@@ -1319,8 +1319,8 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
     printed pixels, zero, range and separator checks). A type parser's fee fact at the same spot gets
     the finder's review when both read the same value (the finder's twin is then dropped); when they
     differ, both stay, both ``needs_review``, each naming the other reading. Finder values no parser
-    produced are returned as ``fee_mention`` facts: visible and clickable for the analyst, not in the
-    totals until accepted."""
+    produced (total rows included) are returned as ``fee_mention`` facts: visible and clickable for the
+    analyst, not in the totals until accepted, so a total beside its components cannot double count."""
     verify.verify(found, [], verify.second_reading(data, found))
     if os.environ.get("PCE_REVALIDATE") == "1":  # SC-5.14: page arithmetic may confirm, never change
         revalidate.revalidate(found, revalidate.Specialists(checks=revalidate.BACKEND_CHECKS))
@@ -1332,12 +1332,6 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
             for f in parsed
         ):
             continue  # a parser already holds this exact value at this spot (a total, a rate): no twin
-        if (
-            twin is None
-            and verify.TOTAL_WORDS.search(g.label.split("|")[0].split("›")[-1])
-            and any(f.kind in REVIEWED_KINDS and f.evidence.page == g.evidence.page for f in parsed)
-        ):
-            continue  # a total row beside parser-read components is their sum: one more line double counts
         if twin is None:
             g.extra["review"] = g.review.model_dump() if g.review else None
             extra.append(g)
@@ -1359,8 +1353,9 @@ def _cross_check(parsed: list[Fact], found: list[Fact], data: bytes) -> list[Fac
             extra.append(g)
         twin.review = review
         twin.extra["review"] = review.model_dump()
-        # The parser's label stays: replacing it with the finder's label turned 9 parser misreads into
-        # confident wrong values on the accuracy protocol (ocrbench, 2026-11-11). Shown as context only.
+        # The parser's label stays: it feeds the ledger, the report and the Italian fee names, and replacing
+        # it turned 9 parser misreads into confident wrong values (ocrbench, 2026-11-11). The finder's label
+        # carries the section and column ("Transaction fees › Equities | Minimum"): kept as context.
         twin.extra["finder_label"] = g.label
         for k in ("label_bbox", "row_bbox", "region"):
             if getattr(twin.evidence, k) is None:
