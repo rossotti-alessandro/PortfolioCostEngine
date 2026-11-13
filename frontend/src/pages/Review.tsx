@@ -1,11 +1,13 @@
 import { PdfEvidence, SheetEvidence } from "@/components/EvidenceViewer";
+import { SourceCrop } from "@/components/SourceCrop";
 import { Badge, Button, Card, Dialog, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, cn, num } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { whyYou } from "@/lib/trail";
 import type { Fact } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, FileSpreadsheet, FileText, History, Pencil, ScanLine, X } from "lucide-react";
+import { AlertTriangle, Check, FileSpreadsheet, FileText, History, Pencil, ScanLine, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
@@ -27,6 +29,15 @@ const STATUS_TONE: Record<string, string> = {
   manual: "navy",
 };
 
+/** The queue: what needs a person first, what the checks confirmed, what a person already handled. */
+const QUEUE = [
+  { key: "needs", label: "Needs you", test: (f: Fact) => whyYou(f).length > 0 },
+  { key: "auto", label: "Confirmed by checks", test: (f: Fact) => f.status === "extracted" && !whyYou(f).length },
+  { key: "person", label: "Checked by a person", test: (f: Fact) => f.status !== "extracted" },
+  { key: "all", label: "All", test: () => true },
+] as const;
+type QueueKey = (typeof QUEUE)[number]["key"];
+
 function displayValue(f: Fact) {
   if (f.value === null) return f.measurement === "unknown" ? t("not disclosed") : String(f.extra?.entity ?? "") || "–";
   if (f.field === "rate_pct") return `${f.value}%`;
@@ -43,11 +54,10 @@ export default function ReviewPage() {
   const [activeId, setActiveId] = useState<number | null>(Number(sp.get("fact")) || null);
   const active = facts.data?.find((f) => f.id === activeId) ?? null;
   const [editing, setEditing] = useState<"correct" | "reject" | null>(null);
+  const [queue, setQueue] = useState<QueueKey | null>(null);
   const qc = useQueryClient();
-
-  useEffect(() => {
-    if (facts.data?.length && !facts.data.some((f) => f.id === activeId)) setActiveId(facts.data[0].id);
-  }, [facts.data, activeId]);
+  // Open on what needs a person; a document with nothing flagged opens on all its values.
+  const shownQueue: QueueKey = queue ?? (facts.data?.some(QUEUE[0].test) ? "needs" : "all");
 
   const review = useMutation({
     mutationFn: (b: { id: number; action: string; value?: string; reason?: string }) => api.review(b.id, b),
@@ -59,7 +69,18 @@ export default function ReviewPage() {
     },
   });
 
-  const ordered = useMemo(() => facts.data ?? [], [facts.data]);
+  const ordered = useMemo(
+    () => (facts.data ?? []).filter(QUEUE.find((q) => q.key === shownQueue)!.test),
+    [facts.data, shownQueue],
+  );
+  useEffect(() => {
+    if (ordered.length && !ordered.some((f) => f.id === activeId)) setActiveId(ordered[0].id);
+  }, [ordered, activeId]);
+  // A value picked on the page may sit outside the current queue: show all values rather than jump away.
+  const select = (f: Fact) => {
+    if (!ordered.some((x) => x.id === f.id)) setQueue("all");
+    setActiveId(f.id);
+  };
   const move = useCallback(
     (d: number) => {
       if (!ordered.length) return;
@@ -82,6 +103,7 @@ export default function ReviewPage() {
         review.mutate({ id: active.id, action: "accept" });
         move(1);
       } else if (e.key === "e" && active) setEditing("correct");
+      else if (e.key === "r" && active) setEditing("reject");
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
@@ -96,7 +118,9 @@ export default function ReviewPage() {
   if (docs.isLoading) return <Spinner />;
   if (!docs.data?.length) return <Card className="p-8 text-center text-muted">{t("Upload documents first.")}</Card>;
   const isSheet = doc?.filename.toLowerCase().endsWith(".xlsx");
-  const reviewed = ordered.filter((f) => f.status !== "extracted").length;
+  const all = facts.data ?? [];
+  const reviewed = all.filter((f) => f.status !== "extracted").length;
+  const why = active ? whyYou(active) : [];
 
   return (
     <div className="grid h-[calc(100vh-205px)] min-h-[560px] gap-3 lg:grid-cols-[230px_minmax(0,1fr)_400px]">
@@ -152,14 +176,14 @@ export default function ReviewPage() {
           {docId &&
             facts.data &&
             (isSheet ? (
-              <SheetEvidence docId={docId} facts={facts.data} activeId={activeId} onSelect={(f) => setActiveId(f.id)} />
+              <SheetEvidence docId={docId} facts={facts.data} activeId={activeId} onSelect={select} />
             ) : (
               <PdfEvidence
                 docId={docId}
                 facts={facts.data}
                 activeId={activeId}
                 page={active?.evidence.page ?? undefined}
-                onSelect={(f) => setActiveId(f.id)}
+                onSelect={select}
               />
             ))}
         </div>
@@ -170,20 +194,45 @@ export default function ReviewPage() {
           <div className="flex items-center justify-between">
             <span className="text-[13.5px] font-semibold text-navy-900">{t("Extracted values")}</span>
             <span className="num text-[12px] text-muted">
-              {t("{done}/{total} reviewed", { done: reviewed, total: ordered.length })}
+              {t("{done}/{total} reviewed", { done: reviewed, total: all.length })}
             </span>
           </div>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-paper">
+          <div className="mt-1.5 h-1 overflow-hidden rounded-[2px] bg-paper">
             <div
               className="h-full bg-teal-700 transition-all"
-              style={{ width: `${ordered.length ? (reviewed / ordered.length) * 100 : 0}%` }}
+              style={{ width: `${all.length ? (reviewed / all.length) * 100 : 0}%` }}
             />
           </div>
           <div className="mt-1.5 text-[11px] text-subtle">
             <kbd className="rounded border border-line px-1">j</kbd>/
             <kbd className="rounded border border-line px-1">k</kbd> {t("move")} ·{" "}
             <kbd className="rounded border border-line px-1">a</kbd> {t("accept")} ·{" "}
-            <kbd className="rounded border border-line px-1">e</kbd> {t("correct")}
+            <kbd className="rounded border border-line px-1">e</kbd> {t("correct")} ·{" "}
+            <kbd className="rounded border border-line px-1">r</kbd> {t("reject")}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1" role="tablist" aria-label={t("Values to show")}>
+            {QUEUE.map((q) => {
+              const n = all.filter(q.test).length;
+              return (
+                <button
+                  key={q.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={shownQueue === q.key}
+                  onClick={() => setQueue(q.key)}
+                  className={cn(
+                    "rounded-[3px] px-2 py-0.5 text-[12px] font-medium ring-1 ring-inset",
+                    shownQueue === q.key
+                      ? "bg-navy-900 text-white ring-navy-900"
+                      : q.key === "needs" && n > 0
+                        ? "bg-amber-50 text-amber-700 ring-amber-700/25"
+                        : "text-muted ring-line hover:text-ink",
+                  )}
+                >
+                  {t(q.label)} · <span className="num">{n}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
         {active && (
@@ -198,6 +247,22 @@ export default function ReviewPage() {
               <Badge tone={STATUS_TONE[active.status]}>{t(active.status)}</Badge>
             </div>
             <div className="num mt-2 text-[22px] font-semibold text-navy-900">{displayValue(active)}</div>
+            {why.length > 0 && (
+              <div className="mt-1.5 flex items-start gap-1.5 text-[12px] text-amber-700">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{t("Why you: {reasons}", { reasons: why.join("; ") })}</span>
+              </div>
+            )}
+            {!isSheet && docId && active.evidence.page && active.evidence.bbox && (
+              <div className="mt-2.5">
+                <SourceCrop
+                  docId={docId}
+                  page={active.evidence.page}
+                  bbox={active.evidence.bbox}
+                  tag={displayValue(active)}
+                />
+              </div>
+            )}
             {active.status === "corrected" && (
               <div className="text-[12px] text-violet-700">
                 {t("Extracted: {value} → corrected by reviewer (original kept)", {
@@ -267,6 +332,11 @@ export default function ReviewPage() {
         )}
         <div className="min-h-0 flex-1 overflow-auto">
           {facts.isLoading && <Spinner />}
+          {!facts.isLoading && !ordered.length && (
+            <div className="px-4 py-6 text-center text-[12.5px] text-muted">
+              {shownQueue === "needs" ? t("Nothing in this document needs you.") : t("No values here.")}
+            </div>
+          )}
           {groups.map(([kind, fs]) => (
             <div key={kind}>
               <div className="sticky top-0 z-10 bg-surface/95 px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-subtle backdrop-blur">
@@ -381,7 +451,7 @@ function EditDialog({
           onSubmit(mode === "correct" ? value : undefined, reason);
         }}
       >
-        <div className="rounded-md bg-paper px-3 py-2 text-[12.5px]">
+        <div className="rounded-[var(--radius-control)] bg-paper px-3 py-2 text-[12.5px]">
           <div className="text-subtle">{fact.label}</div>
           <div className="num font-medium">{t("Extracted: {value}", { value: fact.value_extracted ?? "–" })}</div>
         </div>

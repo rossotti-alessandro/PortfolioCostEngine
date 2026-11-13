@@ -190,7 +190,10 @@ function StepBar({ pid }: { pid: number }) {
               </span>
               {t(s.label)}
               {s.to === "review" && toCheck > 0 && (
-                <span className="num rounded-[3px] bg-amber-50 px-1.5 text-[11.5px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-700/20">
+                <span
+                  title={t("{n} values not yet checked by a person", { n: toCheck })}
+                  className="num rounded-[3px] bg-amber-50 px-1.5 text-[11.5px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-700/20"
+                >
                   {toCheck}
                 </span>
               )}
@@ -298,7 +301,13 @@ export function ProspectLayout() {
               <span>·</span>
               <span>{t("Domicile {code}", { code: data.client_domicile })}</span>
               {data.holdings.length === 0 ? (
-                <Badge tone="amber">{t("No statement of assets yet")}</Badge>
+                <Badge tone="amber">
+                  {t(
+                    data.documents.some((d) => d.doc_type === "portfolio_statement")
+                      ? "No position valued in CHF yet"
+                      : "No statement of assets yet",
+                  )}
+                </Badge>
               ) : data.current.is_complete ? (
                 <Badge tone="green">{t("All cost categories evidenced")}</Badge>
               ) : (

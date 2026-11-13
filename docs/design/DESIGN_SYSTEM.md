@@ -92,7 +92,7 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 | `ScenarioCompare` | current vs same-holdings vs changed-holdings, with comparability badge |
 | `StepBar` | Documents → Check values → Costs → Compare → Report across the top of the prospect header (`components/Shell.tsx`), always visible; done tick per step, count of values still to check; Internal economics as a lock link at the right end |
 | `AccountMenu` | bottom of the sidebar: user, language and demo role; opens language switch, role picker and sign-out. The sidebar itself holds only places: Clients, Cost reviews, Library |
-| `ReviewTable` | keyboard: j/k move, a accept, e edit, r reject, Enter open source |
+| `ReviewTable` | Check values queue (`pages/Review.tsx`): Needs you · Confirmed by checks · Checked by a person · All, opening on Needs you; "Why you" in words (`whyYou` in `lib/trail.ts`: extraction flags, scanned page, confidence below 90%); zoomed source row; keyboard j/k move, a accept, e correct, r reject |
 | `DemoWatermark` | "SYNTHETIC DEMO" on every page and export when the dataset is synthetic |
 
 ## 6. Screens (analyst workspace and client report)
@@ -103,7 +103,7 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 4. **Costs**: answer card first (known annual cost, "at least" when incomplete, one sentence with % and bps of assets and the count of undetermined costs; debited, inside products and evidence coverage beside it), then documents to ask for, points to review, cost by layer, ledger, folded checks/coverage/positions. Each undetermined cost is listed once, as the document that would resolve it.
 5. **Compare**: scenarios side by side, editable proposal tariff, one-off costs, payback, comparability badge.
 6. **Internal** (analyst-only route, separate layout): contribution margin, decision gates.
-7. **Report**: client-safe one-pager + appendix, PDF export, approved figures only, DemoWatermark when synthetic.
+7. **Report**: "Ready to send?" checklist first (values still needing a person, documents to ask for, undetermined costs listed not zeroed, senior approval; each links to where it is resolved; it informs, never blocks), then client-safe one-pager + appendix, PDF export, approved figures only, DemoWatermark when synthetic. The audit trail is a decision log: consecutive events with the same action and user collapse into one row with a count.
 
 ## 7. Calls to action
 

@@ -26,7 +26,7 @@ export default function ComparePage() {
     return (
       <div className="space-y-4">
         <PageTitle title={t("Compare with the proposal")} />
-        <NotStarted pid={pid} docs={a.documents.length} />
+        <NotStarted pid={pid} docs={a.documents} />
       </div>
     );
   const sc = mode === "same" ? a.scenarios.same_holdings : a.scenarios.optimized;

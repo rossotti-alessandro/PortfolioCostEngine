@@ -4,10 +4,11 @@ import { Badge, Button, Card, CardHeader, ErrorBox, Money, Spinner, StatGrid, in
 import { api, getRole } from "@/lib/api";
 import { LAYER, chf, savingParts } from "@/lib/format";
 import { getLang, t } from "@/lib/i18n";
+import type { Analysis } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Download, ShieldCheck } from "lucide-react";
+import { CheckCircle2, CircleDashed, Download, ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 /** Client-safe preview. Uses only /analysis (internal economics are stripped server-side). */
 export default function ReportPage() {
@@ -61,7 +62,7 @@ export default function ReportPage() {
         }
       />
       {a.holdings.length === 0 ? (
-        <NotStarted pid={pid} docs={a.documents.length} />
+        <NotStarted pid={pid} docs={a.documents} />
       ) : (
         <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
           <Card className="overflow-hidden">
@@ -138,6 +139,34 @@ export default function ReportPage() {
           </Card>
           <div className="space-y-4">
             <Card>
+              <CardHeader title={t("Ready to send?")} />
+              <ul className="space-y-2.5 p-4 text-[13px]">
+                {ready(a).map((x) => (
+                  <li key={x.text} className="flex items-start gap-2">
+                    {x.ok ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-700" aria-label={t("done")} />
+                    ) : (
+                      <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-label={t("open")} />
+                    )}
+                    <span className={x.ok ? "text-ink" : "text-amber-700"}>
+                      {x.text}
+                      {x.to && (
+                        <>
+                          {" · "}
+                          <Link to={`/p/${pid}/${x.to}`} className="font-medium text-teal-700 hover:underline">
+                            {x.cta}
+                          </Link>
+                        </>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="border-t border-line px-4 py-2.5 text-[12px] text-subtle">
+                {t("Internal margin and analyst notes are never in the PDF.")}
+              </p>
+            </Card>
+            <Card>
               <CardHeader title={t("Approval")} />
               <div className="space-y-3 p-4 text-[13px]">
                 {approved ? (
@@ -182,19 +211,19 @@ export default function ReportPage() {
                   </>
                 ) : (
                   <p className="text-[12.5px] text-subtle">
-                    {t("Only a senior reviewer can approve. Switch the demo role in the sidebar.")}
+                    {t("Only a senior reviewer can approve. Switch the demo role in the account menu.")}
                   </p>
                 )}
               </div>
             </Card>
             <Card>
-              <CardHeader title={t("Audit trail")} />
+              <CardHeader title={t("Decision log")} />
               <ol className="max-h-[360px] space-y-2 overflow-auto p-4 text-[12.5px]">
-                {(audit.data ?? []).map((e, i) => (
-                  <li key={`${e.at}-${i}`} className="border-l-2 border-line pl-3">
-                    <div className="font-medium text-ink">{e.action.replaceAll(".", " ")}</div>
+                {group(audit.data ?? []).map((g) => (
+                  <li key={`${g.at}-${g.action}`} className="border-l-2 border-line pl-3">
+                    <div className="font-medium text-ink">{actionText(g.action, g.n)}</div>
                     <div className="text-subtle">
-                      {e.user} · {e.at.slice(0, 16).replace("T", " ")}
+                      {g.user} · {g.at.slice(0, 16).replace("T", " ")}
                     </div>
                   </li>
                 ))}
@@ -205,6 +234,60 @@ export default function ReportPage() {
       )}
     </div>
   );
+}
+
+type Ready = { ok: boolean; text: string; to?: string; cta?: string };
+
+/** What must be true before the PDF goes to a client; each open item links to where it is fixed. */
+function ready(a: Analysis): Ready[] {
+  const toCheck = a.review.facts - a.review.reviewed - a.review.rejected;
+  const ask = a.requests.filter((r) => r.status === "open").length;
+  const unknown = a.current.unknown.length;
+  return [
+    toCheck > 0
+      ? { ok: false, text: t("{n} values still need a person", { n: toCheck }), to: "review", cta: t("Check now") }
+      : { ok: true, text: t("Every value checked by a person") },
+    ask > 0
+      ? { ok: false, text: t("{n} documents to ask for", { n: ask }), to: "costs", cta: t("See the list") }
+      : { ok: true, text: t("No document requests open") },
+    {
+      ok: true,
+      text: unknown
+        ? t("{n} unknown costs listed, not counted as zero", { n: unknown })
+        : t("Every cost category is evidenced."),
+    },
+    a.approval?.valid
+      ? { ok: true, text: t("Approved by {user}", { user: a.approval.user }) }
+      : { ok: false, text: t("Not approved by a senior reviewer") },
+  ];
+}
+
+type AuditRow = { at: string; user: string; action: string };
+
+/** Consecutive events of the same kind by the same person read as one line ("11 documents uploaded"). */
+function group(rows: AuditRow[]) {
+  const out: (AuditRow & { n: number })[] = [];
+  for (const e of rows) {
+    const last = out.at(-1);
+    if (last && last.action === e.action && last.user === e.user) last.n++;
+    else out.push({ ...e, n: 1 });
+  }
+  return out;
+}
+
+const ACTION: Record<string, [string, string]> = {
+  "document.uploaded": ["Document uploaded", "{n} documents uploaded"],
+  "prospect.created": ["Cost review created", "Cost review created"],
+  "prospect.updated": ["Prospect details changed", "Prospect details changed {n} times"],
+  "proposal.saved": ["Proposal saved", "Proposal saved {n} times"],
+  "request.status": ["Document request updated", "{n} document requests updated"],
+  "report.approved": ["Approved for client use", "Approved for client use"],
+  "internal.viewed": ["Internal economics viewed", "Internal economics viewed {n} times"],
+};
+
+function actionText(action: string, n: number) {
+  const w = ACTION[action];
+  return w ? t(w[n > 1 ? 1 : 0], { n }) : action.replaceAll(".", " ");
 }
 
 function Fig({

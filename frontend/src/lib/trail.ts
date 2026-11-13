@@ -1,7 +1,7 @@
 /** Decision trail of one extracted value: how it was read, what the automatic checks said, what a person did.
  *  Pure: built only from what the API returned, so a step that has no data says so instead of being invented. */
 import { t } from "./i18n";
-import type { EvidenceRef } from "./types";
+import type { EvidenceRef, ExtractionReview, Fact } from "./types";
 
 export interface HistoryEntry {
   action: string;
@@ -134,4 +134,18 @@ function personSteps(e: EvidenceRef, history: HistoryEntry[]): TrailStep[] {
 
 export function trailSteps(e: EvidenceRef, history: HistoryEntry[]): TrailStep[] {
   return [readStep(e), ...machineSteps(e), ...personSteps(e, history)];
+}
+
+/** Why a value read from a document needs a person: the extraction's own flags, a scanned page, low confidence.
+ *  Empty when the automatic checks are enough. A value a person already handled never needs them again. */
+export function whyYou(f: Fact): string[] {
+  if (f.status !== "extracted") return [];
+  const out: string[] = [];
+  const r = f.extra?.review as ExtractionReview | null | undefined;
+  if (r?.status === "needs_review")
+    out.push(...(r.reasons?.length ? r.reasons.map(reasonText) : [t("the automatic checks could not confirm it")]));
+  if (OCR.test(f.evidence.engine)) out.push(t("scanned page, read with OCR"));
+  if (f.evidence.confidence < 0.9)
+    out.push(t("reading confidence {pct}%", { pct: Math.round(f.evidence.confidence * 100) }));
+  return [...new Set(out)];
 }
