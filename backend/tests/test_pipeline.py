@@ -1,6 +1,7 @@
 """Golden-label tests: the synthetic documents are generated from demo/spec.py, so every value the
 pipeline extracts can be compared with the truth. Also covers the master-prompt acceptance gates."""
 
+import importlib.util
 from decimal import Decimal as Dec
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 from pce.demo import spec as S
 from pce.demo.generate import generate
 from pce.demo.offline import load_folder, run
+from pce.extraction import layout
 from pce.extraction.parsers import extract
 
 pytestmark = pytest.mark.ocr  # the corpus includes a scanned statement read with Tesseract
@@ -46,9 +48,15 @@ def test_positions_match_golden_labels_with_evidence(corpus):
     assert beta["sheet"] == "Holdings" and beta["cell"] == "H8"
 
 
-def test_scanned_statement_read_by_ocr(corpus):
+@pytest.mark.parametrize("engine", layout.OCR_ENGINES)
+def test_scanned_statement_read_by_ocr(corpus, engine, monkeypatch):
+    """Both scan readers (Tesseract, RapidOCR when its extra is installed, SC-5.22) read the same debits."""
+    if engine == "rapidocr" and importlib.util.find_spec("rapidocr") is None:
+        pytest.skip("rapidocr extra not installed")
+    monkeypatch.setattr(layout, "ocr_engine", lambda: engine)
     res, pages = extract("scan.pdf", (corpus / "alpha_estratto_conto_Q3_2026_scan.pdf").read_bytes())
-    assert pages[0].engine == "tesseract-ocr"
+    assert pages[0].engine == engine
+    assert any("read with OCR" in w for w in res.profile.warnings)
     debits = {f.fee_code: Dec(f.value) for f in res.facts if f.kind == "cash_debit"}
     assert debits == {"ADVISORY_FEE": Dec("6400.00"), "CUSTODY_FEE": Dec("1500.00")}
 
