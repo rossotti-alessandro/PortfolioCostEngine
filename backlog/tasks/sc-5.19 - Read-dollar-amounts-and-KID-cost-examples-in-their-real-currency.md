@@ -1,15 +1,15 @@
 ---
 id: SC-5.19
 title: Read "$" amounts and KID cost examples in their real currency
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Validate accuracy and speed up processing"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/sc-5.19-currency-misreads"
 pr: ""
 created_date: "2026-11-13 13:25"
-updated_date: "2026-11-13 13:25"
+updated_date: "2026-11-13 13:23"
 labels:
   - extraction
 dependencies: []
