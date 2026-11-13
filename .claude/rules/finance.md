@@ -24,13 +24,18 @@ These hold for every line of the cost engine. A PR that breaks one is not mergea
 
 ## Evidence and status
 
-- Every fee atom has a `status` in `observed | contractual | estimated | illustrative | unknown | not_applicable`
-  and at least one evidence reference (document + page + bbox, or sheet + cell, or URL + anchor),
+- Every fee atom has a measurement status from `Measurement` in `backend/src/pce/finance/ledger.py` (the
+  canonical list: `observed | contractual | public_tariff | estimated | illustrative | maximum | unknown |
+  not_applicable`) and at least one evidence reference (document + page + bbox, or sheet + cell, or URL + anchor),
   except `unknown`, which carries the reason and the document that would resolve it.
 - **Missing is not zero.** `unknown` amounts are `None`, never `Decimal(0)`. Totals that include an unknown
   are reported as "at least X" plus the list of unknowns, never as a plain total.
 - `not_applicable` (we know the fee does not exist) and `unknown` (we could not find it) are different.
-- A KID "costs over time" example is `illustrative`. It is never an `observed` paid fee.
+- A KID "costs over time" example is `illustrative`; a KID entry or exit charge "up to x%" is `maximum`.
+  Neither is ever counted as a paid fee.
+- A bank's public price list is `public_tariff` (weak evidence of what this client pays) until the
+  client's own agreement or a debit confirms it.
+- Adding or renaming a status is a rule-9 change (AGENTS.md): code, taxonomy, UI chips and this list together.
 
 ## No double counting
 
@@ -46,6 +51,10 @@ These hold for every line of the cost engine. A PR that breaks one is not mergea
 - A tariff applies only to its booking entity and validity dates. A Luxembourg tariff on a Swiss-booked
   account is rejected, not approximated.
 - Product costs match the exact ISIN and share class, dated. No match on fund name alone.
+- FX: convert only with a dated rate printed on the client's own documents from the same institution
+  (statement, advice, report; `pce/analysis.py`),
+  and keep that rate's evidence. No market-rate lookup to fill a gap: without a printed rate the
+  converted amount stays `unknown`, and the original-currency figure is still shown.
 
 ## Scenarios
 
