@@ -1,15 +1,15 @@
 ---
 id: SC-8.23
 title: Never show CHF 0 for assets that are not valued yet
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Build FeeLens proposal for Massimo"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/sc-8.23-no-chf-zero"
 pr: ""
 created_date: "2026-11-13 14:25"
-updated_date: "2026-11-13 14:25"
+updated_date: "2026-11-13 14:23"
 labels:
   - ui
 dependencies: []
