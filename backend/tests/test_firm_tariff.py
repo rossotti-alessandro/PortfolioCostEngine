@@ -12,9 +12,9 @@ from fastapi.testclient import TestClient
 from pce.api import app
 
 client = TestClient(app)
-ANALYST = session_headers("firm-t", "ana", "analyst")
-SENIOR = session_headers("firm-t", "sam", "senior")
-OTHER = session_headers("firm-u", "olga", "senior")
+ANALYST = session_headers("firm-t", "tariff.ana", "analyst")
+SENIOR = session_headers("firm-t", "tariff.sam", "senior")
+OTHER = session_headers("firm-u", "tariff.olga", "senior")
 
 TARIFF = {
     "firm_name": "Safe Capital",
@@ -32,7 +32,7 @@ def new_prospect(code: str, headers: dict) -> dict:
 def test_new_reviews_start_from_the_saved_firm_tariff():
     assert client.put("/api/firm/tariff", json=TARIFF, headers=SENIOR).status_code == 200
     got = client.get("/api/firm/tariff", headers=ANALYST).json()
-    assert got["saved"] and got["config"]["custody_bps"] == "12" and got["updated_by"] == "sam"
+    assert got["saved"] and got["config"]["custody_bps"] == "12" and got["updated_by"] == "tariff.sam"
     cfg = new_prospect("T-1", ANALYST)
     assert cfg["firm_name"] == "Safe Capital"
     assert cfg["eam_tiers"] == [["5000000", "80"], [None, "60"]]
