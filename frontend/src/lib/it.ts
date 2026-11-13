@@ -972,4 +972,15 @@ export const IT: Record<string, string> = {
   "Found on the page but not matched to a cost. Open them, then accept or reject each in evidence review.":
     "Trovati sulla pagina ma non collegati a un costo. Aprili, poi accetta o respingi ciascuno nella verifica delle evidenze.",
   "Found in {file}, not used": "Trovato in {file}, non usato",
+  "Firm tariff": "Tariffa della società",
+  "Your own prices. Every new cost review starts from them; one review can still be adjusted on its Compare page.":
+    "I vostri prezzi. Ogni nuova analisi dei costi parte da questi; una singola analisi si può ancora modificare nella pagina Confronto.",
+  "Not set yet: new cost reviews use the synthetic demo tariff until a senior saves your prices here.":
+    "Non ancora impostata: le nuove analisi usano la tariffa demo sintetica finché un senior non salva qui i vostri prezzi.",
+  "Your prices": "I vostri prezzi",
+  "Last saved by": "Ultimo salvataggio di",
+  "Fee bands, custody, trading, FX margin and VAT, as you would charge this client.":
+    "Fasce di commissione, custodia, negoziazione, margine sui cambi e IVA, come li applichereste al cliente.",
+  "Save firm tariff": "Salva la tariffa",
+  "Only a senior reviewer can change it.": "Solo un revisore senior può modificarla.",
 };

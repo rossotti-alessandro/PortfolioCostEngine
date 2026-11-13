@@ -14,6 +14,7 @@ import CataloguePage from "./pages/Catalogue";
 import ComparePage from "./pages/Compare";
 import CostsPage from "./pages/Costs";
 import DocumentsPage from "./pages/Documents";
+import FirmTariffPage from "./pages/FirmTariff";
 import HowItWorksPage from "./pages/HowItWorks";
 import InternalPage from "./pages/Internal";
 import { RequireAuth } from "./pages/Login";
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },
+      { path: "/tariff", element: <FirmTariffPage /> },
       ...crmRoutes,
       {
         path: "/p/:id",

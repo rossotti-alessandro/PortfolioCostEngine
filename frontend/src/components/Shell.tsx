@@ -12,6 +12,7 @@ import {
   FolderOpen,
   Lock,
   LogOut,
+  Percent,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -231,6 +232,9 @@ export function AppShell() {
             className={() => navCls({ isActive: path.startsWith("/catalogue") || path.startsWith("/how-it-works") })}
           >
             <BookOpen className="h-4 w-4" /> {t("Library")}
+          </NavLink>
+          <NavLink to="/tariff" className={navCls}>
+            <Percent className="h-4 w-4" /> {t("Firm tariff")}
           </NavLink>
         </nav>
         <div className="mt-6 space-y-2 md:mt-auto">
