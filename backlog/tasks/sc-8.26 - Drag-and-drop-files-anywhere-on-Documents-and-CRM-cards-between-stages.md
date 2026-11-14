@@ -1,15 +1,15 @@
 ---
 id: SC-8.26
 title: Drag and drop files anywhere on Documents, and CRM cards between stages
-status: "To Do"
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Redesign FeeLens user flow and components"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-14 00:30"
-updated_date: "2026-11-14 00:30"
+updated_date: "2026-11-14 00:25"
 labels:
   - ui
 dependencies: [SC-8.25]
