@@ -64,7 +64,9 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 - Responsive: below 768 px the left nav becomes a drawer behind a "Menu" button in a 56 px top bar (closes on
   navigation, Escape, tap outside); the step bar scrolls sideways and keeps the current step in view. No page
   scrolls sideways at 390, 820, 1280 or 1440 px (`tests/e2e/responsive.spec.ts`). Wide tables scroll inside
-  their card.
+  their card; cards never grow wider than their column (`min-w-0`) and card headers wrap their actions. On a
+  phone, chart columns that duplicate a number hide, and secondary columns move under the row's name.
+- Info (i): opens on hover, focus and tap (`InfoTip`), closes on a second tap or a tap outside.
 - Motion: only to show what changed (menu opens, row expands, panel appears): `pce-in` 140 ms fade and 4 px
   slide, `pce-fade` for scrims. `prefers-reduced-motion` turns all of it off. "Skip to content" is the first
   tab stop.
@@ -105,7 +107,7 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 ## 6. Screens (analyst workspace and client report)
 
 1. **Prospects**: list with AUM, banks, documents, analysis status, last activity. CTA "New analysis".
-2. **Intake**: alias, base currency, domicile, consent; drop zone; live classification; required-documents checklist. CTA "Analyse", secondary "Request missing documents". Documents list: one line per file (File, Type, Bank or issuer, Date, Values, Status, link to how it was processed), documents needing a check first, 6 shown then "Show all"; read-with, fingerprint, warnings and the type selector open under the row. The drop zone shrinks to one line once documents exist.
+2. **Intake**: alias, base currency, domicile, consent; drop zone; live classification; required-documents checklist. CTA "Analyse", secondary "Request missing documents". Documents list: one line per file (File, Type, Bank or issuer, Date, Values, Status, link to how it was processed; below 1360 px type and bank sit under the file name, on phones the date hides and status is its icon), documents needing a check first, 6 shown then "Show all"; read-with, fingerprint, warnings and the type selector open under the row. The drop zone shrinks to one line once documents exist.
 3. **Review**: split screen, low-confidence first, reconciliation banner at top.
 4. **Costs**: answer card first (known annual cost, "at least" when incomplete, one sentence with % and bps of assets and the count of undetermined costs; debited, inside products and evidence coverage beside it), then documents to ask for, points to review, cost by layer, ledger, folded checks/coverage/positions. Each undetermined cost is listed once, as the document that would resolve it.
 5. **Compare**: scenarios side by side, editable proposal tariff, one-off costs, payback, comparability badge.

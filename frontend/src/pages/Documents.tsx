@@ -275,12 +275,12 @@ function DocTable({
       <table className="w-full table-fixed text-[13px]">
         <thead>
           <tr className="whitespace-nowrap border-b border-line text-left text-[11.5px] uppercase tracking-wide text-subtle">
-            <th className="px-5 py-2 font-medium">{t("File")}</th>
-            <th className="w-[15%] px-3 py-2 font-medium">{t("Type")}</th>
-            <th className="w-[15%] px-3 py-2 font-medium">{t("Bank or issuer")}</th>
-            <th className="w-[112px] px-3 py-2 font-medium">{t("Date")}</th>
+            <th className="px-3 py-2 font-medium sm:px-5">{t("File")}</th>
+            <th className="hidden w-[15%] px-3 py-2 font-medium min-[1360px]:table-cell">{t("Type")}</th>
+            <th className="hidden w-[15%] px-3 py-2 font-medium min-[1360px]:table-cell">{t("Bank or issuer")}</th>
+            <th className="hidden w-[112px] px-3 py-2 font-medium sm:table-cell">{t("Date")}</th>
             <th className="w-[64px] px-3 py-2 text-right font-medium">{t("Values")}</th>
-            <th className="w-[148px] px-3 py-2 font-medium">{t("Status")}</th>
+            <th className="w-[76px] px-3 py-2 font-medium sm:w-[148px]">{t("Status")}</th>
           </tr>
         </thead>
         <tbody>
@@ -290,7 +290,7 @@ function DocTable({
             return (
               <Fragment key={d.id}>
                 <tr className={cn("border-b border-line hover:bg-paper", isOpen && "bg-paper")}>
-                  <td className="px-5 py-2">
+                  <td className="px-3 py-2 sm:px-5">
                     <button
                       type="button"
                       aria-expanded={isOpen}
@@ -304,28 +304,41 @@ function DocTable({
                       ) : (
                         <FileText className="h-4 w-4 shrink-0 text-navy-700" />
                       )}
-                      <span className="truncate" title={d.filename}>
-                        {d.filename}
+                      <span className="min-w-0">
+                        <span className="block truncate" title={d.filename}>
+                          {d.filename}
+                        </span>
+                        <span className="block truncate text-[12px] font-normal text-muted min-[1360px]:hidden">
+                          {t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}
+                          {d.profile.institution && ` · ${d.profile.institution}`}
+                        </span>
                       </span>
                     </button>
                   </td>
-                  <td className="truncate px-3 py-2 text-ink">{t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}</td>
-                  <td className="truncate px-3 py-2 text-ink" title={d.profile.institution ?? undefined}>
+                  <td className="hidden truncate px-3 py-2 text-ink min-[1360px]:table-cell">
+                    {t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}
+                  </td>
+                  <td
+                    className="hidden truncate px-3 py-2 text-ink min-[1360px]:table-cell"
+                    title={d.profile.institution ?? undefined}
+                  >
                     {d.profile.institution ?? <span className="text-subtle">{t("not found")}</span>}
                   </td>
-                  <td className="num truncate px-3 py-2 text-muted">
+                  <td className="num hidden truncate px-3 py-2 text-muted sm:table-cell">
                     {d.profile.period_end ?? d.profile.as_of ?? "–"}
                   </td>
                   <td className="num px-3 py-2 text-right">{d.fact_count}</td>
                   <td className="px-3 py-2">
                     <span className="flex items-center justify-between gap-1">
                       {check ? (
-                        <Badge tone="amber">
-                          <AlertTriangle className="h-3 w-3" /> {t("Needs a check")}
+                        <Badge tone="amber" className="relative">
+                          <AlertTriangle className="h-3 w-3" aria-hidden />
+                          <span className="sr-only sm:not-sr-only">{t("Needs a check")}</span>
                         </Badge>
                       ) : (
-                        <Badge tone="teal">
-                          <CheckCircle2 className="h-3 w-3" /> {t("Ready")}
+                        <Badge tone="teal" className="relative">
+                          <CheckCircle2 className="h-3 w-3" aria-hidden />
+                          <span className="sr-only sm:not-sr-only">{t("Ready")}</span>
                         </Badge>
                       )}
                       <Link
