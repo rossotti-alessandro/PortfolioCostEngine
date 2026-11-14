@@ -54,7 +54,7 @@ export function Button({
 
 export function Card({ className, children, ...p }: { className?: string; children: ReactNode; id?: string }) {
   return (
-    <section className={cn("rounded-[var(--radius-card)] border border-line bg-surface", className)} {...p}>
+    <section className={cn("min-w-0 rounded-[var(--radius-card)] border border-line bg-surface", className)} {...p}>
       {children}
     </section>
   );
@@ -68,7 +68,10 @@ export function CardHeader({
 }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
     <div
-      className={cn("flex min-h-[52px] items-center justify-between gap-4 border-b border-line px-5 py-3", className)}
+      className={cn(
+        "flex min-h-[52px] flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-5 py-3",
+        className,
+      )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <h2 className="text-[15px] font-semibold text-navy-900">{title}</h2>
@@ -243,15 +246,20 @@ export function Dialog({
   );
 }
 
-export function Tip({ content, children }: { content: ReactNode; children: ReactNode }) {
+export function Tip({
+  content,
+  children,
+  open,
+  onOpenChange,
+}: { content: ReactNode; children: ReactNode; open?: boolean; onOpenChange?: (o: boolean) => void }) {
   return (
     <TooltipPrimitive.Provider delayDuration={150}>
-      <TooltipPrimitive.Root>
+      <TooltipPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             sideOffset={6}
-            className="z-50 max-w-xs rounded-md bg-navy-950 px-2.5 py-1.5 text-[12px] leading-snug text-white shadow-lg"
+            className="pce-in z-50 max-w-[min(20rem,calc(100vw-2rem))] rounded-[var(--radius-control)] bg-navy-950 px-2.5 py-1.5 text-[12px] leading-snug text-white shadow-lg"
           >
             {content}
           </TooltipPrimitive.Content>
@@ -302,12 +310,19 @@ export function ErrorBox({ error }: { error: unknown }) {
 }
 
 /** The (i) next to a title: explanations stay one hover or tap away instead of crowding the screen. */
+/** (i) next to a title: opens on hover and focus, and on tap, so it also works on touch screens. */
 export function InfoTip({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Tip content={children}>
+    <Tip content={children} open={open} onOpenChange={setOpen}>
       <button
         type="button"
         aria-label={t("More information")}
+        aria-expanded={open}
+        onClick={(e) => {
+          e.preventDefault(); // Radix closes a tooltip on click; a tap must open it instead
+          setOpen(!open);
+        }}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-paper hover:text-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
       >
         <Info className="h-4 w-4" />

@@ -33,7 +33,7 @@ test.describe("phone", () => {
     await expect(
       page.getByRole("navigation", { name: "Review workflow" }).getByRole("link", { name: /Costs/ }),
     ).toBeInViewport();
-    for (const r of ["documents", "review", "costs", "report"]) {
+    for (const r of ["documents", "review", "costs", "compare", "report", "internal"]) {
       await page.goto(`/p/${pid}/${r}`);
       await noSideScroll(page);
     }
@@ -57,4 +57,19 @@ test("skip link is the first tab stop and moves focus to the content", async ({ 
   await expect(skip).toBeFocused();
   await skip.press("Enter");
   await expect(page.locator("main#main")).toBeFocused();
+});
+
+test.describe("tablet", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true });
+
+  test("no sideways page, and (i) opens on a tap", async ({ page }) => {
+    const pid = await demoProspect(page);
+    for (const r of ["documents", "review", "costs", "compare", "report", "internal"]) {
+      await page.goto(`/p/${pid}/${r}`);
+      await noSideScroll(page);
+    }
+    await page.goto(`/p/${pid}/documents`);
+    await page.getByRole("button", { name: "More information" }).first().tap();
+    await expect(page.getByRole("tooltip")).toBeVisible();
+  });
 });
