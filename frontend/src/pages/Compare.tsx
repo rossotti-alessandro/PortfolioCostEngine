@@ -24,6 +24,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 const COMPARE_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L9"];
+const LINES_SHOWN = 6;
 
 export default function ComparePage() {
   const pid = Number(useParams().id);
@@ -96,18 +97,6 @@ export default function ComparePage() {
       )}
       <StatGrid>
         <Kpi
-          label={t("Today (comparable)")}
-          value={chf(cmp.current_known)}
-          onClick={() => setTrace(today)}
-          sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
-        />
-        <Kpi
-          label={t("With {firm}", { firm })}
-          value={chf(cmp.proposal_known)}
-          onClick={() => setTrace(withFirm)}
-          sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
-        />
-        <Kpi
           label={t(sv.label)}
           tone={sv.saves ? "teal" : undefined}
           onClick={() =>
@@ -133,6 +122,18 @@ export default function ComparePage() {
           }
         />
         <Kpi
+          label={t("Today (comparable)")}
+          value={chf(cmp.current_known)}
+          onClick={() => setTrace(today)}
+          sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
+        />
+        <Kpi
+          label={t("With {firm}", { firm })}
+          value={chf(cmp.proposal_known)}
+          onClick={() => setTrace(withFirm)}
+          sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
+        />
+        <Kpi
           label={t("Switching cost")}
           value={chf(cmp.migration_one_off)}
           sub={
@@ -146,7 +147,7 @@ export default function ComparePage() {
         />
       </StatGrid>
 
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+      <div className="grid gap-4 min-[1600px]:grid-cols-[1.5fr_1fr]">
         <LayerCompare cur={a.scenarios.current_comparable} prop={sc.ledger} cmp={cmp} firm={firm} />
         <Card>
           <CardHeader title={t("Why the saving is a bound")} />
@@ -329,7 +330,11 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
 }
 
 function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: Atom) => void; firm: string }) {
+  const [all, setAll] = useState(false);
   const atoms = ledger.atoms.filter((x) => x.role === "counted" || x.role === "unknown");
+  // Undetermined lines first, so they are never hidden behind "Show all".
+  const sorted = [...atoms].sort((x, y) => Number(y.amount === null) - Number(x.amount === null));
+  const shown = all ? sorted : sorted.slice(0, LINES_SHOWN);
   return (
     <Card className="overflow-x-auto">
       <CardHeader
@@ -340,7 +345,7 @@ function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: A
       />
       <table className="w-full text-[13px]">
         <tbody className="divide-y divide-line">
-          {atoms.map((x) => (
+          {shown.map((x) => (
             <tr
               key={x.id}
               tabIndex={0}
@@ -363,6 +368,16 @@ function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: A
           ))}
         </tbody>
       </table>
+      {sorted.length > LINES_SHOWN && (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+          className="w-full border-t border-line px-5 py-2 text-left text-[12.5px] font-medium text-teal-700 hover:bg-paper"
+        >
+          {all ? t("Show fewer") : t("Show all {n} lines", { n: sorted.length })}
+        </button>
+      )}
     </Card>
   );
 }

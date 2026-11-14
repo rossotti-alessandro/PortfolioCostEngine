@@ -635,8 +635,11 @@ function Requests({ a }: { a: Analysis }) {
     mutationFn: ({ key, status }: { key: string; status: string }) => api.setRequest(a.prospect.id, key, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["analysis", a.prospect.id] }),
   });
+  const [all, setAll] = useState(false);
   if (!a.requests.length) return null;
   const open = a.requests.filter((r) => r.status === "open");
+  // The two biggest gaps carry most of the answer; the rest wait behind "Show all".
+  const shown = all ? a.requests : a.requests.slice(0, REQUESTS_SHOWN);
   return (
     <Card>
       <CardHeader
@@ -661,7 +664,7 @@ function Requests({ a }: { a: Analysis }) {
         }
       />
       <div className="grid gap-3 p-4 md:grid-cols-2">
-        {a.requests.map((r) => (
+        {shown.map((r) => (
           <div
             key={r.key}
             className={cn(
@@ -671,7 +674,7 @@ function Requests({ a }: { a: Analysis }) {
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="text-[11.5px] font-semibold uppercase tracking-wide text-amber-700">
+                <div className="text-[12.5px] font-medium text-amber-700">
                   {t("Priority {n} · {amount} affected", { n: r.priority, amount: chf(r.assets_affected) })}
                 </div>
                 <div className="mt-0.5 font-semibold text-navy-900">{tm(r.title)}</div>
@@ -703,9 +706,21 @@ function Requests({ a }: { a: Analysis }) {
           </div>
         ))}
       </div>
+      {a.requests.length > REQUESTS_SHOWN && (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+          className="w-full border-t border-line px-5 py-2 text-left text-[12.5px] font-medium text-teal-700 hover:bg-paper"
+        >
+          {all ? t("Show fewer") : t("Show all {n} requests", { n: a.requests.length })}
+        </button>
+      )}
     </Card>
   );
 }
+
+const REQUESTS_SHOWN = 2;
 
 /* --------------------------------------------------------------- holdings */
 

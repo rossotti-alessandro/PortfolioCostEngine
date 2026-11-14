@@ -87,7 +87,7 @@ export function ReviewPoints({ points, onOpen }: { points: ReviewPoint[]; onOpen
           <div className="flex gap-1.5">
             {n.high > 0 && <Badge tone="red">{t("{n} check first", { n: n.high })}</Badge>}
             {n.medium > 0 && <Badge tone="amber">{t("{n} to check", { n: n.medium })}</Badge>}
-            {n.low > 0 && <Badge>{t("{n} notes", { n: n.low })}</Badge>}
+            {n.low > 0 && <Badge>{n.low === 1 ? t("1 note") : t("{n} notes", { n: n.low })}</Badge>}
           </div>
         }
       />

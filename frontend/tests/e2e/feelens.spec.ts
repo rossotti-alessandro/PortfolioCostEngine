@@ -263,7 +263,7 @@ test("11 trace: result → computation → line → highlighted source page", as
 
   // compare: the saving opens today − proposal, each side opens its lines
   await page.goto(`/p/${demo?.id}/compare`);
-  await page.getByTitle("How is this calculated?").nth(2).click();
+  await page.getByTitle("How is this calculated?").first().click();
   await expect(page.getByRole("dialog").getByText("= Annual saving")).toBeVisible();
   await shot(page, "15-trace-saving");
   await page
