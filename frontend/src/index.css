@@ -103,3 +103,46 @@ th.num,
 .money {
   white-space: nowrap;
 }
+
+/* Motion only shows what changed (a menu opens, a row expands); it never decorates. */
+@keyframes pce-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes pce-fade {
+  from {
+    opacity: 0;
+  }
+}
+.pce-in {
+  animation: pce-in 140ms ease-out;
+}
+.pce-fade {
+  animation: pce-fade 160ms ease-out;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+a,
+button,
+summary,
+select,
+input,
+label {
+  touch-action: manipulation;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
