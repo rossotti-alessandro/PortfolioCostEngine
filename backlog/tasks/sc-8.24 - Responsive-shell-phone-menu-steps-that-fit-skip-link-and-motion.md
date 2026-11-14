@@ -7,9 +7,9 @@ owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-bj3sap"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/55"
 created_date: "2026-11-14 00:05"
-updated_date: "2026-11-14 00:25"
+updated_date: "2026-11-14 00:08"
 labels:
   - ui
 dependencies: []
