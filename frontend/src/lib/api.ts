@@ -154,6 +154,11 @@ export const api = {
     }>(`/api/prospects/${id}/proposal`),
   saveProposal: (id: number, cfg: Partial<ProposalConfig>) =>
     req<{ version: number }>(`/api/prospects/${id}/proposal`, json(cfg, "PUT")),
+  firmTariff: () =>
+    req<{ config: ProposalConfig; saved: boolean; updated_by: string | null; updated_at: string | null }>(
+      "/api/firm/tariff",
+    ),
+  saveFirmTariff: (cfg: Partial<ProposalConfig>) => req<{ ok: boolean }>("/api/firm/tariff", json(cfg, "PUT")),
   setRequest: (id: number, key: string, status: string) =>
     req(`/api/prospects/${id}/requests/${encodeURIComponent(key)}`, json({ status }, "PATCH")),
   approve: (id: number, note: string) => req(`/api/prospects/${id}/approve`, json({ note })),

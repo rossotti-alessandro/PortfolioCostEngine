@@ -32,6 +32,7 @@ from .db import (
     AuditEvent,
     Document,
     FactRow,
+    FirmSettings,
     ProposalVersion,
     Prospect,
     RequestState,
@@ -485,7 +486,7 @@ def create_prospect(body: ProspectIn, db: DB, c: C) -> dict:
         code=body.code,
         label=body.label,
         domicile=body.domicile.upper(),
-        proposal=json.loads(json.dumps(spec.PROPOSAL_DEFAULTS)),
+        proposal=json.loads(json.dumps({**spec.PROPOSAL_DEFAULTS, **firm_tariff(db, c)})),
     )
     db.add(p)
     db.flush()
@@ -835,6 +836,80 @@ def internal(pid: int, db: DB, c: C) -> dict:
     }
 
 
+def check_proposal(cfg: dict) -> None:
+    """Refuses a proposal whose rates or amounts are not non-negative decimals (422)."""
+    try:
+        for u, r in cfg["eam_tiers"]:
+            D(r)
+            if u not in (None, ""):
+                D(u)
+        for k in (
+            "custody_bps",
+            "custody_min",
+            "brokerage_bps",
+            "fx_bps",
+            "annual_turnover_chf",
+            "fx_notional_chf",
+            "vat_pct",
+        ):
+            if D(cfg[k]) < 0:
+                raise ValueError(k)
+    except (ValueError, TypeError, KeyError, ArithmeticError) as exc:
+        raise HTTPException(422, f"invalid proposal input: {exc}") from exc
+
+
+# The firm's own prices. Turnover, FX volume, migration costs and product swaps are estimates about one
+# prospect, so they stay on the prospect and are not part of the firm tariff.
+FIRM_TARIFF_KEYS = (
+    "firm_name",
+    "custodian",
+    "eam_tiers",
+    "eam_tier_method",
+    "vat_pct",
+    "custody_bps",
+    "custody_min",
+    "brokerage_bps",
+    "fx_bps",
+    "internal",
+)
+
+
+def firm_tariff(db: Session, c: Ctx) -> dict:
+    row = db.get(FirmSettings, c.tenant)
+    return dict(row.proposal) if row else {}
+
+
+@app.get("/api/firm/tariff")
+def get_firm_tariff(db: DB, c: C) -> dict:
+    row = db.get(FirmSettings, c.tenant)
+    defaults = {k: spec.PROPOSAL_DEFAULTS[k] for k in FIRM_TARIFF_KEYS}
+    body = {**defaults, **(row.proposal if row else {})}
+    if c.role != "senior":
+        body.pop("internal", None)  # servicing cost and minimum margin are seniors-only
+    return {
+        "config": body,
+        "saved": row is not None,
+        "updated_by": row.updated_by if row else None,
+        "updated_at": row.updated_at if row else None,
+    }
+
+
+@app.put("/api/firm/tariff")
+def put_firm_tariff(body: dict, db: DB, c: C) -> dict:
+    if c.role != "senior":
+        raise HTTPException(403, "only a senior reviewer can change the firm tariff")
+    row = db.get(FirmSettings, c.tenant)
+    cfg = {k: v for k, v in {**firm_tariff(db, c), **body}.items() if k in FIRM_TARIFF_KEYS}
+    check_proposal({**spec.PROPOSAL_DEFAULTS, **cfg})
+    if row:
+        row.proposal, row.updated_by = cfg, c.user
+    else:
+        db.add(FirmSettings(tenant_id=c.tenant, proposal=cfg, updated_by=c.user))
+    audit(db, c, None, "firm.tariff_saved", keys=sorted(body))
+    db.commit()
+    return {"ok": True}
+
+
 @app.get("/api/prospects/{pid}/proposal")
 def get_proposal(pid: int, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
@@ -855,24 +930,7 @@ def get_proposal(pid: int, db: DB, c: C) -> dict:
 def put_proposal(pid: int, body: dict, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
     cfg = {**(p.proposal or spec.PROPOSAL_DEFAULTS), **body}
-    try:  # validate by running the calculation before saving
-        for u, r in cfg["eam_tiers"]:
-            D(r)
-            if u not in (None, ""):
-                D(u)
-        for k in (
-            "custody_bps",
-            "custody_min",
-            "brokerage_bps",
-            "fx_bps",
-            "annual_turnover_chf",
-            "fx_notional_chf",
-            "vat_pct",
-        ):
-            if D(cfg[k]) < 0:
-                raise ValueError(k)
-    except (ValueError, TypeError, KeyError) as exc:
-        raise HTTPException(422, f"invalid proposal input: {exc}") from exc
+    check_proposal(cfg)
     p.proposal = cfg
     db.flush()
     r = compute(db, c, p)

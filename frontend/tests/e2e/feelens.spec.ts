@@ -272,3 +272,24 @@ test("11 trace: result → computation → line → highlighted source page", as
     .click();
   await expect(page.getByRole("dialog").getByText(/counted lines/)).toBeVisible();
 });
+
+test("12 firm tariff: a senior sets the prices once, new reviews start from them", async ({ page }) => {
+  await page.goto("/crm");
+  await page.evaluate(() => localStorage.setItem("pce.role", "senior"));
+  await page.getByRole("link", { name: "Firm tariff" }).click();
+  await expect(page.getByRole("heading", { name: "Firm tariff" })).toBeVisible();
+  await expect(page.getByText(/Not set yet/)).toBeVisible();
+  await page.getByLabel("Custody minimum (CHF p.a.)").fill("1234");
+  await page.getByRole("button", { name: "Save firm tariff" }).click();
+  await expect(page.getByText(/Last saved by/)).toBeVisible();
+  await shot(page, "12-firm-tariff");
+  const me = await (await page.request.get("/api/auth/me")).json();
+  const created = await page.request.post("/api/prospects", {
+    data: { code: "P-TARIFF", label: "Tariff (synthetic)" },
+    headers: { "X-CSRF-Token": me.csrf_token },
+  });
+  const { id } = await created.json();
+  const prop = await (await page.request.get(`/api/prospects/${id}/proposal`)).json();
+  expect(prop.config.custody_min).toBe("1234");
+  await page.evaluate(() => localStorage.setItem("pce.role", "analyst"));
+});
