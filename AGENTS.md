@@ -18,7 +18,7 @@ true, and asks the person only for the decisions that are theirs.
    Do not hand-edit status to claim. No story yet? Reserve one (`node scripts/backlog-new-id.mjs --parent SC-<epic>`).
 2. **One story = one PR into `main`.** Never bundle stories in a PR. Branch lifetime: hours, not days.
    Cloud sessions that must use a mandated branch (`claude/project-thread-*`) run their stories through it
-   one after another: one open PR at a time, and the branch is reset to `origin/main` after each squash merge.
+   one after another: one open PR at a time, and `origin/main` is merged into the branch after each squash merge.
 3. **Own your paths.** Edit only the paths in your story's `paths_owned`. Need a change in someone else's
    path? Ask in their story (or via the coordinator), or reserve a new story. Never edit another active
    agent's files.
@@ -29,7 +29,7 @@ true, and asks the person only for the decisions that are theirs.
 5. **Never `git stash`.** The stash is global across worktrees. Commit WIP to your branch instead.
 6. **Commit every logical unit and push after every commit.** The remote is the only backup.
 7. **Unrelated bug? New story, not an inline fix.** `node scripts/backlog-new-id.mjs --parent SC-<epic>`.
-8. **Never merge red.** `./scripts/local-gate.sh` must print `GATE PASSED` on the branch, rebased on current `main`.
+8. **Never merge red.** `./scripts/local-gate.sh` must print `GATE PASSED` on the branch, with current `main` merged in.
 9. **Merge authority.** An agent may squash-merge its own PR when ALL hold: gate green on the branch, diff
    matches the story scope, story file closed in the PR, no conflicts. EXCEPTIONS that need explicit
    per-PR approval from the person (Ale), in Ale's own words naming the PR:
@@ -78,7 +78,7 @@ IMPLEMENT (worktree or mandated branch only)
 └─ declare owned paths under ## Implementation Notes if they differ from paths_owned
 
 CLOSE (all in the same PR, nothing after the merge)
-├─ git fetch && git rebase origin/main
+├─ git fetch && git merge origin/main   (merge, not rebase: the branch is already pushed, force-push is denied)
 ├─ story file: status Done (or In Progress if partial), Outcome, Branch & Commits, criteria ticked with evidence
 ├─ HANDOFF.md / spec / ADR updated if the situation or a decision changed
 ├─ node scripts/backlog-board.mjs   → regenerated BOARD.md is the last commit of the PR
@@ -116,7 +116,7 @@ thread; do not copy its code.
 
 ## Merge conflicts
 
-1. Same agent, two of its own branches, trivial: rebase and resolve, re-run the gate.
+1. Same agent, two of its own branches, trivial: merge `origin/main`, resolve, re-run the gate.
 2. `backlog/BOARD.md`: regenerate (above). Story files of other agents: keep theirs.
 3. Across agents on real code: stop. Post both sides in the stories; the coordinator or Ale decides. Never
    resolve by force-pushing or deleting someone else's branch.

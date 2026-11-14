@@ -10,3 +10,7 @@ definition_of_done:
   - "Story file: status, progress, Outcome, Branch & Commits with real hashes"
   - "Specs / ADRs updated in the same PR when behaviour or a decision changed"
   - "No client data, secrets or unlabelled synthetic figures"
+  - "User-visible text in English and Italian; UI screenshots in both"
+  - "Extraction changes: accuracy before/after in the PR (docs/EVALUATION_PROTOCOL.md)"
+  - "backlog/BOARD.md regenerated as the PR's last commit; HANDOFF.md current"
+  - "Rule-9 changes: Ale's approval quoted in the PR before merge"

@@ -26,6 +26,8 @@ paths_owned:
   - ".claude/settings.json"
   - ".github/PULL_REQUEST_TEMPLATE.md"
   - "backlog/TEMPLATE.md"
+  - "backlog/config.yml"
+  - "backlog/BOARD.md"
   - "backlog/tasks/sc-1.7*"
 spec_ref: AGENTS.md
 rule_refs: [".claude/rules/task-lifecycle.md"]

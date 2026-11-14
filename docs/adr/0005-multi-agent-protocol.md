@@ -39,3 +39,19 @@ frontmatter, atomic remote claims, generated board, local gate as CI equivalent.
 - GitHub Issues as the board: good, but agents in some sessions cannot write issues reliably and the
   story text would live outside the repo history. Can be mirrored later.
 - `backlog.json` from the kit: one file edited by everyone, conflicts on every claim.
+
+## Addendum 2026-11-14 (SC-1.7): what a week of parallel threads changed
+
+Fifty PRs from up to eight parallel cloud threads showed where the protocol cost time:
+
+- Cloud sessions must push to a mandated `claude/project-thread-*` branch. Rule: one story PR at a time
+  on that branch, `origin/main` merged in after each squash merge (merge, not rebase, because force-push
+  is denied).
+- Board refreshes became separate PRs, some duplicated (#31, #32). Rule: the regenerated board is the last
+  commit of the story PR; board conflicts are resolved by regenerating.
+- A story merged without closing its file stays To Do and is offered again (SC-9.6 after #34). Rule: the
+  story is closed in the PR, and the board's "ready" list is checked against `claims-status.mjs` and the code.
+- Rule-9 approvals arrived as "Merge all" over several PRs. Rule: one ask per PR naming the change and its
+  risk; a blanket approval covers the PRs open at that moment.
+- New runtime engines (RapidOCR in SC-5.22) are named explicitly under rule 9, with the licence policy in
+  AGENTS.md § Dependencies and external skills.
