@@ -1,12 +1,12 @@
 ---
 id: SC-8.27
 title: Answer first emphasis and fewer choices on Costs, Compare and CRM
-status: "To Do"
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Redesign FeeLens user flow and components"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-14 00:36"
 updated_date: "2026-11-14 00:36"
