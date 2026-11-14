@@ -1,15 +1,15 @@
 ---
 id: SC-8.25
 title: Page layouts for phone and tablet, and tap to open info
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-14 00:40"
-updated_date: "2026-11-14 00:14"
+updated_date: "2026-11-14 00:55"
 labels:
   - ui
 dependencies: [SC-8.24]
@@ -59,17 +59,24 @@ None: classes only, one state per (i).
 
 ## Acceptance Criteria
 
-- [ ] #1 No page scrolls sideways at 390 and 820 px, Compare included (E2E)
-- [ ] #2 Tapping (i) shows its text (E2E)
-- [ ] #3 Existing E2E suite passes
+- [x] #1 No page scrolls sideways at 390 and 820 px, Compare included (E2E)
+- [x] #2 Tapping (i) shows its text (E2E)
+- [x] #3 Existing E2E suite passes
 
 ## Implementation Notes
 
+- Owned paths as listed. The tap test failed with the previous `ui.tsx` (no tooltip after a tap) and passes now.
+
 ## Outcome
+
+- **Status**: completed
+- `Card` min-w-0, `CardHeader` wraps, `InfoTip` toggles on tap; Compare layer table hides bars on phones and scrolls inside its card, proposal lines card scrolls; Documents moves type and bank under the name below 1360 px, hides date and status label on phones.
+- E2E 20/20 (responsive: phone and tablet, all prospect pages, tap on (i)); `local-gate.sh` GATE PASSED.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | 9bb8ed9 | 2026-11-14 | Responsive Compare and Documents, InfoTip on tap, tablet E2E |
 
 ## Issues Encountered
