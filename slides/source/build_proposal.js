@@ -162,7 +162,7 @@ function imgSize(file) {
       ["LuFileSearch", T("Cosa fa", "What it does"), T("Legge estratti, rendiconti costi, tariffari e KID di qualsiasi banca. Calcola il costo annuo completo e lo confronta con la vostra proposta.", "Reads statements, cost reports, price lists and KIDs from any bank. Works out the all-in annual cost and compares it with your proposal.")],
       ["LuMousePointerClick", T("Ogni cifra ha la sua fonte", "Every figure has its source"), T("Un clic su un numero mostra il calcolo e il punto esatto della pagina da cui viene. Un costo mancante resta mancante, mai zero.", "One click on a number shows the calculation and the exact spot on the page it came from. A missing cost stays missing, never zero.")],
       ["LuUserCheck", T("Aiuta l'analista, non lo sostituisce", "It assists the analyst, it does not replace them"), T("Trova l'87% dei costi su pagine reali (91% su pagine mai viste). Una persona accetta ogni cifra prima che conti, e due persone controllano ogni rapporto.", "Finds 87% of fees on real pages (91% on pages it had never seen). A person accepts each figure before it counts, and two people check every report.")],
-      ["LuFlag", T("Proposta: pilota di 3 mesi", "Proposal: a 3-month pilot"), T("Su un computer di Safe Capital, 10 potenziali clienti, CHF 3'000. Poi licenza annuale da CHF 9'000.", "On a Safe Capital machine, 10 prospects, CHF 3,000. Then an annual licence from CHF 9,000.")],
+      ["LuFlag", T("Proposta: su misura, a prezzo fisso", "Proposal: built for you, fixed price"), T("Costruzione, avvio e pilota su 10 clienti: CHF 28'000 fissi. Poi supporto da CHF 1'800 al mese.", "Build, go-live and a pilot on 10 prospects: CHF 28,000 fixed. Then support from CHF 1,800 a month.")],
     ];
     for (let i = 0; i < 4; i++) {
       const x = 0.5 + (i % 2) * 6.2, y = 1.55 + Math.floor(i / 2) * 2.65;
@@ -726,59 +726,126 @@ function imgSize(file) {
       tb({ x: 0.5, y: 6.55, w: 12.35, h: 0.3, fontSize: 11, color: X.muted }));
   }
 
-  // ---------- Price ----------
+  // ---------- Price: a quote for a custom build, then support ----------
   {
-    const s = content(T("Prezzo", "Price"), T("Quanto costa: un pilota, poi una licenza annuale", "What it costs: a pilot, then an annual licence"), T("Prezzo", "Price"));
+    const s = content(T("Preventivo", "Quote"), T("Lo costruiamo per voi, poi lo seguiamo noi", "We build it for you, then we run it with you"), T("Prezzo", "Price"));
     chip(s, 10.15, 0.33, T("PROPOSTA · DA CONFERMARE", "PROPOSAL · TO CONFIRM"), X.amber, X.amberSoft, 2.7);
+    card(s, 0.5, 1.5, 4.35, 4.3, X.tealSoft);
+    s.addText(T("1 · Costruzione e messa in produzione", "1 · Build and go-live"), tb({ x: 0.75, y: 1.65, w: 3.9, h: 0.4, fontSize: 15, bold: true, color: X.teal }));
+    s.addText(T("CHF 28'000", "CHF 28,000"), tb({ x: 0.75, y: 2.05, w: 3.9, h: 0.7, fontSize: 32, bold: true, color: X.navy }));
+    s.addText(T("prezzo fisso, una volta · circa 4 mesi", "fixed price, once · about 4 months"), tb({ x: 0.75, y: 2.75, w: 3.9, h: 0.3, fontSize: 12, color: X.muted }));
+    s.addText(bullets([
+      T("Sicurezza per dati reali: accesso personale con MFA, cifratura, backup, cancellazione su richiesta, registro", "Ready for real data: personal sign-in with MFA, encryption, backups, delete on request, audit log"),
+      T("Su misura: vostra tariffa, rapporto con logo, IT/EN", "Made for you: your tariff, report with your logo, IT/EN"),
+      T("Installazione, formazione e pilota supervisionato di 3 mesi", "Install, training and a 3-month supervised pilot"),
+      T("Pagato 40% alla firma, 40% all'avvio, 20% a fine pilota", "Paid 40% at signing, 40% at go-live, 20% after the pilot"),
+    ]), tb({ x: 0.75, y: 3.15, w: 3.95, h: 2.6, fontSize: 12.5, paraSpaceAfter: 5 }));
     const tiers = [
-      [T("Pilota", "Pilot"), "CHF 3'000", T("una volta, 3 mesi", "once, 3 months"), [T("Fino a 10 clienti", "Up to 10 prospects"), T("Installazione da voi e formazione", "Install at your office and training"), T("Rivediamo i rapporti con voi", "We review reports with you"), T("Rapporto del pilota", "Pilot report"), T("Scalato al 100% dal primo anno", "100% credited to year 1")], X.teal, X.tealSoft],
-      ["Essential", "CHF 9'000", T("all'anno (CHF 750 al mese)", "a year (CHF 750 a month)"), [T("3 utenti, 40 analisi all'anno", "3 users, 40 analyses a year"), T("Hosting svizzero o vostro computer", "Swiss hosting or your machine"), T("Aggiornamenti, nuove banche, backup, supporto", "Updates, new bank layouts, backups, support"), T("Analisi extra CHF 200", "Extra analysis CHF 200")], X.navy, X.infoSoft],
-      ["Professional", "CHF 18'000", T("all'anno (CHF 1'500 al mese)", "a year (CHF 1,500 a month)"), [T("10 utenti, 150 analisi all'anno", "10 users, 150 analyses a year"), T("Stessi servizi, supporto prioritario", "Same services, priority support"), T("Analisi extra CHF 120", "Extra analysis CHF 120")], X.navy, X.bg],
+      ["Standard", T("CHF 1'800", "CHF 1,800"), T("al mese, dopo il pilota", "a month, after the pilot"), [T("8 ore al mese del mio tempo", "8 hours a month of my time"), T("Risposta entro il giorno lavorativo dopo", "Answer by the next business day"), T("Urgenze entro 4 ore lavorative", "Urgent issues within 4 business hours"), T("Licenza, aggiornamenti, backup controllati", "Licence, updates, backups checked")], X.navy, X.infoSoft],
+      ["Priority", T("CHF 3'000", "CHF 3,000"), T("al mese, dopo il pilota", "a month, after the pilot"), [T("16 ore al mese del mio tempo", "16 hours a month of my time"), T("Risposta in giornata", "Answer the same day"), T("Urgenze entro 2 ore lavorative", "Urgent issues within 2 business hours"), T("Revisione mensile insieme", "Monthly review together")], X.navy, X.bg],
     ];
+    s.addText(T("2 · Supporto e manutenzione", "2 · Support and maintenance"), tb({ x: 5.1, y: 1.5, w: 7.7, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
     tiers.forEach(([t, p, per, pts, c, bg], i) => {
-      const x = 0.5 + i * 4.15;
-      card(s, x, 1.5, 3.95, 4.15, bg);
-      s.addText(t, tb({ x: x + 0.3, y: 1.7, w: 3.4, h: 0.4, fontSize: 17, bold: true, color: c }));
-      s.addText(p, tb({ x: x + 0.3, y: 2.15, w: 3.4, h: 0.7, fontSize: 32, bold: true, color: X.navy }));
-      s.addText(per, tb({ x: x + 0.3, y: 2.85, w: 3.4, h: 0.3, fontSize: 12, color: X.muted }));
-      s.addText(pts.map((q, j) => ({ text: q, options: { bullet: true, breakLine: j < pts.length - 1 } })), tb({ x: x + 0.3, y: 3.3, w: 3.45, h: 2.3, fontSize: 12.5, paraSpaceAfter: 4 }));
+      const x = 5.1 + i * 3.9;
+      card(s, x, 1.9, 3.75, 3.9, bg);
+      s.addText(t, tb({ x: x + 0.25, y: 2.05, w: 3.3, h: 0.35, fontSize: 15, bold: true, color: c }));
+      s.addText(p, tb({ x: x + 0.25, y: 2.4, w: 3.3, h: 0.6, fontSize: 28, bold: true, color: X.navy }));
+      s.addText(per, tb({ x: x + 0.25, y: 3.0, w: 3.3, h: 0.3, fontSize: 12, color: X.muted }));
+      s.addText(bullets(pts), tb({ x: x + 0.25, y: 3.35, w: 3.35, h: 2.4, fontSize: 12.5, paraSpaceAfter: 5 }));
     });
-    card(s, 0.5, 5.85, 12.35, 0.85, X.white, X.border);
+    card(s, 0.5, 5.95, 12.35, 0.75, X.white, X.border);
     s.addText([
-      { text: T("Avvio dopo il pilota: ", "Setup after the pilot: "), options: { bold: true, color: X.navy } },
-      { text: T("CHF 5'000 una volta (utenti con MFA, vostre tariffe e modelli, logo, rapporti IT/EN); metà prezzo per Safe Capital. ", "CHF 5,000 once (users with MFA, your tariffs and templates, logo, IT/EN reports); half price for Safe Capital. ") },
-      { text: T("Cliente fondatore: ", "Founding customer: "), options: { bold: true, color: X.navy } },
-      { text: T("-25% il primo anno e prezzo bloccato 2 anni, in cambio di referenza e numeri anonimi del pilota. Prezzi IVA 8.1% esclusa.", "25% off year 1 and price held for 2 years, for a reference and anonymised pilot numbers. Prices exclude 8.1% VAT.") },
-    ], tb({ x: 0.75, y: 5.9, w: 11.9, h: 0.75, fontSize: 12.5, valign: "middle" }));
-    s.addNotes(T("Fonte: documento «FeeLens pricing for Safe Capital» (13.11.2026). Prezzi proposti, non ancora approvati da Ale. Un'analisi = un cliente, tutti i suoi documenti, fino al rapporto approvato; rifarla entro 12 mesi è gratis.",
-      "Source: doc \"FeeLens pricing for Safe Capital\" (13 Nov 2026). Proposed prices, not yet approved by Ale. One analysis = one prospect, all their documents, until the report is approved; re-running it within 12 months is free."));
+      { text: T("Anno 1: ", "Year 1: "), options: { bold: true, color: X.navy } },
+      { text: T("circa CHF 44'200 con Standard (costruzione + 9 mesi). ", "about CHF 44,200 on Standard (build + 9 months). ") },
+      { text: T("Dall'anno 2: ", "From year 2: "), options: { bold: true, color: X.navy } },
+      { text: T("CHF 21'600 all'anno. Analisi e documenti senza limite. Prezzi IVA 8.1% esclusa.", "CHF 21,600 a year. No limit on analyses or documents. Prices exclude 8.1% VAT.") },
+    ], tb({ x: 0.75, y: 6.0, w: 11.9, h: 0.65, fontSize: 13, valign: "middle" }));
+    s.addNotes(T("Preventivo proposto il 14.11.2026, da confermare con Ale. Sostituisce la licenza annuale del 13.11: è una soluzione su misura, con Ale come supporto. Le ore sono nostre stime.",
+      "Quote proposed on 14 Nov 2026, to confirm with Ale. Replaces the 13 Nov annual licence: this is a custom solution with Ale as the support. Hours are our estimates."));
+  }
+
+  {
+    const s = content(T("Preventivo", "Quote"), T("Fase 1 nel dettaglio: cosa comprano i CHF 28'000", "Phase 1 in detail: what the CHF 28,000 buys"), T("Prezzo", "Price"));
+    table(s, [T("Lavoro", "Work package"), T("Cosa include", "What is included"), T("Ore", "Hours"), "CHF"], [
+      [T("Sicurezza per dati reali", "Ready for real client data"), T("Accesso personale con MFA, archivio cifrato, backup giornaliero con prova di ripristino, cancellazione su richiesta, registro di chi ha fatto cosa", "Personal sign-in with MFA, encrypted storage, daily backup with a restore test, delete on request, log of who did what"), "60", "9'600"],
+      [T("Su misura per Safe Capital", "Made for Safe Capital"), T("Vostra tariffa, modello di rapporto con logo, testi IT/EN, import dei contatti esistenti", "Your tariff, report template with your logo, IT/EN wording, import of existing contacts"), "30", "4'800"],
+      [T("Installazione e avvio", "Install and go-live"), T("Vostro computer o server svizzero, controllo di sicurezza, bozze di DPIA e consenso da firmare", "Your machine or a Swiss server, security check, drafts of DPIA and consent text for you to sign"), "25", "4'000"],
+      [T("Formazione", "Training"), T("Due mezze giornate, guida breve in italiano", "Two half-days, a short guide in Italian"), "10", "1'600"],
+      [T("Pilota supervisionato, 3 mesi", "Supervised pilot, 3 months"), T("Fino a 10 clienti, controllo ogni rapporto con l'analista, correzioni, rapporto del pilota", "Up to 10 prospects, I check every report with the analyst, fixes, pilot report"), "50", "8'000"],
+      [T("Totale, prezzo fisso", "Total, fixed price"), "", "175", "28'000"],
+    ].map((r) => r.map((c, j) => (j === 3 && LANG === "en" ? c.replace("'", ",") : c))), { x: 0.5, y: 1.5, colW: [2.8, 7.25, 0.9, 1.4], align: ["left", "left", "right", "right"], rowH: 0.58, fontSize: 12, boldLast: true });
+    card(s, 0.5, 5.65, 6.05, 1.05, X.white, X.border);
+    s.addText([
+      { text: T("Pagamento: ", "Payment: "), options: { bold: true, color: X.navy } },
+      { text: T("40% alla firma, 40% alla messa in produzione, 20% al rapporto del pilota. Se servono più ore del previsto, il costo è nostro.", "40% at signing, 40% at go-live, 20% at the pilot report. If it takes more hours than planned, that is our cost.") },
+    ], tb({ x: 0.7, y: 5.7, w: 5.7, h: 0.95, fontSize: 12, valign: "middle" }));
+    card(s, 6.8, 5.65, 6.05, 1.05, X.amberSoft);
+    s.addText([
+      { text: T("Da voi: ", "From you: "), options: { bold: true, color: X.navy } },
+      { text: T("un referente, il computer o il server, la vostra tariffa e un modello di rapporto, DPIA e consenso firmati.", "one contact person, the machine or server, your tariff and a report template, DPIA and consent signed.") },
+    ], tb({ x: 7.0, y: 5.75, w: 5.7, h: 0.9, fontSize: 12, valign: "middle" }));
+    s.addNotes(T("Ore stimate da noi a CHF 160 l'ora. Il prezzo è fisso: il rischio di sforare è nostro.", "Hours are our estimates at CHF 160 an hour. The price is fixed: the risk of overrunning is ours."));
+  }
+
+  {
+    const s = content(T("Preventivo", "Quote"), T("Il supporto: chi, cosa, in quanto tempo", "Support: who, what, and how fast"), T("Prezzo", "Price"));
+    card(s, 0.5, 1.5, 6.05, 2.45, X.tealSoft);
+    s.addText(T("Incluso nelle ore del mese", "Included in the monthly hours"), tb({ x: 0.75, y: 1.62, w: 5.6, h: 0.35, fontSize: 15, bold: true, color: X.teal }));
+    s.addText(bullets([
+      T("Ale risponde a ogni richiesta, di persona", "Ale answers every request, in person"),
+      T("Controllo di una cifra in dubbio, sulla pagina", "Checking a doubtful figure on its page"),
+      T("Nuovo formato di una banca, letture da correggere", "A new bank layout, misreads to fix"),
+      T("Piccole modifiche a testi o rapporto (fino a 2 ore)", "Small changes to wording or report (up to 2 hours)"),
+      T("Aggiornamenti di sicurezza e controllo dei backup", "Security updates and backup checks"),
+    ]), tb({ x: 0.75, y: 2.02, w: 5.65, h: 1.9, fontSize: 12.5, paraSpaceAfter: 3 }));
+    card(s, 6.8, 1.5, 6.05, 2.45, X.white, X.border);
+    s.addText(T("Fuori dalle ore: preventivo per lavoro", "Outside the hours: a quote per task"), tb({ x: 7.05, y: 1.62, w: 5.6, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    s.addText(bullets([
+      T("Nuove funzioni, schermate o rapporti", "New features, screens or reports"),
+      T("Nuovi tipi di documento o collegamenti ad altri sistemi", "New document types or links to other systems"),
+      T("Prezzo fisso scritto prima di iniziare; partiamo solo col vostro sì", "Fixed price in writing before we start; we start only on your yes"),
+      T("Ore extra: CHF 160 l'ora, a mezz'ore, solo con il vostro ok", "Extra hours: CHF 160 an hour, in half hours, only with your OK"),
+    ]), tb({ x: 7.05, y: 2.02, w: 5.65, h: 1.9, fontSize: 12.5, paraSpaceAfter: 3 }));
+    s.addText(T("Tempi di risposta (giorni lavorativi, 9–18)", "Response times (business days, 9 to 18)"), tb({ x: 0.5, y: 4.1, w: 6.5, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    table(s, [T("Caso", "Case"), "Standard", "Priority"], [
+      [T("Urgente: app ferma, cifra sbagliata in un rapporto consegnato, incidente sui dati", "Urgent: app down, wrong figure in a delivered report, data incident"), T("4 ore", "4 hours"), T("2 ore", "2 hours")],
+      [T("Normale: domanda, nuova banca, lettura da correggere", "Normal: question, new bank, misread to fix"), T("giorno dopo", "next day"), T("in giornata", "same day")],
+    ], { x: 0.5, y: 4.5, colW: [4.9, 1.0, 1.0], align: ["left", "right", "right"], rowH: 0.55, fontSize: 12 });
+    card(s, 7.6, 4.1, 5.25, 2.6, X.white, X.border);
+    s.addText(T("Regole chiare", "Clear rules"), tb({ x: 7.85, y: 4.2, w: 4.8, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    s.addText(bullets([
+      T("Un nostro errore si corregge gratis e non consuma ore.", "Our own defects are fixed free and use no hours."),
+      T("Ore non usate valgono anche il mese dopo.", "Unused hours carry over one month."),
+      T("12 mesi minimi, poi disdetta con 3 mesi; prezzo fermo 2 anni.", "12 months minimum, then 3 months' notice; price held 2 years."),
+      T("Assenze annunciate 2 settimane prima; codice in deposito (escrow) se smettiamo.", "Absences announced 2 weeks ahead; source code in escrow if we stop."),
+    ]), tb({ x: 7.85, y: 4.6, w: 4.85, h: 2.05, fontSize: 12, paraSpaceAfter: 4 }));
   }
 
   {
     const s = content(T("Prezzo", "Price"), T("Perché questo prezzo è giusto", "Why this price is fair"), T("Prezzo", "Price"));
-    bigNum(s, 0.5, 1.5, 4.0, "~CHF 225", T("per analisi con Essential", "per analysis on Essential"), X.teal, T("CHF 9'000 / 40 analisi", "CHF 9,000 / 40 analyses"));
-    bigNum(s, 4.67, 1.5, 4.0, "0.45%", T("di commissione su un solo mandato di CHF 2 mln paga la licenza annuale", "fee on one CHF 2m mandate pays the yearly licence"), X.navy, T("CHF 9'000 / CHF 2'000'000", "CHF 9,000 / CHF 2,000,000"));
-    bigNum(s, 8.85, 1.5, 4.0, "< 2 h", T("di lavoro dell'analista per cliente, ogni cifra controllata", "of analyst time per prospect, every figure checked"), X.navy, T("obiettivo; oggi stimiamo 6–10 h, da misurare con voi", "target; today we estimate 6 to 10 h, to time with you"));
-    s.addText(T("Perché non un prezzo per documento", "Why not a price per document"), tb({ x: 0.5, y: 3.55, w: 6, h: 0.4, fontSize: 16, bold: true, color: X.navy }));
-    s.addText([
-      { text: T("Spinge a lasciare fuori documenti: i costi nascosti restano nascosti.", "It pushes people to leave documents out: hidden costs stay hidden."), options: { bullet: true, breakLine: true } },
-      { text: T("Un cliente con 30 PDF costerebbe 6 volte uno ordinato.", "A prospect with 30 PDFs would cost 6 times a tidy one."), options: { bullet: true, breakLine: true } },
-      { text: T("Si paga l'analisi: un cliente, tutti i suoi documenti.", "You pay per analysis: one prospect, all their documents."), options: { bullet: true } },
-    ], tb({ x: 0.5, y: 4.0, w: 6.0, h: 2.0, fontSize: 13.5, paraSpaceAfter: 6 }));
+    bigNum(s, 0.5, 1.5, 4.0, "CHF 160", T("l'ora, per supporto e lavoro extra", "an hour, for support and extra work"), X.teal, T("consulente indipendente svizzero: CHF 290 l'ora", "Swiss fee-only adviser: CHF 290 an hour"));
+    bigNum(s, 4.67, 1.5, 4.0, "175 h", T("a prezzo fisso per costruzione e avvio", "at a fixed price for build and go-live"), X.navy, T("nostra stima; se sforiamo, paghiamo noi", "our estimate; if we overrun, we pay"));
+    bigNum(s, 8.85, 1.5, 4.0, "~1.4", T("mandati da CHF 2 mln pagano un anno di Standard", "won CHF 2m mandates pay a year of Standard"), X.navy, T("CHF 21'600 / ~CHF 16'000 netti l'anno (0.8%, stima)", "CHF 21,600 / ~CHF 16,000 net a year (0.8%, estimate)"));
+    s.addText(T("Perché ore per il supporto, preventivi per il resto", "Why hours for support, quotes for new work"), tb({ x: 0.5, y: 3.55, w: 6.2, h: 0.4, fontSize: 16, bold: true, color: X.navy }));
+    s.addText(bullets([
+      T("Il supporto è costante ma imprevedibile: un blocco mensile riserva il mio tempo per voi e fissa il vostro budget.", "Support is steady but hard to predict: a monthly block reserves my time for you and fixes your budget."),
+      T("Una nuova funzione ha un risultato chiaro: conoscete il prezzo prima, il rischio di sforare è nostro.", "A new feature has a clear result: you know the price first, the risk of overrunning is ours."),
+      T("Gli errori nostri si correggono gratis: non pagate mai i nostri sbagli.", "Our defects are fixed free: you never pay for our mistakes."),
+    ]), tb({ x: 0.5, y: 4.0, w: 6.1, h: 2.4, fontSize: 13, paraSpaceAfter: 6 }));
     s.addText(T("Confronti di mercato", "Market anchors"), tb({ x: 6.85, y: 3.55, w: 6, h: 0.4, fontSize: 16, bold: true, color: X.navy }));
-    s.addText([
-      { text: T("InvestGlass (CRM, Ginevra): CHF 100-500 per utente al mese.", "InvestGlass (CRM, Geneva): CHF 100 to 500 per user a month."), options: { bullet: true, breakLine: true } },
-      { text: T("Non abbiamo trovato uno strumento svizzero che pubblichi un prezzo per questo lavoro.", "We found no Swiss tool that publishes a price for this job."), options: { bullet: true, breakLine: true } },
-      { text: T("Per noi il costo di calcolo per analisi è quasi zero: nessuna IA a pagamento.", "Our computing cost per analysis is near zero: no paid AI."), options: { bullet: true } },
-    ], tb({ x: 6.85, y: 4.0, w: 6.0, h: 2.4, fontSize: 13.5, paraSpaceAfter: 6 }));
-    s.addText(T("Fonte: investglass.com, consultato il 13.11.2026. Le altre cifre sono calcoli dai prezzi proposti.", "Source: investglass.com, opened 13 Nov 2026. The other figures are arithmetic on the proposed prices."), tb({ x: 0.5, y: 6.55, w: 12, h: 0.3, fontSize: 10, color: X.muted }));
+    s.addText(bullets([
+      T("Consulente indipendente (Zurigo): CHF 290 l'ora; analisi di un portafoglio CHF 1'200–2'500.", "Fee-only adviser (Zurich): CHF 290 an hour; one portfolio analysis CHF 1,200 to 2,500."),
+      T("InvestGlass (CRM, Ginevra): CHF 100–500 per utente al mese, prodotto standard.", "InvestGlass (CRM, Geneva): CHF 100 to 500 per user a month, off the shelf."),
+      T("Piattaforme wealth: un rapporto su misura USD 5'000–25'000 (guida USA).", "Wealth platforms: one custom report USD 5,000 to 25,000 (US guide)."),
+    ]), tb({ x: 6.85, y: 4.0, w: 6.0, h: 2.4, fontSize: 13, paraSpaceAfter: 6 }));
+    s.addText(T("Fonti: stuzz.ch, investglass.com, getmonetizely.com (secondaria), consultate il 13.11.2026. Il ricavo per mandato è una nostra stima.", "Sources: stuzz.ch, investglass.com, getmonetizely.com (secondary), opened 13 Nov 2026. Revenue per mandate is our estimate."), tb({ x: 0.5, y: 6.55, w: 12.3, h: 0.3, fontSize: 10, color: X.muted }));
   }
 
   // ---------- Next steps ----------
   {
     const s = content(T("Prossimi passi", "Next steps"), T("Cosa serve da voi per partire", "What we need from you to start"), T("Prossimi passi", "Next steps"));
     const qs = [
-      T("Quante analisi al mese prevedete? (sceglie Essential o Professional)", "How many cost reviews a month do you expect? (picks Essential or Professional)"),
+      T("Quante analisi al mese prevedete? (sceglie Standard o Priority)", "How many cost reviews a month do you expect? (picks Standard or Priority)"),
       T("Quanto dura oggi un confronto dei costi, in ore? (cronometriamo un caso)", "How long does a cost comparison take today, in hours? (we time one case)"),
       T("Pilota su un vostro computer o subito su un server svizzero? Usate Microsoft 365?", "Pilot on your computer or straight on a Swiss server? Do you use Microsoft 365?"),
       T("Chi sono l'analista e il secondo revisore (quattro occhi)?", "Who are the analyst and the second reviewer (four eyes)?"),
@@ -806,17 +873,41 @@ function imgSize(file) {
     const s = pres.addSlide({ masterName: "Dark", sectionTitle: T("Prossimi passi", "Next steps") });
     s.addText(T("Ogni cifra con la sua fonte.", "Every figure with its source."), tb({ x: 0.8, y: 2.2, w: 11.5, h: 1.0, fontSize: 40, bold: true, color: X.white }));
     s.addText(T("Ciò che manca resta visibile. Il risparmio è un minimo, mai una promessa.", "What is missing stays visible. The saving is a floor, never a promise."), tb({ x: 0.8, y: 3.3, w: 11.5, h: 0.8, fontSize: 22, color: X.paleNavy }));
-    s.addText(T("Proposta: pilota supervisionato di 3 mesi, CHF 3'000.", "Proposal: 3-month supervised pilot, CHF 3,000."), tb({ x: 0.8, y: 4.6, w: 11.5, h: 0.6, fontSize: 20, bold: true, color: X.white }));
+    s.addText(T("Proposta: costruzione, avvio e pilota di 3 mesi, CHF 28'000 fissi.", "Proposal: build, go-live and a 3-month pilot, CHF 28,000 fixed."), tb({ x: 0.8, y: 4.6, w: 11.5, h: 0.6, fontSize: 20, bold: true, color: X.white }));
+  }
+
+  // ---------- Appendix: hosted-model experiment ----------
+  {
+    const s = content(T("Appendice", "Appendix"), T("Esperimento: un modello IA esterno su pagine pubbliche (non nell'app)", "Experiment: a hosted AI model on public pages (not in the app)"), T("Appendice", "Appendix"));
+    chip(s, 10.15, 0.33, T("NON IN USO · SERVE UNA DECISIONE", "NOT IN USE · NEEDS A DECISION"), X.amber, X.amberSoft, 2.7);
+    bigNum(s, 0.5, 1.5, 3.0, "98.8%", T("costi trovati: app + modello", "fees found: app + model"), X.teal, T("app da sola 88.3%", "app alone 88.3%"));
+    bigNum(s, 3.6, 1.5, 3.0, "9", T("cifre accettate sbagliate", "accepted figures wrong"), X.teal, T("app da sola 55", "app alone 55"));
+    bigNum(s, 6.7, 1.5, 3.0, "96.5%", T("costi trovati sulle scansioni", "fees found on scans"), X.teal, T("app da sola 68.6%", "app alone 68.6%"));
+    bigNum(s, 9.8, 1.5, 3.05, "97.1%", T("su pagine mai viste", "on pages it had never seen"), X.teal, T("app da sola 91.9%", "app alone 91.9%"));
+    s.addText(T("Come l'abbiamo misurato", "How we measured it"), tb({ x: 0.5, y: 3.5, w: 6, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    s.addText(bullets([
+      T("63 pagine pubbliche, 899 costi; risposte attese ricostruite, quindi l'app qui fa 88.3% e non 87%.", "63 public pages, 899 fees; answer key rebuilt, so the app scores 88.3% here, not 87%."),
+      T("Il modello legge l'immagine della pagina; l'app tiene i controlli e la pagina come prova.", "The model reads the page image; the app keeps its checks and the page as evidence."),
+      T("Costo stimato: 5–8 centesimi per pagina.", "Estimated cost: 5 to 8 cents a page."),
+    ]), tb({ x: 0.5, y: 3.9, w: 6.0, h: 2.0, fontSize: 12.5, paraSpaceAfter: 5 }));
+    card(s, 6.85, 3.5, 6.0, 3.15, X.amberSoft);
+    s.addText(T("Perché non è nell'app", "Why it is not in the app"), tb({ x: 7.1, y: 3.62, w: 5.5, h: 0.35, fontSize: 15, bold: true, color: X.navy }));
+    s.addText(bullets([
+      T("Manderebbe pagine dei clienti fuori dal vostro computer: oggi la regola è solo in locale.", "It would send client pages outside your machine: today the rule is local only."),
+      T("Serve una decisione scritta di Ale e di Safe Capital, e pagine oscurate.", "It needs a written decision by Ale and Safe Capital, and redacted pages."),
+      T("Anche le risposte attese sono state preparate con l'IA: circa 50 valori vanno ricontrollati da una persona.", "The answer key was also prepared with AI help: about 50 values need a person's spot check."),
+    ]), tb({ x: 7.1, y: 4.02, w: 5.55, h: 2.55, fontSize: 12.5, paraSpaceAfter: 5 }));
+    s.addNotes(T("Esperimento del 14.11.2026 su soli documenti pubblici. Nessun dato di clienti è stato inviato.", "Experiment of 14 Nov 2026 on public documents only. No client data was sent."));
   }
 
   // ---------- Appendix: sources ----------
   {
     const s = content(T("Appendice", "Appendix"), T("Da dove vengono i numeri e le immagini", "Where the numbers and pictures come from"), T("Appendice", "Appendix"));
     const lines = [
-      [T("Schermate", "Screenshots"), T("App FeeLens, versione principale del 13.11.2026 con la tariffa della società, eseguita in locale. Clienti P-1042 e P-2077 sintetici (banche, ISIN e importi inventati).", "FeeLens app, main version of 13 Nov 2026 with the firm tariff, run locally. Prospects P-1042 and P-2077 are synthetic (banks, ISINs and amounts invented).")],
+      [T("Schermate", "Screenshots"), T("App FeeLens, versione principale del 14.11.2026 con la tariffa della società, eseguita in locale. Clienti P-1042 e P-2077 sintetici (banche, ISIN e importi inventati).", "FeeLens app, main version of 14 Nov 2026 with the firm tariff, run locally. Prospects P-1042 and P-2077 are synthetic (banks, ISINs and amounts invented).")],
       [T("Documenti reali", "Real documents"), T("AJ Bell, rapporto demo cliente (investcentre.co.uk); BlackRock, KID iShares Core S&P 500 (IT) e Core MSCI World (EN); Julius Baer Europe, tariffario custodia (2025). Documenti pubblici, clienti fittizi.", "AJ Bell demo client report (investcentre.co.uk); BlackRock iShares Core S&P 500 (IT) and Core MSCI World (EN) KIDs; Julius Baer Europe custody price list (2025). Public documents, fictitious clients.")],
       [T("Accuratezza", "Accuracy"), T("62 pagine reali, 813 costi distinti controllati a mano; main rimisurato il 14.11.2026 (metodo ricontrollato in modo indipendente il 13.11); 130 KID pubblici; 4 estratti pubblici (Fidelity USA e UK, AJ Bell, Edward Jones). Velocità: 4 core, 13.11.2026.", "62 real pages, 813 distinct fees checked by hand; main re-run on 14 Nov 2026 (method independently re-checked on 13 Nov); 130 public KIDs; 4 public statements (Fidelity US and UK, AJ Bell, Edward Jones). Speed: 4 cores, 13 Nov 2026.")],
-      [T("Prezzi", "Prices"), T("Documento «FeeLens pricing for Safe Capital», 13.11.2026: proposta da confermare. Riferimento di mercato: investglass.com.", "Doc \"FeeLens pricing for Safe Capital\", 13 Nov 2026: proposal to confirm. Market reference: investglass.com.")],
+      [T("Prezzi", "Prices"), T("Preventivo del 14.11.2026, proposta da confermare; ore stimate da noi. Riferimenti: stuzz.ch, investglass.com, getmonetizely.com.", "Quote of 14 Nov 2026, proposal to confirm; hours are our estimates. References: stuzz.ch, investglass.com, getmonetizely.com.")],
       [T("Limiti", "Limits"), T("Campione scelto per coprire i tipi di documento, un solo annotatore; estratti svizzeri e italiani non pubblici: il pilota è la prova vera.", "Sample chosen to cover document types, one annotator; Swiss and Italian statements are not public: the pilot is the real test.")],
     ];
     lines.forEach(([h, t], i) => {
