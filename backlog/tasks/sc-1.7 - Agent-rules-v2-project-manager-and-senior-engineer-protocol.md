@@ -7,9 +7,9 @@ owner: "Update Claude rules and dev protocol"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-ph3wca"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/54"
 created_date: "2026-11-13 23:55"
-updated_date: "2026-11-14 00:02"
+updated_date: "2026-11-14 00:06"
 labels:
   - docs
 dependencies: []
