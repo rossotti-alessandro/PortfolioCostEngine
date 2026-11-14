@@ -43,7 +43,12 @@ test("a CRM card dragged to another stage moves there", async ({ page }) => {
   await page.goto("/crm");
   const card = page.getByRole("listitem").filter({ hasText: name });
   const target = page.getByRole("region", { name: "Qualified" });
-  await card.dragTo(target);
+  // Synthetic drag events: a long Lead column scrolls the card out of reach of a pointer drag.
+  const dt = await page.evaluateHandle(() => new DataTransfer());
+  await card.dispatchEvent("dragstart", { dataTransfer: dt });
+  await target.dispatchEvent("dragover", { dataTransfer: dt });
+  await target.dispatchEvent("drop", { dataTransfer: dt });
+  await card.dispatchEvent("dragend", { dataTransfer: dt });
   await expect(target.getByRole("listitem").filter({ hasText: name })).toBeVisible();
   await expect(page.getByText(`${name} moved to Qualified`)).toBeAttached();
 });
