@@ -1,15 +1,15 @@
 ---
 id: SC-8.27
 title: Answer first emphasis and fewer choices on Costs, Compare and CRM
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-14 00:36"
-updated_date: "2026-11-14 00:36"
+updated_date: "2026-11-14 00:40"
 labels:
   - ui
 dependencies: [SC-8.26]
@@ -22,6 +22,7 @@ paths_owned:
   - frontend/src/components/ReviewPoints.tsx
   - frontend/src/lib/it.ts
   - frontend/tests/e2e/emphasis.spec.ts
+  - frontend/tests/e2e/feelens.spec.ts
   - docs/design/DESIGN_SYSTEM.md
 spec_ref: docs/design/DESIGN_SYSTEM.md
 rule_refs: [".claude/rules/frontend.md"]
@@ -60,17 +61,25 @@ Points to review, drop the duplicate header button, fix the plural.
 
 ## Acceptance Criteria
 
-- [ ] #1 Compare shows the annual saving as the first figure card, and the proposal lines open with six rows and a "Show all" control (E2E)
-- [ ] #2 Costs shows two requests and "Show all 4 requests"; expanding shows all four (E2E)
-- [ ] #3 Existing E2E suite passes
+- [x] #1 Compare shows the annual saving as the first figure card, and the proposal lines open with six rows and a "Show all" control (E2E)
+- [x] #2 Costs shows two requests and "Show all 4 requests"; expanding shows all four (E2E)
+- [x] #3 Existing E2E suite passes
 
 ## Implementation Notes
 
+- Owned paths as listed, plus `tests/e2e/feelens.spec.ts`: the trace test opened the saving card by position (third), now first.
+- Also fixes "1 notes" in Points to review.
+
 ## Outcome
+
+- **Status**: completed
+- Compare: saving first, layer table full width below 1600 px, six proposal lines then "Show all". Costs: two biggest requests then "Show all", sentence-case priority. CRM header: one action.
+- E2E 24/24 (new `emphasis.spec.ts`); `local-gate.sh` GATE PASSED.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | d97a0fb | 2026-11-14 | Saving first, folded lists, one header action |
 
 ## Issues Encountered
