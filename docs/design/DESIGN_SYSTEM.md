@@ -113,14 +113,14 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
 1. **Prospects**: list with AUM, banks, documents, analysis status, last activity. CTA "New analysis".
 2. **Intake**: alias, base currency, domicile, consent; drop zone; live classification; required-documents checklist. CTA "Analyse", secondary "Request missing documents". Documents list: one line per file (File, Type, Bank or issuer, Date, Values, Status, link to how it was processed; below 1360 px type and bank sit under the file name, on phones the date hides and status is its icon), documents needing a check first, 6 shown then "Show all"; read-with, fingerprint, warnings and the type selector open under the row. The drop zone shrinks to one line once documents exist.
 3. **Review**: split screen, low-confidence first, reconciliation banner at top.
-4. **Costs**: answer card first (known annual cost, "at least" when incomplete, one sentence with % and bps of assets and the count of undetermined costs; debited, inside products and evidence coverage beside it), then documents to ask for, points to review, cost by layer, ledger, folded checks/coverage/positions. Each undetermined cost is listed once, as the document that would resolve it.
-5. **Compare**: scenarios side by side, editable proposal tariff, one-off costs, payback, comparability badge.
+4. **Costs**: answer card first (known annual cost, "at least" when incomplete, one sentence with % and bps of assets and the count of undetermined costs; debited, inside products and evidence coverage beside it), then documents to ask for (the two biggest first, then "Show all"), points to review, cost by layer, ledger, folded checks/coverage/positions. Each undetermined cost is listed once, as the document that would resolve it.
+5. **Compare**: the annual saving is the first figure card, then today, the proposal and the switching cost; scenarios side by side, cost by layer at full width below 1600 px, proposal lines six at a time (undetermined first) then "Show all", editable proposal tariff, one-off costs, payback, comparability badge.
 6. **Internal** (analyst-only route, separate layout): contribution margin, decision gates.
 7. **Report**: "Ready to send?" checklist first (values still needing a person, documents to ask for, undetermined costs listed not zeroed, senior approval; each links to where it is resolved; it informs, never blocks), then client-safe one-pager + appendix, PDF export, approved figures only, DemoWatermark when synthetic. The audit trail is a decision log: consecutive events with the same action and user collapse into one row with a count.
 
 ## 7. Calls to action
 
-One primary button per screen (navy, filled, `Button` default), secondary outlined (`outline`, or `accent`
+One primary button per screen (navy, filled, `Button` default); a setup action such as loading synthetic data lives in the empty state, not beside the primary in the header; secondary outlined (`outline`, or `accent`
 = teal outline for a positive secondary such as "Load synthetic demo"), tertiary text (`ghost`). Verb-first labels
 ("Analyse documents", "Approve figures", "Export report"). Destructive actions red and confirmed. No
 disabled-without-reason buttons: show why in a tooltip.

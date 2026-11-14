@@ -8,11 +8,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { type Contact, type StageId, crm, ratioPct, today } from "./api";
 import { CrmHeader, MoveDialog, NewContactButton, StageBadge, useMeta } from "./common";
 
-function SeedButton({ variant = "outline" }: { variant?: "outline" | "accent" }) {
+function SeedButton() {
   const qc = useQueryClient();
   const m = useMutation({ mutationFn: crm.seed, onSuccess: () => qc.invalidateQueries({ queryKey: ["crm"] }) });
   return (
-    <Button variant={variant} onClick={() => m.mutate()} loading={m.isPending}>
+    <Button variant="accent" onClick={() => m.mutate()} loading={m.isPending}>
       <FlaskConical className="h-4 w-4" /> {t("Load synthetic CRM")}
     </Button>
   );
@@ -47,12 +47,8 @@ function Shell({ children, synthetic }: { children: React.ReactNode; synthetic?:
     <div>
       <CrmHeader
         synthetic={synthetic}
-        actions={
-          <>
-            <SeedButton />
-            <NewContactButton />
-          </>
-        }
+        // The synthetic seed lives in the empty state only: one primary action in the header.
+        actions={<NewContactButton />}
       />
       <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-8">{children}</div>
     </div>
@@ -115,7 +111,7 @@ export default function BoardPage() {
           <Empty icon={<Users className="h-8 w-8" />} title={t("No contacts yet")}>
             {t("Add your first lead, or load a synthetic book of 41 contacts to explore the pipeline and the funnel.")}
             <div className="mt-4 flex justify-center gap-2">
-              <SeedButton variant="accent" />
+              <SeedButton />
             </div>
           </Empty>
         </Card>
