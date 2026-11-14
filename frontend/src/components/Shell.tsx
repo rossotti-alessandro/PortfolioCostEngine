@@ -12,11 +12,13 @@ import {
   FolderOpen,
   Lock,
   LogOut,
+  Menu,
   Percent,
   ShieldCheck,
   Users,
+  X,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
 import { Badge, InfoTip } from "./ui";
 
@@ -117,7 +119,7 @@ function AccountMenu() {
         </span>
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
       </summary>
-      <div className="absolute bottom-full left-0 z-30 mb-1 w-full space-y-3 rounded-[var(--radius-card)] border border-line bg-surface p-3 shadow-lg">
+      <div className="pce-in absolute left-0 top-full z-30 mt-1 w-full md:bottom-full md:top-auto md:mb-1 md:mt-0 space-y-3 rounded-[var(--radius-card)] border border-line bg-surface p-3 shadow-lg">
         <LangSwitch />
         <RoleSwitch />
         <button
@@ -161,8 +163,19 @@ function StepBar({ pid }: { pid: number }) {
     compare: false,
     report: !!data?.approval?.valid,
   };
+  const ref = useRef<HTMLElement>(null);
+  const path = useLocation().pathname;
+  // On a narrow screen the row scrolls; bring the current step into view after each navigation.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on navigation only
+  useEffect(() => {
+    ref.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [path]);
   return (
-    <nav aria-label={t("Review workflow")} className="-mb-px flex items-end gap-1 overflow-x-auto">
+    <nav
+      ref={ref}
+      aria-label={t("Review workflow")}
+      className="no-scrollbar relative -mb-px flex items-end gap-1 overflow-x-auto overscroll-x-contain"
+    >
       {STEPS.map((s, i) => (
         <NavLink
           key={s.to}
@@ -210,19 +223,73 @@ function StepBar({ pid }: { pid: number }) {
           )
         }
       >
-        <Lock className="h-3.5 w-3.5" /> {t("Internal economics")}
+        <Lock className="h-3.5 w-3.5" aria-hidden />
+        <span className="sr-only sm:not-sr-only">{t("Internal economics")}</span>
       </NavLink>
     </nav>
   );
 }
 
-/** Left navigation (240px) per DESIGN_SYSTEM.md §3; collapses to a top block on small screens. */
+/** Left navigation (240px) per DESIGN_SYSTEM.md §3; below md it is a drawer behind the top bar's menu button. */
 export function AppShell() {
   const path = useLocation().pathname;
+  const [open, setOpen] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close the drawer whenever the route changes
+  useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open]);
   return (
     <div className="flex min-h-full flex-col md:flex-row">
-      <aside className="no-print flex shrink-0 flex-col border-b border-line bg-surface px-3 py-4 md:sticky md:top-0 md:h-screen md:w-[240px] md:border-b-0 md:border-r">
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-[var(--radius-control)] bg-navy-900 px-3 py-2 text-[13px] font-medium text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        {t("Skip to content")}
+      </a>
+      <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-3 backdrop-blur md:hidden">
         <Brand />
+        <button
+          type="button"
+          aria-label={t("Menu")}
+          aria-expanded={open}
+          aria-controls="app-nav"
+          onClick={() => setOpen(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-navy-900 hover:bg-paper"
+        >
+          <Menu className="h-5 w-5" aria-hidden />
+        </button>
+      </header>
+      {open && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={t("Close menu")}
+          onClick={() => setOpen(false)}
+          className="pce-fade fixed inset-0 z-40 bg-navy-900/30 md:hidden"
+        />
+      )}
+      <aside
+        id="app-nav"
+        className={cn(
+          "no-print fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-line bg-surface px-3 py-4 transition-transform duration-200 md:sticky md:top-0 md:z-auto md:h-screen md:w-[240px] md:translate-x-0 md:transition-none",
+          open ? "translate-x-0 shadow-xl" : "-translate-x-full",
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <Brand />
+          <button
+            type="button"
+            aria-label={t("Close menu")}
+            onClick={() => setOpen(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] text-muted hover:bg-paper md:hidden"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
         <nav aria-label={t("Main")} className="mt-6 space-y-0.5">
           <NavLink to="/crm" className={navCls}>
             <Users className="h-4 w-4" /> {t("Clients & pipeline")}
@@ -249,7 +316,7 @@ export function AppShell() {
           <AccountMenu />
         </div>
       </aside>
-      <main className="min-w-0 flex-1">
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
         <Outlet />
       </main>
     </div>

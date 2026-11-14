@@ -1110,6 +1110,18 @@ export const IT: Record<string, string> = {
   "Swiss stamp duty is a tax that applies at any Swiss bank; excluded from the like-for-like comparison.":
     "La tassa di bollo svizzera è un'imposta dovuta presso qualsiasi banca svizzera; esclusa dal confronto a parità di condizioni.",
   "Management or advisory fee (if any)": "Commissione di gestione o consulenza (se presente)",
+  "Skip to content": "Vai al contenuto",
+  Menu: "Menu",
+  "Close menu": "Chiudi menu",
+  "{name} moved to {stage}": "{name} spostato in {stage}",
+  "Only PDF or XLSX files can be read": "Si possono leggere solo file PDF o XLSX",
+  "Larger than {n} MB": "Più grande di {n} MB",
+  "Drop documents anywhere on this page": "Trascina i documenti in un punto qualsiasi della pagina",
+  "Drop to add {n} files to this cost review": "Rilascia per aggiungere {n} file a questa analisi",
+  "Drop to add the files to this cost review": "Rilascia per aggiungere i file a questa analisi",
+  "PDF or XLSX, up to 25 MB each. Read on this machine only.":
+    "PDF o XLSX, fino a 25 MB ciascuno. Letti solo su questo computer.",
+  "Drop to add 1 file to this cost review": "Rilascia per aggiungere 1 file a questa analisi",
 };
 
 /**

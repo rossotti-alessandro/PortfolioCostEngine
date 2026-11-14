@@ -253,62 +253,66 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
           </div>
         }
       />
-      <table className="w-full text-[13px]">
-        <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
-          <tr>
-            <th className="min-w-[170px] px-5 pt-3 pb-1 font-medium">{t("Layer")}</th>
-            <th className="w-[30%] px-2 pt-3 pb-1 font-medium" />
-            <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Today")}</th>
-            <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Proposal")}</th>
-            <th className="px-5 pt-3 pb-1 text-right font-medium">{t("Difference")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.k} className="border-t border-line/70">
-              <td className="px-5 py-2.5">
-                {t(LAYER[r.k].name)}
-                {r.u && <div className="text-[11.5px] text-red-700">{t("today: part not determined")}</div>}
-              </td>
-              <td className="px-2 py-2.5">
-                <div className="space-y-1">
-                  <div
-                    className={cn("h-2 rounded-r", r.u && "hatch")}
-                    style={{
-                      width: `${(r.a / max) * 100}%`,
-                      minWidth: 2,
-                      background: r.u ? undefined : "var(--chart-taxes)",
-                    }}
-                  />
-                  <div className="h-2 rounded-r bg-teal-700" style={{ width: `${(r.b / max) * 100}%`, minWidth: 2 }} />
-                </div>
-              </td>
-              <td className="num px-2 py-2.5 text-right">{chf(r.a)}</td>
-              <td className="num px-2 py-2.5 text-right">{chf(r.b)}</td>
-              <td
-                className={cn(
-                  "num px-5 py-2.5 text-right font-medium",
-                  r.a - r.b >= 0 ? "text-teal-700" : "text-red-700",
-                )}
-              >
-                {chf(r.a - r.b)}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[13px]">
+          <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
+            <tr>
+              <th className="px-3 pt-3 pb-1 font-medium sm:min-w-[170px] sm:px-5">{t("Layer")}</th>
+              <th className="hidden w-[30%] px-2 pt-3 pb-1 font-medium sm:table-cell" />
+              <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Today")}</th>
+              <th className="px-2 pt-3 pb-1 text-right font-medium">{t("Proposal")}</th>
+              <th className="px-3 pt-3 pb-1 text-right font-medium sm:px-5">{t("Difference")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.k} className="border-t border-line/70">
+                <td className="px-3 py-2.5 sm:px-5">
+                  {t(LAYER[r.k].name)}
+                  {r.u && <div className="text-[11.5px] text-red-700">{t("today: part not determined")}</div>}
+                </td>
+                <td className="hidden px-2 py-2.5 sm:table-cell">
+                  <div className="space-y-1">
+                    <div
+                      className={cn("h-2 rounded-r", r.u && "hatch")}
+                      style={{
+                        width: `${(r.a / max) * 100}%`,
+                        minWidth: 2,
+                        background: r.u ? undefined : "var(--chart-taxes)",
+                      }}
+                    />
+                    <div
+                      className="h-2 rounded-r bg-teal-700"
+                      style={{ width: `${(r.b / max) * 100}%`, minWidth: 2 }}
+                    />
+                  </div>
+                </td>
+                <td className="num px-2 py-2.5 text-right">{chf(r.a)}</td>
+                <td className="num px-2 py-2.5 text-right">{chf(r.b)}</td>
+                <td
+                  className={cn(
+                    "num px-3 py-2.5 text-right font-medium sm:px-5",
+                    r.a - r.b >= 0 ? "text-teal-700" : "text-red-700",
+                  )}
+                >
+                  {chf(r.a - r.b)}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-navy-900/20 bg-paper font-semibold">
+              <td className="px-3 py-2.5 sm:px-5">{t("Total")}</td>
+              <td className="hidden sm:table-cell" />
+              <td className="num px-2 py-2.5 text-right">{chf(cmp.current_known)}</td>
+              <td className="num px-2 py-2.5 text-right">{chf(cmp.proposal_known)}</td>
+              <td className={cn("num px-3 py-2.5 text-right sm:px-5", sv.saves && "text-teal-700")}>
+                {sv.prefix && <span className="block text-[11.5px] font-normal sm:mr-1 sm:inline">{t(sv.prefix)}</span>}
+                {sv.saves ? "" : `${t("costs more")} `}
+                {chf(sv.value)}
               </td>
             </tr>
-          ))}
-          <tr className="border-t-2 border-navy-900/20 bg-paper font-semibold">
-            <td className="px-5 py-2.5" colSpan={2}>
-              {t("Total")}
-            </td>
-            <td className="num px-2 py-2.5 text-right">{chf(cmp.current_known)}</td>
-            <td className="num px-2 py-2.5 text-right">{chf(cmp.proposal_known)}</td>
-            <td className={cn("num px-5 py-2.5 text-right", sv.saves && "text-teal-700")}>
-              {sv.prefix && <span className="mr-1 text-[11.5px] font-normal">{t(sv.prefix)}</span>}
-              {sv.saves ? "" : `${t("costs more")} `}
-              {chf(sv.value)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
@@ -316,7 +320,7 @@ function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp
 function ProposalLines({ ledger, onPick, firm }: { ledger: Ledger; onPick: (a: Atom) => void; firm: string }) {
   const atoms = ledger.atoms.filter((x) => x.role === "counted" || x.role === "unknown");
   return (
-    <Card>
+    <Card className="overflow-x-auto">
       <CardHeader
         title={t("{firm}: every line of the proposal", { firm })}
         subtitle={t(
