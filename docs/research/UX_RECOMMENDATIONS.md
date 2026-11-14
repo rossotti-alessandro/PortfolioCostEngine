@@ -31,7 +31,7 @@ Never show internal margins or analyst notes on the client surface.
 ## Wording rules
 
 - Say "estimated" whenever status is not Observed. Say "we could not determine" for unknowns; never show 0.
-- Use the client's language (Italian first for Lugano prospects, then German, English).
+- Use the client's language: the app is in English and Italian (2026-11-14, `.claude/rules/frontend.md`); documents are read in IT, DE, FR and EN.
 - Explain jargon inline: TER, retrocession, custody fee, in one sentence each.
 
 ## Accessibility and best practice

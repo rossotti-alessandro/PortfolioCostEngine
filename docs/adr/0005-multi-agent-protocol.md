@@ -31,7 +31,7 @@ frontmatter, atomic remote claims, generated board, local gate as CI equivalent.
 
 - Claim branches stay on the remote (one per story ever claimed, each a short chain of empty commits). A
   maintainer can prune released ones from a laptop with `git push origin --delete claims/sc-<id>`.
-- `backlog/BOARD.md` is regenerated only on main, so it can lag a few minutes behind open branches;
+- `backlog/BOARD.md` is regenerated in each story PR (since SC-1.7; before, only on main), so it can lag behind open branches;
   `claims-status.mjs` is the live view.
 
 ## Alternatives rejected

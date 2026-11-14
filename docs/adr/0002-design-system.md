@@ -23,6 +23,7 @@ so components and tokens must be decided once.
 - **Accessibility**: WCAG 2.2 AA contrast, focus rings visible, status never colour-only, every chart
   has a table twin, full keyboard support in review screens.
 - **i18n**: all copy through translation keys (`it`, `de`, `en`, `fr`), Italian first for Lugano.
+  *Superseded 2026-11-14 (SC-1.7): product languages are English and Italian; see `.claude/rules/frontend.md`.*
 
 ## Consequences
 
