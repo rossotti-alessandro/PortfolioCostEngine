@@ -61,6 +61,13 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
   (`--radius-card`), 3 px badges and chips; full circles only for dots and step numbers. Elevation:
   hairline borders, no card shadows; one shadow level for popovers/dialogs only.
 - Layout: left nav 240 px (collapsible to 64), content max-width 1440, review screen full-bleed split 55/45.
+- Responsive: below 768 px the left nav becomes a drawer behind a "Menu" button in a 56 px top bar (closes on
+  navigation, Escape, tap outside); the step bar scrolls sideways and keeps the current step in view. No page
+  scrolls sideways at 390, 820, 1280 or 1440 px (`tests/e2e/responsive.spec.ts`). Wide tables scroll inside
+  their card.
+- Motion: only to show what changed (menu opens, row expands, panel appears): `pce-in` 140 ms fade and 4 px
+  slide, `pce-fade` for scrims. `prefers-reduced-motion` turns all of it off. "Skip to content" is the first
+  tab stop.
 
 ## 4. Numbers
 

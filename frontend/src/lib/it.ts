@@ -1099,6 +1099,9 @@ export const IT: Record<string, string> = {
   "Swiss stamp duty is a tax that applies at any Swiss bank; excluded from the like-for-like comparison.":
     "La tassa di bollo svizzera è un'imposta dovuta presso qualsiasi banca svizzera; esclusa dal confronto a parità di condizioni.",
   "Management or advisory fee (if any)": "Commissione di gestione o consulenza (se presente)",
+  "Skip to content": "Vai al contenuto",
+  Menu: "Menu",
+  "Close menu": "Chiudi menu",
 };
 
 /**
