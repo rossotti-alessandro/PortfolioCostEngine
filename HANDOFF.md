@@ -1,8 +1,8 @@
 # FeeLens / PortfolioCostEngine: handoff and status
 
-> **Read this first if you are a new agent, environment or person.** Last updated 2026-11-11.
-> Everything is now on `main`: the protocol, the app, the corpus, the OCR benchmark, sign-in, the research
-> and the decks (PRs #1, #2, #3, #5, #7, #9, #10 merged on 2026-11-11, in that order after #3 and #5).
+> **Read this first if you are a new agent, environment or person.** Last updated 2026-11-14.
+> Every PR through #53 is on `main` except the open ones listed in section 5 (the protocol, the app, the
+> corpus, the OCR benchmark, sign-in, accuracy protocol, readiness gates, the UI redesign so far).
 > The protocol lives in [CLAUDE.md](CLAUDE.md) and [AGENTS.md](AGENTS.md); the backlog in
 > [backlog/BOARD.md](backlog/BOARD.md). This file holds what those do not: the current situation, known
 > drift and the next tasks. Keep it short and current; update it in the same PR as any change it describes.
@@ -20,12 +20,9 @@ missing, and compares the all-in annual cost with an alternative proposal on the
   Ale's explicit approval per PR.
 - The ChatGPT-made kit Ale supplied is input, not truth: `docs/CRITICAL_REVIEW.md`, `docs/app/CRITICAL_REVIEW.md`.
 
-Ale's standing rules beyond `CLAUDE.md`:
+Ale's standing rules (product rules: `CLAUDE.md` § Product rules; protocol: `AGENTS.md`):
 
-- UI as simple as possible: details behind (i) icons, expandable sections or dropdowns; plain language,
-  clear headers; emphasis only on the key numbers. The CRM is the home page. App and decks in EN and IT.
-- Agent replies to people: short and direct (`caveman` lite). Code: smallest complete change (`ponytail`).
-  In Ale's words "Ponytails/Cademan" means these two skills (`.agents/skills/`).
+- In Ale's words "Ponytails/Cademan" means the `ponytail` and `caveman` skills (`.agents/skills/`).
 - Never scrape swissfunddata.ch; UBS, Credit Suisse and BancaStato block bots: do not work around it.
 - **Secrets never go in git or chat.** The demo password and session key live only in the Render dashboard.
 
@@ -79,30 +76,30 @@ CI (`.github/workflows/ci.yml`) installs them itself.
 
 ## 5. Current situation and next tasks
 
-State on 2026-11-11:
+State on 2026-11-14:
 
-- `main` = all PRs merged; gate green locally on the merged tree (with OCR packages installed).
+- Open PRs: #40 (SC-7.6 firm tariff), #44 (15 specimens from a client-file gap audit), #48 (accounts with
+  MFA, erasure, audit, pilot kit; claims SC-11.6 to 11.11). Check `node scripts/claims-status.mjs` and the
+  PR list before touching their paths.
+- Readiness verdict (`docs/READINESS.md`): not ready for real client data; close to a supervised pilot.
 - Render still deploys branch `claude/project-thread-steqtm` at `fa2b77b`, which has **no sign-in**. To
   switch: Ale sets `PCE_SECRET_KEY` and `PCE_ADMIN_PASSWORD` in the dashboard, the service branch is changed
   to `main`, and a deploy is triggered. Then check that `/` asks for a login.
+- Board drift: SC-9.6 was delivered by PR #34 but its story still says To Do, so the board offers it as
+  ready. Read the story and the PR before claiming it.
 
 Next tasks, in priority order:
 
 1. **Deploy sign-in** (above).
-2. **Reconcile the demo-covered stories** (section 4), story by story.
-3. **Parser fixes found by the corpus:** cost-report reader takes footers and invested amounts as costs;
-   FUND_PERFORMANCE fires on conversion fees, footnotes and benchmark weights; institution wrong on about half
-   of documents; tariff labels mis-mapped (FX to custody, order commission to advisory); footnote digits merge
-   into numbers; ranges keep the lower bound; multi-column tariffs keep only column 1. Re-run `evaluate.py`
-   after each fix and compare with `RESULTS.md`.
-4. **Choose the production extraction pipeline** from the benchmark: cheap hybrid route, work on label
-   association, VLM branch only for scans (SC-5.2, SC-5.5).
-5. Write the FX rule ("only rates printed on the client's documents") into `.claude/rules/finance.md`.
-6. Dependencies PR: vitest 2 (critical dev-only advisories) and React Router 7 (2 moderate).
-7. Postgres and multi-user/SSO (SC-11.2) before any real client data; real-data pilot with compliance
+2. **Reconcile the demo-covered stories** (section 4), story by story (SC-1.5).
+3. **Extraction accuracy:** current numbers and the remaining miss causes are in `docs/READINESS.md` §3 and
+   `docs/EVALUATION_PROTOCOL.md`; every change follows the accuracy rule in `.claude/rules/extraction.md`.
+4. Dependencies PR: vitest 2 (critical dev-only advisories) and React Router 7 (2 moderate).
+5. Postgres and multi-user/SSO (SC-11.2) before any real client data; real-data pilot with compliance
    sign-off (SC-11.1).
-8. FinSA request letter: in CH, cost and retrocession disclosure is largely on request, so the tool should
+6. FinSA request letter: in CH, cost and retrocession disclosure is largely on request, so the tool should
    generate a letter to the bank asking for costs and retrocessions.
+7. Protocol tooling (SC-1.4): board "ready" list that skips claimed stories, board refresh in CI.
 
 Open questions for Ale or Massimo:
 

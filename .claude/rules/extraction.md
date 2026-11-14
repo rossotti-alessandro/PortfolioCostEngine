@@ -20,7 +20,9 @@ Health check: `cd backend && uv run python -m pce.extraction.toolchain`.
    Word boxes on a crop: **pytesseract** `image_to_data`.
 3. Spreadsheets → **openpyxl** (`.xlsx`) / **xlrd** (`.xls`) with sheet + cell for every value.
 4. Page images for the viewer and OCR → **pypdfium2**. In the browser, PDF.js.
-5. Local VLM (PaddleOCR-VL or similar) only behind the benchmark story; cloud models only under ADR 0004.
+5. Optional local engines (RapidOCR, PaddleOCR-VL, other VLMs) are extras behind a capability check
+   (`pce.extraction.toolchain`); the app works without them. Cloud models only under ADR 0004.
+   A new engine is a rule-9 change (AGENTS.md): licence of code and weights checked first.
 
 ## Hard rules
 
@@ -38,3 +40,18 @@ Health check: `cd backend && uv run python -m pce.extraction.toolchain`.
 - Public product lookups (KID, factsheet, OpenFIGI) send ISINs only, never quantities, values or client
   identifiers, and only to allowlisted hosts.
 - Logs carry document ids and hashes, never document text, names, IBANs or account numbers.
+
+## Accuracy evidence (every extraction change)
+
+Protocol: [docs/EVALUATION_PROTOCOL.md](../../docs/EVALUATION_PROTOCOL.md).
+
+- Run `uv run python -m pce.evaluation` (plus the corpora the change targets, and
+  `data/specimens/statements/score.py` for holdings/AUM) on `main` and on the branch; paste both summary
+  tables in the PR. Any new wrong value, provenance mismatch or silent error needs a fix or a written reason.
+- A wrong value is worse than a missing one: a drop in precision is a regression even when recall rises.
+- Never tune a rule on the documents you then report the score on without saying so; keep a held-out
+  set (blind frontier test) for claims.
+- Quote a rate with its denominator and what it counts ("N of M printed fees found on 63 real pages,
+  x% of accepted values wrong, 2026-11-13"), never a bare percentage. `docs/READINESS.md` §3 explains why rates differ.
+- Speed claims: pages per second or seconds per document, machine and worker count stated.
+- After the merge, refresh every place that quotes the old number (AGENTS.md § Results stay fresh).

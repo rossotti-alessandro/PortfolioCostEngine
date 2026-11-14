@@ -33,7 +33,7 @@ rule_refs: [] # e.g. [".claude/rules/finance.md"]
 ## Description
 
 ### Context
-<!-- current state, what is missing or broken, where -->
+<!-- current state, what is missing or broken, where; how you verified the gap (test, command, screenshot) -->
 
 ### User Flow Impact
 <!-- what an analyst or prospect sees differently -->
@@ -45,10 +45,11 @@ rule_refs: [] # e.g. [".claude/rules/finance.md"]
 <!-- numbered steps naming files/functions -->
 
 ### Risks & Follow-ups
+<!-- rule-9 approval needed? shared contracts touched? deck figures or screens affected? -->
 
 ## Acceptance Criteria
 
-- [ ] #1 <!-- success condition, testable -->
+- [ ] #1 <!-- success condition, observable: test name, command + expected output, number + corpus, or EN/IT screenshot -->
 - [ ] #2 <!-- regression guard -->
 
 ## Implementation Notes

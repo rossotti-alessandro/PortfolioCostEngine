@@ -5,8 +5,11 @@ fix or delete the other one in the same PR.
 
 | Topic | Canonical source | Owner (story / thread) |
 |---|---|---|
-| Agent protocol, claims, merge rules | [AGENTS.md](../AGENTS.md) | SC-1.1 |
-| Coding standards, invariants | [CLAUDE.md](../CLAUDE.md), `.claude/rules/*.md` | SC-1.1 |
+| Agent protocol, PM loop, claims, merge rules, rule-9 approvals | [AGENTS.md](../AGENTS.md) | SC-1.1, SC-1.7 |
+| Product rules from Ale, coding standards, invariants | [CLAUDE.md](../CLAUDE.md), `.claude/rules/*.md` | SC-1.1, SC-1.7 |
+| Current situation, open PRs, drift, next tasks | [HANDOFF.md](../HANDOFF.md) | every PR that changes them |
+| Fee evidence statuses (measurements) | `Measurement` in `backend/src/pce/finance/ledger.py`, mirrored in `.claude/rules/finance.md` | rule 9 |
+| Accuracy protocol, gates and baselines | [docs/EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md) | SC-9.1 |
 | Commands and change loop | [docs/WORKFLOW.md](WORKFLOW.md) | SC-1.1 |
 | Architecture and technology decisions | [docs/adr/](adr/README.md) | coordinator |
 | Backlog: epics, stories, owners, progress | `backlog/tasks/*.md` (board is generated: `backlog/BOARD.md`) | coordinator |
@@ -19,7 +22,7 @@ fix or delete the other one in the same PR.
 | Extraction engines and versions | [ADR 0003](adr/0003-document-extraction-and-ocr.md), `backend/pyproject.toml`, `backend/uv.lock` | SC-1.2 |
 | Design tokens and components | [docs/design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md) | SC-8.1 |
 | UX flow and screens | `docs/research/UX_RECOMMENDATIONS.md`, then `docs/app/` once the app exists | demo (SC-8) |
-| Executive deck | `slides/` | deck (SC-10.1) |
+| Decks: generators, figures, claims | `slides/source/*.js`, [slides/README.md](../slides/README.md), `.claude/rules/deck.md` | deck (SC-10) |
 
 The ChatGPT handoff kit (`SafeCapital_ClaudeCode_Kit`, uploaded 2026-11-06) is **input, not truth**. Its
 useful parts were re-verified into the files above; its own backlog is superseded by `backlog/tasks/`.
