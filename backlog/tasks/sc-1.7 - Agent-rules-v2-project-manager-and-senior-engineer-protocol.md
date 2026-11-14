@@ -86,6 +86,7 @@ Fewer PRs per story (no separate board PR), fewer permission prompts, less re-re
   types/i18n paths as in the code), rules finance/frontend/extraction/testing/task-lifecycle, new
   `.claude/rules/deck.md`, WORKFLOW, PR and story templates, DoD in `backlog/config.yml`, HANDOFF §5,
   SOURCES_OF_TRUTH, ADR 0005 addendum; ADR 0002 and UX_RECOMMENDATIONS note EN + IT.
+- 2026-11-14 11:05: "Results stay fresh" section added at Ale's request (dated results, refresh memory, docs and artifacts after a merge that changes a number).
 - Merge, not rebase, to bring `main` into a pushed branch: `.claude/settings.json` denies force-push.
 - `scripts/backlog-board.mjs`: header text only (where the board is regenerated).
 - Not changed: `.claude/settings.json`. Widening the permission allowlist was refused by the session's

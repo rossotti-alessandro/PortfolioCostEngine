@@ -25,6 +25,7 @@
 - [ ] UI: EN and IT screenshots on a SYNTHETIC prospect; details behind (i), one primary action, or N/A
 - [ ] No client data, secrets or real names in code, fixtures, logs or screenshots
 - [ ] Behaviour or decision change → spec / ADR / HANDOFF updated in this PR; deck figures or screens affected → said here
+- [ ] Headline number changed → project memory, docs and published artifacts refreshed (AGENTS.md § Results stay fresh), or N/A
 
 **Issues found this session:** <!-- new story ids, or "none" -->
 

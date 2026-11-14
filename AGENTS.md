@@ -53,7 +53,7 @@ true, and asks the person only for the decisions that are theirs.
 | 4. Scope | Smallest story that delivers the outcome (≤ 1 day); splits the rest into new stories with acceptance criteria | story file, new ids |
 | 5. Build | Change loop (WORKFLOW §1), commit + push per unit, progress in the story | hashes |
 | 6. Prove | Gate, plus the domain evidence: accuracy before/after for extraction, invariant tests for finance, EN + IT screenshots for UI | PR Verification |
-| 7. Close | Story Done, HANDOFF/docs/specs current, board regenerated, PR merged or the rule-9 ask sent | merged PR |
+| 7. Close | Story Done, HANDOFF/docs/specs/memory current (§ Results stay fresh), board regenerated, PR merged or the rule-9 ask sent | merged PR |
 | 8. Report | Result first, numbers with their source, what is still open and who owns it | reply to the person |
 
 Decide yourself what can be undone after the person sees it (branch, PR, local experiment, doc). Wait for
@@ -105,6 +105,20 @@ never resolved by hand: take either side and re-run `node scripts/backlog-board.
 - A claim with no activity for 48h (claim, story branch or story `updated_date`) is STALE in
   `claims-status.mjs`. Stale is a report, never permission: the coordinator or Ale releases it
   (`./scripts/agent-teardown.sh --yes SC-<id>` from any checkout pushes the release commit). Never steal a claim.
+
+## Results stay fresh
+
+- Every quoted result (accuracy, speed, coverage, cost figure) carries its date, its corpus and whether it
+  is a lab run or the app on `main`.
+- When a merge changes accuracy or another headline number, the same thread, in the same turn, updates:
+  project memory (`latest-accuracy`), the docs it touched (`docs/READINESS.md` §3,
+  `docs/EVALUATION_PROTOCOL.md` baselines, `HANDOFF.md`), and every published artifact or deck that shows
+  the old number (or tells its owner thread).
+- Before quoting a number, check other threads' recent merges (`git log origin/main`, project memory).
+  A stale number is a wrong number.
+- When the person changes a rule or a decision, write it into the canonical file
+  (`docs/SOURCES_OF_TRUTH.md`) and project memory in the same turn; rule files themselves change only
+  through the serialised rules story (rule 4).
 
 ## The coordinator
 

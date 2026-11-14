@@ -54,3 +54,4 @@ Protocol: [docs/EVALUATION_PROTOCOL.md](../../docs/EVALUATION_PROTOCOL.md).
 - Quote a rate with its denominator and what it counts ("N of M printed fees found on 63 real pages,
   x% of accepted values wrong, 2026-11-13"), never a bare percentage. `docs/READINESS.md` §3 explains why rates differ.
 - Speed claims: pages per second or seconds per document, machine and worker count stated.
+- After the merge, refresh every place that quotes the old number (AGENTS.md § Results stay fresh).
