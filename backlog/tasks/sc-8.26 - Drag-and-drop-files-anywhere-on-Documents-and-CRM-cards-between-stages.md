@@ -1,15 +1,15 @@
 ---
 id: SC-8.26
 title: Drag and drop files anywhere on Documents, and CRM cards between stages
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-14 00:30"
-updated_date: "2026-11-14 00:25"
+updated_date: "2026-11-14 00:50"
 labels:
   - ui
 dependencies: [SC-8.25]
@@ -58,17 +58,26 @@ Fewer wasted uploads: refused files never leave the browser.
 
 ## Acceptance Criteria
 
-- [ ] #1 Dragging files over the Documents page shows the overlay; a dropped non-PDF/XLSX file is refused at once with its reason (E2E)
-- [ ] #2 A CRM card dragged to another column moves there and the move is announced (E2E)
-- [ ] #3 Existing E2E suite passes
+- [x] #1 Dragging files over the Documents page shows the overlay; a dropped non-PDF/XLSX file is refused at once with its reason (E2E)
+- [x] #2 A CRM card dragged to another column moves there and the move is announced (E2E)
+- [x] #3 Existing E2E suite passes
 
 ## Implementation Notes
 
+- Owned paths as listed. Also fixes the status badge wrapping onto two lines at 1440 px (left over from SC-8.25).
+- The board E2E dispatches the drag events: with many contacts the Lead column scrolls and a pointer drag cannot reach the new card.
+
 ## Outcome
+
+- **Status**: completed
+- Page-wide file drop with overlay and count; in-browser refusal (type, 25 MB) listed with the reason; board cards with grip, grab cursor, dim while dragged, dashed target outline only for a real move, Firefox-safe dragstart, live announcement.
+- E2E 22/22 (new `dragdrop.spec.ts`); `local-gate.sh` GATE PASSED. Screenshot: project files `feelens-redesign/documents-drop.png`.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | e3224ff | 2026-11-14 | Page-wide drop, refusal, board drag feedback |
+| claude/project-thread-bj3sap | f80ecb1 | 2026-11-14 | Board drag E2E with dispatched events |
 
 ## Issues Encountered
