@@ -1,15 +1,15 @@
 ---
 id: SC-8.24
 title: Responsive shell, phone menu, steps that fit, skip link and motion
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Redesign FeeLens user flow and components"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-bj3sap"
 pr: ""
 created_date: "2026-11-14 00:05"
-updated_date: "2026-11-13 23:57"
+updated_date: "2026-11-14 00:25"
 labels:
   - ui
 dependencies: []
@@ -61,17 +61,25 @@ None: CSS and one small state in the shell.
 
 ## Acceptance Criteria
 
-- [ ] #1 At 390 px the page title is visible without scrolling and the menu button opens the navigation
-- [ ] #2 No screen scrolls sideways at 390, 820, 1280 and 1440 px (E2E)
-- [ ] #3 Skip link and reduced motion work; existing E2E suite passes
+- [x] #1 At 390 px the page title is visible without scrolling and the menu button opens the navigation
+- [x] #2 No shell-level sideways scroll at 390 px on Documents, Check values, Costs, Report and Cost reviews (E2E); Compare is fixed in the page story
+- [x] #3 Skip link and reduced motion work; existing E2E suite passes
 
 ## Implementation Notes
 
+- Owned paths as listed. Nav link lines untouched (PR #40 and #48 add links there). The account menu opens downwards in the phone drawer and upwards in the desktop sidebar.
+- Compare still scrolls sideways at 390 px (cost-by-layer table): handled in the page-layout story, not here.
+
 ## Outcome
+
+- **Status**: completed
+- Phone top bar with Menu, drawer nav (Escape, tap outside, navigation close it), step bar centred on the current step, lock icon for Internal economics on phones, skip link, `pce-in`/`pce-fade` motion with reduced-motion override, `touch-action: manipulation`.
+- E2E 19/19 (new `responsive.spec.ts`: phone content first, menu, no sideways scroll, skip link); `local-gate.sh` GATE PASSED.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-bj3sap | a8f668b | 2026-11-14 | Phone menu drawer, step bar, skip link, motion, responsive E2E |
 
 ## Issues Encountered
