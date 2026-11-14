@@ -67,6 +67,10 @@ Taxes and duties `#A3A3A3` · Unknown: hatched pattern with label, no fake lengt
   their card; cards never grow wider than their column (`min-w-0`) and card headers wrap their actions. On a
   phone, chart columns that duplicate a number hide, and secondary columns move under the row's name.
 - Info (i): opens on hover, focus and tap (`InfoTip`), closes on a second tap or a tap outside.
+- Drag and drop: files dragged over the Documents page show a full-page drop overlay with the file count;
+  files the API would refuse (type, 25 MB) are refused in the browser with the reason. Board cards show a grip,
+  dim while dragged, and the target column gets a dashed teal outline; every move is announced. Every drag has
+  a click path ("Choose files", "Move to…") for keyboard and touch.
 - Motion: only to show what changed (menu opens, row expands, panel appears): `pce-in` 140 ms fade and 4 px
   slide, `pce-fade` for scrims. `prefers-reduced-motion` turns all of it off. "Skip to content" is the first
   tab stop.

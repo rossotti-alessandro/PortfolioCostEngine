@@ -2,7 +2,7 @@ import { Badge, Button, Card, Empty, ErrorBox, Kpi, Spinner, inputCls } from "@/
 import { chf, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, FlaskConical, Search, Users } from "lucide-react";
+import { CalendarClock, FlaskConical, GripVertical, Search, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { type Contact, type StageId, crm, ratioPct, today } from "./api";
@@ -96,6 +96,7 @@ export default function BoardPage() {
   const [move, setMove] = useState<{ id: number; to: StageId } | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
   const [over, setOver] = useState<StageId | null>(null);
+  const [said, setSaid] = useState(""); // announced to screen readers after a move
   const qc = useQueryClient();
   const quick = useMutation({
     mutationFn: (v: { id: number; to: StageId }) => crm.move(v.id, { to_stage: v.to }),
@@ -133,19 +134,30 @@ export default function BoardPage() {
                   aria-label={t(s.label)}
                   data-stage={s.id}
                   onDragOver={(e) => {
+                    if (drag === null) return;
                     e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
                     setOver(s.id);
                   }}
-                  onDragLeave={() => setOver(null)}
-                  onDrop={() => {
+                  onDragLeave={(e) => {
+                    // leaving for a child of the same column is not leaving the column
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
                     const c = data.find((x) => x.id === drag);
-                    if (c && c.stage !== s.id) request(c.id, s.id);
+                    if (c && c.stage !== s.id) {
+                      request(c.id, s.id);
+                      if (s.id !== "lost") setSaid(t("{name} moved to {stage}", { name: c.name, stage: t(s.label) }));
+                    }
                     setDrag(null);
                     setOver(null);
                   }}
                   className={cn(
-                    "flex w-[260px] shrink-0 flex-col rounded-[var(--radius-card)] border bg-surface-muted/60",
-                    over === s.id ? "border-teal-600 bg-teal-50" : "border-line",
+                    "flex w-[260px] shrink-0 flex-col rounded-[var(--radius-card)] border bg-surface-muted/60 transition-colors",
+                    over === s.id && drag !== null && data.find((x) => x.id === drag)?.stage !== s.id
+                      ? "border-2 border-dashed border-teal-600 bg-teal-50"
+                      : "border-line",
                   )}
                 >
                   <header className="border-b border-line px-3 py-2.5">
@@ -167,9 +179,24 @@ export default function BoardPage() {
                       <li
                         key={c.id}
                         draggable
-                        onDragStart={() => setDrag(c.id)}
-                        className="rounded-md border border-line bg-surface p-3 shadow-[0_1px_2px_rgb(11_37_69/0.04)] hover:border-line-strong"
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", String(c.id)); // Firefox starts a drag only with data
+                          setDrag(c.id);
+                        }}
+                        onDragEnd={() => {
+                          setDrag(null);
+                          setOver(null);
+                        }}
+                        className={cn(
+                          "group relative cursor-grab select-none rounded-[var(--radius-control)] border border-line bg-surface p-3 pl-6 hover:border-line-strong active:cursor-grabbing",
+                          drag === c.id && "opacity-40",
+                        )}
                       >
+                        <GripVertical
+                          className="absolute left-1.5 top-3.5 h-3.5 w-3.5 text-subtle/60 group-hover:text-subtle"
+                          aria-hidden
+                        />
                         <Link
                           to={`/crm/c/${c.id}`}
                           className="block text-[13.5px] font-medium leading-snug text-navy-900 hover:underline"
@@ -198,7 +225,18 @@ export default function BoardPage() {
                           <select
                             className="h-7 w-full rounded-md border border-line bg-surface px-1.5 text-[12px] text-muted focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                             value=""
-                            onChange={(e) => e.target.value && request(c.id, e.target.value as StageId)}
+                            onChange={(e) => {
+                              const to = e.target.value as StageId;
+                              if (!to) return;
+                              request(c.id, to);
+                              if (to !== "lost")
+                                setSaid(
+                                  t("{name} moved to {stage}", {
+                                    name: c.name,
+                                    stage: t(meta.stages.find((x) => x.id === to)?.label ?? to),
+                                  }),
+                                );
+                            }}
                           >
                             <option value="">{t("Move to…")}</option>
                             {meta.stages
@@ -217,6 +255,9 @@ export default function BoardPage() {
               );
             })}
           </div>
+          <p className="sr-only" aria-live="polite">
+            {said}
+          </p>
           <p className="mt-2 text-[12px] text-subtle">
             {t("Drag a card to another column, or use its menu. Click a name to open the contact.")}{" "}
             <button type="button" className="underline" onClick={() => nav("/crm/funnel")}>
