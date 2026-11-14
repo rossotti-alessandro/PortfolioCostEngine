@@ -21,7 +21,7 @@ import {
   Workflow,
   XCircle,
 } from "lucide-react";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 /** Files sent at once. The server caps real parallel work at its CPU count; more requests only queue. */
@@ -36,8 +36,16 @@ export default function DocumentsPage() {
   const busy = rows.some((r) => r.state === "waiting" || r.state === "reading");
   // One request per file, up to UPLOADS_AT_ONCE at a time (the server reads them in parallel, SC-5.20):
   // each row moves on as its own document finishes, in whatever order that happens.
-  const uploadAll = async (files: File[]) => {
-    const start = rows.length;
+  const uploadAll = async (all: File[]) => {
+    // Refuse what the server would refuse, at once and per file, instead of after a round trip.
+    const refused = all.flatMap((f) => {
+      const why = refusal(f);
+      return why ? [{ filename: f.name, state: "done" as const, status: "rejected", error: why }] : [];
+    });
+    const files = all.filter((f) => !refusal(f));
+    if (refused.length) setRows((r) => [...r, ...refused]);
+    if (!files.length) return;
+    const start = rows.length + refused.length;
     setRows((r) => [...r, ...files.map((f) => ({ filename: f.name, state: "waiting" as const }))]);
     let next = 0;
     const worker = async () => {
@@ -59,12 +67,14 @@ export default function DocumentsPage() {
     await Promise.all(Array.from({ length: Math.min(UPLOADS_AT_ONCE, files.length) }, worker));
     qc.invalidateQueries();
   };
+  const dragging = useFileDrag(uploadAll);
   const setType = useMutation({
     mutationFn: ({ id, t }: { id: number; t: string }) => api.setDocType(id, t),
     onSuccess: () => qc.invalidateQueries(),
   });
   return (
     <div>
+      {dragging !== null && <DropOverlay n={dragging} />}
       <PageTitle
         title={t("Documents")}
         subtitle={t(
@@ -78,7 +88,7 @@ export default function DocumentsPage() {
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
-          <Dropzone onFiles={uploadAll} busy={busy} compact={!!docs.data?.length} />
+          <Dropzone onFiles={uploadAll} busy={busy} compact={!!docs.data?.length} over={dragging !== null} />
           {rows.length > 0 && <UploadProgress rows={rows} docs={docs.data ?? []} pid={pid} busy={busy} />}
           <Card>
             <CardHeader
@@ -200,25 +210,19 @@ function UploadProgress({
   );
 }
 
-/** Full height until the first document; then one line, so the list is what the analyst sees. */
-function Dropzone({ onFiles, busy, compact }: { onFiles: (f: File[]) => void; busy: boolean; compact: boolean }) {
+/** Full height until the first document; then one line, so the list is what the analyst sees. Files can be
+ * dropped anywhere on the page (useFileDrag); this box shows where they go and offers the keyboard path. */
+function Dropzone({
+  onFiles,
+  busy,
+  compact,
+  over,
+}: { onFiles: (f: File[]) => void; busy: boolean; compact: boolean; over: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
-  const [over, setOver] = useState(false);
   return (
     <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        const files = Array.from(e.dataTransfer.files);
-        if (files.length) onFiles(files);
-      }}
       className={cn(
-        "flex items-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed transition-colors",
+        "relative flex items-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed transition-colors",
         compact ? "flex-wrap px-5 py-3" : "flex-col justify-center px-6 py-8 text-center",
         over ? "border-teal-600 bg-teal-50" : "border-line-strong bg-surface",
       )}
@@ -226,7 +230,7 @@ function Dropzone({ onFiles, busy, compact }: { onFiles: (f: File[]) => void; bu
       <UploadCloud className={cn("shrink-0 text-teal-700", compact ? "h-5 w-5" : "h-8 w-8")} />
       <div className={cn("min-w-0", compact && "flex-1")}>
         <div className={cn("font-semibold text-navy-900", compact ? "text-[13.5px]" : "text-[15px]")}>
-          {t(compact ? "Add more documents" : "Drop documents here")}
+          {t(compact ? "Add more documents" : "Drop documents anywhere on this page")}
         </div>
         <div className="text-[12.5px] text-muted">
           {t("PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected")}
@@ -257,6 +261,81 @@ function Dropzone({ onFiles, busy, compact }: { onFiles: (f: File[]) => void; bu
   );
 }
 
+const ACCEPTED = [".pdf", ".xlsx"];
+const MAX_MB = 25;
+
+/** Why the server would refuse this file, or null. Same limits as the API (pce.api.ALLOWED, MAX_UPLOAD_BYTES). */
+function refusal(f: File): string | null {
+  if (!ACCEPTED.some((ext) => f.name.toLowerCase().endsWith(ext))) return t("Only PDF or XLSX files can be read");
+  if (f.size > MAX_MB * 1024 * 1024) return t("Larger than {n} MB", { n: MAX_MB });
+  return null;
+}
+
+/** Files dragged over the window: the number of files while dragging (null otherwise); dropping uploads them. */
+function useFileDrag(onFiles: (f: File[]) => void): number | null {
+  const [n, setN] = useState<number | null>(null);
+  const cb = useRef(onFiles);
+  cb.current = onFiles;
+  useEffect(() => {
+    let depth = 0; // dragenter/leave fire for every child; count them so the overlay does not flicker
+    const isFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
+    const enter = (e: DragEvent) => {
+      if (!isFiles(e)) return;
+      e.preventDefault();
+      depth += 1;
+      setN(e.dataTransfer?.items.length ?? 0);
+    };
+    const over = (e: DragEvent) => {
+      if (isFiles(e)) e.preventDefault(); // allows the drop
+    };
+    const leave = (e: DragEvent) => {
+      if (!isFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) setN(null);
+    };
+    const drop = (e: DragEvent) => {
+      if (!isFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setN(null);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length) cb.current(files);
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+    };
+  }, []);
+  return n;
+}
+
+function DropOverlay({ n }: { n: number }) {
+  return (
+    <div
+      aria-live="polite"
+      className="pce-fade pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-teal-50/85 p-6 backdrop-blur-[2px]"
+    >
+      <div className="pce-in flex flex-col items-center gap-3 rounded-[var(--radius-card)] border-2 border-dashed border-teal-600 bg-surface px-10 py-8 text-center shadow-lg">
+        <UploadCloud className="h-10 w-10 text-teal-700" aria-hidden />
+        <div className="text-[17px] font-semibold text-navy-900">
+          {n === 1
+            ? t("Drop to add 1 file to this cost review")
+            : n > 1
+              ? t("Drop to add {n} files to this cost review", { n })
+              : t("Drop to add the files to this cost review")}
+        </div>
+        <div className="text-[13px] text-muted">{t("PDF or XLSX, up to 25 MB each. Read on this machine only.")}</div>
+      </div>
+    </div>
+  );
+}
+
 const SHOWN = 6;
 
 /** One line per document; how it was read, warnings and the type selector open under the row. */
@@ -275,12 +354,12 @@ function DocTable({
       <table className="w-full table-fixed text-[13px]">
         <thead>
           <tr className="whitespace-nowrap border-b border-line text-left text-[11.5px] uppercase tracking-wide text-subtle">
-            <th className="px-5 py-2 font-medium">{t("File")}</th>
-            <th className="w-[15%] px-3 py-2 font-medium">{t("Type")}</th>
-            <th className="w-[15%] px-3 py-2 font-medium">{t("Bank or issuer")}</th>
-            <th className="w-[112px] px-3 py-2 font-medium">{t("Date")}</th>
+            <th className="px-3 py-2 font-medium sm:px-5">{t("File")}</th>
+            <th className="hidden w-[15%] px-3 py-2 font-medium min-[1360px]:table-cell">{t("Type")}</th>
+            <th className="hidden w-[15%] px-3 py-2 font-medium min-[1360px]:table-cell">{t("Bank or issuer")}</th>
+            <th className="hidden w-[112px] px-3 py-2 font-medium sm:table-cell">{t("Date")}</th>
             <th className="w-[64px] px-3 py-2 text-right font-medium">{t("Values")}</th>
-            <th className="w-[148px] px-3 py-2 font-medium">{t("Status")}</th>
+            <th className="w-[76px] px-3 py-2 font-medium sm:w-[148px]">{t("Status")}</th>
           </tr>
         </thead>
         <tbody>
@@ -290,7 +369,7 @@ function DocTable({
             return (
               <Fragment key={d.id}>
                 <tr className={cn("border-b border-line hover:bg-paper", isOpen && "bg-paper")}>
-                  <td className="px-5 py-2">
+                  <td className="px-3 py-2 sm:px-5">
                     <button
                       type="button"
                       aria-expanded={isOpen}
@@ -304,28 +383,41 @@ function DocTable({
                       ) : (
                         <FileText className="h-4 w-4 shrink-0 text-navy-700" />
                       )}
-                      <span className="truncate" title={d.filename}>
-                        {d.filename}
+                      <span className="min-w-0">
+                        <span className="block truncate" title={d.filename}>
+                          {d.filename}
+                        </span>
+                        <span className="block truncate text-[12px] font-normal text-muted min-[1360px]:hidden">
+                          {t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}
+                          {d.profile.institution && ` · ${d.profile.institution}`}
+                        </span>
                       </span>
                     </button>
                   </td>
-                  <td className="truncate px-3 py-2 text-ink">{t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}</td>
-                  <td className="truncate px-3 py-2 text-ink" title={d.profile.institution ?? undefined}>
+                  <td className="hidden truncate px-3 py-2 text-ink min-[1360px]:table-cell">
+                    {t(DOC_TYPES[d.doc_type] ?? d.doc_type_label)}
+                  </td>
+                  <td
+                    className="hidden truncate px-3 py-2 text-ink min-[1360px]:table-cell"
+                    title={d.profile.institution ?? undefined}
+                  >
                     {d.profile.institution ?? <span className="text-subtle">{t("not found")}</span>}
                   </td>
-                  <td className="num truncate px-3 py-2 text-muted">
+                  <td className="num hidden truncate px-3 py-2 text-muted sm:table-cell">
                     {d.profile.period_end ?? d.profile.as_of ?? "–"}
                   </td>
                   <td className="num px-3 py-2 text-right">{d.fact_count}</td>
                   <td className="px-3 py-2">
                     <span className="flex items-center justify-between gap-1">
                       {check ? (
-                        <Badge tone="amber">
-                          <AlertTriangle className="h-3 w-3" /> {t("Needs a check")}
+                        <Badge tone="amber" className="relative whitespace-nowrap">
+                          <AlertTriangle className="h-3 w-3" aria-hidden />
+                          <span className="sr-only sm:not-sr-only">{t("Needs a check")}</span>
                         </Badge>
                       ) : (
-                        <Badge tone="teal">
-                          <CheckCircle2 className="h-3 w-3" /> {t("Ready")}
+                        <Badge tone="teal" className="relative whitespace-nowrap">
+                          <CheckCircle2 className="h-3 w-3" aria-hidden />
+                          <span className="sr-only sm:not-sr-only">{t("Ready")}</span>
                         </Badge>
                       )}
                       <Link
