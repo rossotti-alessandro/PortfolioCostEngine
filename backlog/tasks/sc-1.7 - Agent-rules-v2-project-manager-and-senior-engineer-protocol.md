@@ -1,15 +1,15 @@
 ---
 id: SC-1.7
 title: "Agent rules v2: project manager and senior engineer protocol"
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Update Claude rules and dev protocol"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-ph3wca"
 pr: ""
 created_date: "2026-11-13 23:55"
-updated_date: "2026-11-13 23:55"
+updated_date: "2026-11-14 00:02"
 labels:
   - docs
 dependencies: []
@@ -23,7 +23,9 @@ paths_owned:
   - "docs/SOURCES_OF_TRUTH.md"
   - "docs/adr/0005-multi-agent-protocol.md"
   - ".claude/rules/**"
-  - ".claude/settings.json"
+  - "scripts/backlog-board.mjs"
+  - "docs/adr/0002-design-system.md"
+  - "docs/research/UX_RECOMMENDATIONS.md"
   - ".github/PULL_REQUEST_TEMPLATE.md"
   - "backlog/TEMPLATE.md"
   - "backlog/config.yml"
@@ -73,19 +75,43 @@ Fewer PRs per story (no separate board PR), fewer permission prompts, less re-re
 
 ## Acceptance Criteria
 
-- [ ] #1 Every contradiction listed in Context is resolved in exactly one canonical file
-- [ ] #2 Existing hard rules (fees never invented, missing is not zero, no double counting, synthetic data labelled, no margin in client output, no PyMuPDF, Decimal money, simple UI, EN + IT) are all still present
-- [ ] #3 `./scripts/local-gate.sh` prints GATE PASSED
+- [x] #1 Every contradiction listed in Context is resolved in exactly one canonical file
+- [x] #2 Existing hard rules (fees never invented, missing is not zero, no double counting, synthetic data labelled, no margin in client output, no PyMuPDF, Decimal money, simple UI, EN + IT) are all still present
+- [x] #3 `./scripts/local-gate.sh` prints GATE PASSED
 
 ## Implementation Notes
 
+- Rewrote: AGENTS.md (PM loop, cloud branch rule, rule-9 list and ask, dependency and external-skill
+  policy, board in the story PR), CLAUDE.md (product rules, engineering standards, status list and
+  types/i18n paths as in the code), rules finance/frontend/extraction/testing/task-lifecycle, new
+  `.claude/rules/deck.md`, WORKFLOW, PR and story templates, DoD in `backlog/config.yml`, HANDOFF §5,
+  SOURCES_OF_TRUTH, ADR 0005 addendum; ADR 0002 and UX_RECOMMENDATIONS note EN + IT.
+- Merge, not rebase, to bring `main` into a pushed branch: `.claude/settings.json` denies force-push.
+- `scripts/backlog-board.mjs`: header text only (where the board is regenerated).
+- Not changed: `.claude/settings.json`. Widening the permission allowlist was refused by the session's
+  safety check; left for Ale to decide.
+
 ## Outcome
 
-- **Status**: completed | partial | blocked
+- **Status**: completed
+- Evidence for #1: drift items from Context, each resolved in one file (cloud branch: AGENTS rule 2 +
+  WORKFLOW §2; board PRs: AGENTS § lifecycle + task-lifecycle; story closing: task-lifecycle step 4;
+  bundling: AGENTS rule 2; HANDOFF: refreshed + PR template; languages: frontend.md; simplicity:
+  CLAUDE § Product rules + frontend.md; rule 9 asks and dependencies: AGENTS rule 9 + WORKFLOW §6;
+  accuracy evidence: extraction.md; deck: deck.md).
+- Evidence for #2: each hard rule grepped in CLAUDE.md / AGENTS.md / .claude/rules (PR Verification).
 
 ## Issues Encountered
+
+- SC-9.6 is still To Do on `main` although PR #34 delivered it; recorded in HANDOFF §5, left to its owner.
+- PR #48 bundles several SC-11 stories; the new rule 2 applies to new PRs.
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-ph3wca | 0cf260f | 2026-11-13 23:55 | story file |
+| claude/project-thread-ph3wca | 9db3af5 | 2026-11-13 23:57 | AGENTS, CLAUDE, finance rules |
+| claude/project-thread-ph3wca | 166ecd9 | 2026-11-13 23:58 | frontend, extraction, testing, deck rules |
+| claude/project-thread-ph3wca | 9267269 | 2026-11-14 00:00 | WORKFLOW, templates, HANDOFF, ADR 0005 |
+| claude/project-thread-ph3wca | 3582454 | 2026-11-14 00:01 | board header, EN + IT notes |
