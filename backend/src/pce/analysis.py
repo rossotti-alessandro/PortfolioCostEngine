@@ -494,57 +494,74 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         formula=formula,
                     )
                 )
-    # cash debits corroborate (or, absent a report, establish) the annual figure
+    # cash debits corroborate (or, absent a report, establish) the annual figure. Repeated debits of one
+    # fee on one statement are summed first (SC-7.7), then annualised: by the stated frequency, else by
+    # the days the statement covers, else kept as a flagged lower bound.
     for d in documents:
         if d["doc_type"] != "cash_statement":
             continue
-        ik = inst_key((d.get("profile") or {}).get("institution"))
+        prof = d.get("profile") or {}
+        ik = inst_key(prof.get("institution"))
+        ps, pe = prof.get("period_start"), prof.get("period_end")
+        days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1 if ps and pe else None
+        groups: dict[str, list[tuple[dict, Decimal]]] = defaultdict(list)
         for f in by_doc[d["id"]]:
             if f["kind"] != "cash_debit" or f["value"] is None:
                 continue
-            code = f["fee_code"]
-            n = (f.get("extra") or {}).get("periods_per_year")
             debit, _note, _ids = to_base(D(f["value"]), f.get("currency"), ik)
-            if debit is None:
-                continue
-            annual = debit * (n or 1)
-            target = f"cur:{ik}:{code}"
-            aid = f"debit:{f['id']}"
-            formula = f"{debit:,.2f} debited" + (
-                f" × {n} periods per year" if n else " (period unknown, not annualised)"
-            )
-            if any(a.atom_id == target for a in atoms):
-                atoms.append(
-                    FeeAtom(
-                        aid,
-                        code,
-                        LAYER_BY_CODE.get(code, Layer.OTHER),
-                        f"{ik} · {f['label']}",
-                        ik,
-                        annual,
-                        Measurement.ESTIMATED if n else Measurement.OBSERVED,
-                        Incidence.BILLED,
-                        corroborates=target,
-                        evidence_ids=(str(f["id"]),),
-                        formula=formula,
-                    )
-                )
+            if debit is not None:
+                groups[f["fee_code"]].append((f, debit))
+        for code, items in groups.items():
+            total = sum((v for _f, v in items), ZERO)
+            k = len(items)
+            n = next((f["extra"]["periods_per_year"] for f, _v in items
+                      if (f.get("extra") or {}).get("periods_per_year")), None)  # fmt: skip
+            note = None
+            what = f"{total:,.2f} debited" + (f" in {k} debits" if k > 1 else "")
+            if n:
+                annual = total / k * n
+                measurement = Measurement.ESTIMATED
+                formula = what + (f" ÷ {k}" if k > 1 else "") + f" × {n} periods per year"
+            elif days and 360 <= days <= 366:
+                annual, measurement, formula = total, Measurement.OBSERVED, what + f" over {days} days"
+            elif days:
+                annual = total * Decimal(365) / Decimal(days)
+                measurement = Measurement.ESTIMATED
+                formula = what + f" over {days} days, annualised × 365/{days}"
             else:
-                atoms.append(
-                    FeeAtom(
-                        target,
-                        code,
-                        LAYER_BY_CODE.get(code, Layer.OTHER),
-                        f"{ik} · {f['label']}",
-                        ik,
-                        annual,
-                        Measurement.ESTIMATED if n else Measurement.OBSERVED,
-                        Incidence.BILLED,
-                        evidence_ids=(str(f["id"]),),
-                        formula=formula,
-                        note="Annualised from a single debit; confirm with the annual cost report.",
+                annual, measurement = total, Measurement.ESTIMATED
+                formula = what + " (period unknown, not annualised)"
+                note = "Statement period unknown: a lower bound, not the annual fee."
+                checks.append(
+                    Check(
+                        f"debit_period:{d['id']}:{code}",
+                        f"{ik}: period of {items[0][0]['label']} debits",
+                        "warn",
+                        "The statement period is unknown, so these debits are counted as a lower bound.",
+                        [f["id"] for f, _v in items],
                     )
                 )
+            annual = annual.quantize(Decimal("0.01"))
+            target = f"cur:{ik}:{code}"
+            corroborates = any(a.atom_id == target for a in atoms)
+            atoms.append(
+                FeeAtom(
+                    f"debit:{d['id']}:{code}" if corroborates else target,
+                    code,
+                    LAYER_BY_CODE.get(code, Layer.OTHER),
+                    f"{ik} · {items[0][0]['label']}",
+                    ik,
+                    annual,
+                    measurement,
+                    Incidence.BILLED,
+                    corroborates=target if corroborates else None,
+                    evidence_ids=tuple(str(f["id"]) for f, _v in items),
+                    formula=formula,
+                    note=""
+                    if corroborates
+                    else (note or "Annualised from cash debits; confirm with the annual cost report."),
+                )
+            )
 
     # tariffs: applicability + contract-vs-observed checks (or contractual atoms if nothing observed)
     for d in documents:

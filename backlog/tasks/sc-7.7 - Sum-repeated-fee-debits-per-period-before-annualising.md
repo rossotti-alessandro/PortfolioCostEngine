@@ -1,15 +1,15 @@
 ---
 id: SC-7.7
 title: Sum repeated fee debits per period before annualising
-status: To Do
+status: "Done"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
-pr: ""
+owner: "Prove and raise accuracy on realistic portfolios"
+model: "claude-opus-5-5"
+progress: 100
+branch: "claude/project-thread-12ht53"
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/66"
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:50"
+updated_date: "2026-11-25 21:28"
 labels:
   - finance
   - bug
@@ -52,12 +52,29 @@ Changes current totals on documents with repeated debits; demo P-1042 pinned tot
 
 ## Acceptance Criteria
 
-- [ ] #1 Test: 4 debits of 500 in a 12-month statement give 2000 annual
-- [ ] #2 Test: one debit with unknown period is flagged as a lower bound
-- [ ] #3 Existing corroboration test (debits x4 equal report) stays green
+- [x] #1 Test: 4 debits of 500 in a 12-month statement give 2000 annual
+- [x] #2 Test: one debit with unknown period is flagged as a lower bound
+- [x] #3 Existing corroboration test (debits x4 equal report) stays green
 
 ## Implementation Notes
 
+Annualisation order: a stated frequency (quarter words) first, since it matches the tariff exactly
+(average debit × periods per year); else the days the statement covers (observed when 360-366 days,
+estimated × 365/days otherwise); else the sum is kept as an estimated lower bound with a warn check.
+
 ## Outcome
 
+- **Status**: completed
+
+Debits of one fee on one cash statement are summed into one atom. Tests in
+`backend/tests/test_analysis_debits.py` (4 x 500 over 12 months = 2,000 observed; 2 x 500 over 181 days
+= 2,016.57; one quarterly debit x 4; unknown period = lower bound + warn) failed first and pass. Demo
+P-1042 totals and the corroboration tests are unchanged.
+
 ## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-12ht53 | 3846579 | 2026-11-25 | sum repeated debits before annualising |
