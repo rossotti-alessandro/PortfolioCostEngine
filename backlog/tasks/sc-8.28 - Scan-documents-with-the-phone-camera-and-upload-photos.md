@@ -1,15 +1,15 @@
 ---
 id: SC-8.28
 title: Scan documents with the phone camera and upload photos
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Rebuild CRM for mobile and browser"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-m6dkdk"
 pr: ""
 created_date: "2026-11-25 19:55"
-updated_date: "2026-11-25 19:55"
+updated_date: "2026-11-25 19:43"
 labels:
   - ui
   - intake
