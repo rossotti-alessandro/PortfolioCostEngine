@@ -29,7 +29,7 @@ test("files dragged over Documents show the drop overlay; a wrong type is refuse
   await expect(page.getByText("Drop to add 1 file to this cost review")).toBeVisible();
   await page.dispatchEvent("main", "drop", { dataTransfer: dt });
   await expect(page.getByText("Drop to add 1 file to this cost review")).toHaveCount(0);
-  await expect(page.getByText("Only PDF or XLSX files can be read")).toBeVisible();
+  await expect(page.getByText("Only PDF, XLSX or photos (JPEG, PNG) can be read")).toBeVisible();
 });
 
 test("a CRM card dragged to another stage moves there", async ({ page }) => {
