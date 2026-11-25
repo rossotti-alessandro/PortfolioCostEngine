@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from . import __version__, permissions, scan_upload, security
 from .admin import router as admin_router
 from .analysis import analyse, listed_assets
+from .audit import router as audit_router
 from .crm.router import router as crm_router
 from .db import (
     Approval,
@@ -69,6 +70,7 @@ app.add_middleware(
 app.include_router(security.router)
 app.include_router(crm_router)
 app.include_router(admin_router)
+app.include_router(audit_router)
 SessionFactory = make_session_factory()
 
 
@@ -671,6 +673,8 @@ def get_doc(db: Session, c: Ctx, did: int) -> Document:
 @app.get("/api/documents/{did}/file")
 def document_file(did: int, db: DB, c: C):
     d = get_doc(db, c, did)
+    audit(db, c, d.prospect_id, "document.viewed", document_id=d.id)
+    db.commit()
     return FileResponse(
         d.storage_path,
         media_type=d.media_type,
@@ -687,6 +691,8 @@ def document_sheet(did: int, db: DB, c: C) -> dict:
     d = get_doc(db, c, did)
     if not d.filename.lower().endswith(".xlsx"):
         raise HTTPException(400, "not a spreadsheet")
+    audit(db, c, d.prospect_id, "document.viewed", document_id=d.id)
+    db.commit()
     wb = load_workbook(d.storage_path, data_only=True, read_only=True)
     sheets = []
     for ws in wb.worksheets:

@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from . import auth, permissions
+from . import audit, auth, permissions
 
 COOKIE_SECURE = os.environ.get("PCE_COOKIE_SECURE", "1") != "0"
 # __Host- pins the cookie to this exact host over HTTPS, Path=/ and no Domain: subdomains cannot set it.
@@ -153,9 +153,13 @@ def login(body: LoginIn, request: Request, response: Response) -> dict:
     if not acc:
         auth.PER_CLIENT.fail(ck)
         auth.PER_USER.fail(uk)
+        known = auth.get_account(body.username)
+        if known:  # an unknown name has no firm to file it under; the throttle still counts it
+            audit.log(known.tenant, known.username, "auth.login_failed")
         raise HTTPException(401, "wrong username or password")
     auth.PER_CLIENT.reset(ck)
     token = auth.issue_session(acc)
+    audit.log(acc.tenant, acc.username, "auth.login", session=(auth.session_id(token) or "")[:8])
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -179,6 +183,9 @@ def me(session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None) -> d
 @router.post("/logout")
 def logout(response: Response, session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None) -> dict:
     if session:
+        acc = auth.read_session(session)
+        if acc:
+            audit.log(acc.tenant, acc.username, "auth.logout")
         auth.revoke(session)  # the session ends on the server, not only in this browser
     response.delete_cookie(SESSION_COOKIE, path="/", secure=COOKIE_SECURE, httponly=True, samesite="strict")
     return {"ok": True}
@@ -204,6 +211,7 @@ def change_password(
     if body.new == body.current:
         raise HTTPException(400, "choose a different password")
     auth.set_password(acc.username, body.new)
+    audit.log(acc.tenant, acc.username, "auth.password_changed")
     fresh = auth.get_account(acc.username)
     assert fresh is not None
     token = auth.issue_session(fresh)
