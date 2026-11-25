@@ -1,15 +1,15 @@
 ---
 id: SC-9.8
 title: Realistic portfolio benchmark: photos, handwriting, PII and gates
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Prove accuracy on realistic portfolios"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 19:45"
-updated_date: "2026-11-25 19:45"
+updated_date: "2026-11-25 19:35"
 labels:
   - evaluation
   - extraction
