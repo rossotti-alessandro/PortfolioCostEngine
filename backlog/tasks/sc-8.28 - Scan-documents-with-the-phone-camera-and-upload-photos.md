@@ -1,11 +1,11 @@
 ---
 id: SC-8.28
 title: Scan documents with the phone camera and upload photos
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Rebuild CRM for mobile and browser"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-m6dkdk"
 pr: ""
 created_date: "2026-11-25 19:55"
@@ -73,14 +73,24 @@ Permissions-Policy. Handwriting is out of scope here (accuracy thread).
 
 ## Acceptance Criteria
 
-- [ ] #1 Three synthetic page photos uploaded with combine=true become one 3-page PDF document that is OCR-read
-- [ ] #2 A file that claims .jpg but is not an image is refused; PDF/XLSX uploads behave as before (regression guard)
+- [x] #1 Three synthetic page photos uploaded with combine=true become one 3-page PDF document that is OCR-read
+- [x] #2 A file that claims .jpg but is not an image is refused; PDF/XLSX uploads behave as before (regression guard)
 
 ## Implementation Notes
 
+- Backend: `pce/scan_upload.py` (`photos_to_pdf`, Pillow fallback; uses `pce.extraction.photo.images_to_pdf`
+  automatically once the accuracy thread merges it). `upload` gained `combine` and `scan_name` form fields;
+  photos are sniffed with libmagic, max 40 MP each, max 30 pages per scan.
+- Frontend: `lib/photos.ts` shrinks to 2400 px JPEG 0.85 (also HEIC on Safari, drops EXIF location);
+  `components/ScanDialog.tsx` (camera via `capture="environment"`, gallery, reorder, remove, name).
+- Documents page grid fixed: it scrolled sideways on a 390 px phone (min-width of the grid column).
+
 ## Outcome
 
-- **Status**: partial
+- **Status**: completed
+- pytest 4 new tests (incl. 3-photo scan read by OCR, EXIF rotation, fake photo refused); vitest 3 new;
+  Playwright `scan.spec.ts` on a 390 px phone: 2 pages shot, reordered, named, saved as one 2-page PDF.
+- Full gate GATE PASSED; Playwright 24/24.
 
 ## Issues Encountered
 
@@ -88,3 +98,4 @@ Permissions-Policy. Handwriting is out of scope here (accuracy thread).
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-m6dkdk | 40a956b | 2026-11-25 | camera scan, photo upload, phone layout fix |
