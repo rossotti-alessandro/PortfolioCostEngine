@@ -22,6 +22,7 @@ paths_owned:
   - "backend/tests/test_realistic*.py"
   - "backend/tests/test_photo*.py"
   - "docs/research/REALISTIC_BENCHMARK.md"
+  - "docs/research/INSTRUMENT_DATA_SOURCES.md"
 spec_ref: docs/EVALUATION_PROTOCOL.md
 rule_refs: [".claude/rules/extraction.md", ".claude/rules/privacy.md", ".claude/rules/finance.md"]
 ---
