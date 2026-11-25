@@ -1,15 +1,15 @@
 ---
 id: SC-8.29
 title: Simple CRM home for phone and desktop with a needs-you-today list
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Rebuild CRM for mobile and browser"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-m6dkdk"
 pr: ""
 created_date: "2026-11-25 20:10"
-updated_date: "2026-11-25 20:10"
+updated_date: "2026-11-25 19:54"
 labels:
   - ui
   - crm
