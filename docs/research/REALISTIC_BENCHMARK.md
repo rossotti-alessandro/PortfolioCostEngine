@@ -52,6 +52,13 @@ Masking destroyed no ISIN and no fee figure (mask_damage 0 in every condition).
 
 Speed: 0.6 s per digital statement, about 20 s per scanned or photographed statement (2 pages, CPU only).
 
+### Update 2026-11-25, SC-5.23 (skewed OCR rows)
+
+Fee lines on scans and photos lost their amount when skew put it a few points below the label. After the
+fix (main after #64 -> SC-5.23): fees on office scans 87.5 -> **100%**, phone photos 91.7 -> **99.0%**,
+fax-quality scans 18.8 -> 45.8%; holdings on fax-quality scans 77.5 -> 80.0%. Pen-marked scans (88.5% fees)
+and dark photos (51.0%) unchanged; wrong-unflagged unchanged.
+
 ## Gates (proposed, in `pce/evaluation/realistic/__main__.py`)
 
 | Condition | words | figures | holdings | fees | wrong unflagged |
@@ -97,4 +104,4 @@ funds/ETFs, through the app's `extract()`, `analyse()` and the client report (EN
 
 Dividend yield (not a cost); FX margin and bid/ask spreads (L6) are listed but not estimated; ISIN type
 lookup (FIRDS/OpenFIGI) and automatic KID/EMT retrieval are planned (see `INSTRUMENT_DATA_SOURCES.md`);
-fee lines on scans still miss about 1 in 10; the app should ask for a retake when a picture is too poor.
+fee lines on pen-marked scans still miss about 1 in 9; the app should ask for a retake when a picture is too poor.
