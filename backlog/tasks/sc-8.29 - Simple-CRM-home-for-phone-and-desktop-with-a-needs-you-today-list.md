@@ -83,4 +83,4 @@ Owner filter ("my contacts") needs named users (SC-11.12) and follows it.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
-| claude/project-thread-m6dkdk |  | 2026-11-25 | today list, stage list on phones, quieter cards |
+| claude/project-thread-m6dkdk | ac82f03 | 2026-11-25 | today list, stage list on phones, quieter cards |
