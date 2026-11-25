@@ -1,4 +1,4 @@
-# PII detection: what it finds and what it misses (SC-11.9, 2026-11-13)
+# PII detection: what it finds and what it misses (SC-11.13 rules, SC-11.9 model; 2026-11-13)
 
 Question from Ale: are we masking personal data accurately and completely? Short answer: the rules
 (`pce.pii`, no model) now hide every bank identifier on the test set. Names, addresses and birth dates
