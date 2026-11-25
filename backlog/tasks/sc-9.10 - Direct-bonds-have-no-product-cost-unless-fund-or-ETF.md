@@ -1,11 +1,11 @@
 ---
 id: SC-9.10
 title: Direct bonds have no product cost unless fund or ETF
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Improve CRM UX, camera scan and access control"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-m6dkdk"
 pr: ""
 created_date: "2026-11-25 22:10"
@@ -55,13 +55,16 @@ trade-off as equities; the KID join covers it once the KID is uploaded.
 
 ## Acceptance Criteria
 
-- [ ] #1 A plain bond with a valid ISIN and no KID has no FUND_ONGOING or PRODUCT_UNKNOWN atom
-- [ ] #2 A bond fund (name says fund) with no KID still has an unknown ongoing charge, never zero
-- [ ] #3 A bond with a KID for its ISIN still counts the KID's ongoing charge
+- [x] #1 A plain bond with a valid ISIN and no KID has no FUND_ONGOING or PRODUCT_UNKNOWN atom
+- [x] #2 A bond fund (name says fund) with no KID still has an unknown ongoing charge, never zero
+- [x] #3 A bond with a KID for its ISIN still counts the KID's ongoing charge
 
 ## Implementation Notes
 
 ## Outcome
+
+- **Status**: completed
+- `_product_gap` treats BOND like EQUITY and CASH. Three tests in `backend/tests/test_kid_join.py`. Gate: GATE PASSED (pytest 289 passed / 4 skipped, vitest 28).
 
 ## Issues Encountered
 
@@ -69,3 +72,4 @@ trade-off as equities; the KID join covers it once the KID is uploaded.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-m6dkdk | 924cde4 | 2026-11-25 | BOND excluded from the product-cost gap, tests |
