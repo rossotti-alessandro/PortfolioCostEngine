@@ -1,15 +1,15 @@
 ---
 id: SC-7.7
 title: Sum repeated fee debits per period before annualising
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Prove and raise accuracy on realistic portfolios"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:50"
+updated_date: "2026-11-25 21:15"
 labels:
   - finance
   - bug
