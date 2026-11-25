@@ -69,6 +69,13 @@ def verify(db: Session, tenant: str) -> dict:
     only the count of gaps is shown, never another firm's rows."""
     seals = {s.event_id: s for s in db.scalars(select(AuditSeal))}
     events = {e.id: e for e in db.scalars(select(AuditEvent))}
+    # Gaps the application made itself: entries removed by an erasure, listed in its own sealed entry.
+    erased = {
+        i
+        for e in events.values()
+        if e.action == "prospect.erased" and e.id in seals
+        for i in (e.detail or {}).get("log_entries", [])
+    }
     base = {"stable_key": STABLE_KEY, "unsealed_history": 0, "other_key": 0, "deleted": 0, "problems": []}
     if not seals:
         mine = sum(1 for e in events.values() if e.tenant_id == tenant)
@@ -79,7 +86,8 @@ def verify(db: Session, tenant: str) -> dict:
     for i in range(first, max(max(seals), max(events, default=first)) + 1):
         ev, seal = events.get(i), seals.get(i)
         if ev is None:
-            deleted += 1  # a seal with no row, or an id that was never sealed: both mean a missing row
+            if i not in erased:
+                deleted += 1  # a seal with no row, or an id never sealed: both mean a missing row
             continue
         if ev.tenant_id != tenant:
             continue

@@ -216,6 +216,11 @@ export function activity(q: { user?: string; action?: string; before?: number })
 export const api = {
   taxonomy: () => req<Taxonomy>("/api/taxonomy"),
   prospects: () => req<ProspectRow[]>("/api/prospects"),
+  eraseProspect: (id: number, confirm: string, reason: string, eraseContact: boolean) =>
+    req<Record<string, number>>(
+      `/api/prospects/${id}?${new URLSearchParams({ confirm, reason, erase_contact: String(eraseContact) })}`,
+      { method: "DELETE" },
+    ),
   createProspect: (b: { code: string; label: string; domicile: string }) =>
     req<{ id: number }>("/api/prospects", json(b)),
   patchProspect: (id: number, b: { label?: string; domicile?: string }) =>
