@@ -78,13 +78,17 @@ _OCF = re.compile(r"FUND_ONGOING=([0-9.]+)")
 
 
 def _fund_name(title: str) -> str:
+    title = re.sub(r"^(?:KID|DIC|KIID)\s+", "", title)  # "DIC Echiquier Agenor - Action A": keep the name
     parts = [p.strip() for p in re.split(r"\s[–-]\s", title) if p.strip()]
     keep = [p for p in parts if not _KID_WORDS.search(p)] or parts
     name = keep[0]
-    if len(name) < 14 and len(keep) > 1:  # "Nordea 1 - European Covered Bond Fund": the dash is in the name
+    if (
+        (len(name) < 14 or re.match(r"(?i)action|part\b", keep[-1])) and len(keep) > 1 and keep[1] != name
+    ):  # "Nordea 1 - European Covered Bond Fund": the dash is in the name
         name = f"{name} - {keep[1]}"
     name = re.sub(r"\((?:Swiss|CH)[^)]*\)", "", name).strip()
-    name = re.sub(r"^(?:KID|DIC|KIID)\s+", "", name)
+    name = re.sub(r"^(?:KID|DIC|KIID)\s+|\bBasisinformationsblatt\b", "", name)
+    name = re.sub(r"\s+", " ", name).strip()
     return name[:60]
 
 

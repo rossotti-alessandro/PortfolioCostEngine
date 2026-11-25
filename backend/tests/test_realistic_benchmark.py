@@ -64,3 +64,17 @@ def test_digital_statement_scores_exactly_and_counts_no_damage(statements) -> No
     assert r["pii"]["damage"] == 0  # masking never removes an ISIN or a fee figure
     s = summarise([{**r, "variant": "digital", "layout": g.layout}])["digital"]
     assert s["holdings"] == 100.0
+
+
+@pytest.mark.parametrize("layout", [lay.key for lay in LAYOUTS])
+def test_every_layout_reads_all_holdings_the_total_and_every_fee(statements, layout: str) -> None:
+    """Gaps the benchmark found on 2026-11-25: ISIN printed under the name (broker), French "Valeur"
+    headers, and fee words such as "Fremde Spesen", "Commission de change", "Currency conversion fee"."""
+    out, golds = statements
+    g = next(x for x in golds if x.layout == layout)
+    data = (out / g.file).read_bytes()
+    r = score_doc(g.file, data, g.__dict__, page_text(extract(g.file, data)[1]))
+    assert r["holdings"][0] == r["holdings"][1]
+    assert r["total_ok"]
+    assert r["fee_codes"][0] == r["fee_codes"][1]
+    assert r["wrong"] == 0

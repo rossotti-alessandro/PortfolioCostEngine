@@ -221,7 +221,10 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
             as_of = ds[0]
     currency = None
     m = re.search(
-        r"(?:reference currency|currency|values in|valori in|währung)\s*:?\s*(CHF|EUR|USD|GBP)", alltext, re.I
+        r"(?:reference currency|currency|values in|valori in|währung|monnaie de référence|"
+        r"valuta di riferimento)\s*:?\s*(CHF|EUR|USD|GBP)",
+        alltext,
+        re.I,
     )
     if m:
         currency = m.group(1).upper()
@@ -314,9 +317,9 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
             if no_isin_table and re.search(r"\bweight\b|\(%\)", low) and not _QTY_PRICE_VALUE.search(low):
                 in_table = no_isin_table = False  # an allocation table follows: its numbers are not holdings
                 continue
-            if "isin" in low and ("value" in low or "valore" in low or "wert" in low):
+            if "isin" in low and re.search(r"value|valore|wert|valeur", low):
                 in_table = True
-                m = re.search(r"(?:value|valore|wert)\s+(CHF|EUR|USD)", ln.text, re.I)
+                m = re.search(r"(?:value|valore|wert|valeur)\s+(CHF|EUR|USD)", ln.text, re.I)
                 if m:
                     ccy = m.group(1).upper()
                 continue
@@ -328,6 +331,12 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                 continue
             hit = _isin_at(ln)
             amounts = _amount_cells(ln)
+            if hit is not None and not amounts and len(ln.cells) == 1 and li and in_table:
+                # Broker layout: "Apple Inc | 120 | 228.50 | USD | 27,420.00" then "ISIN US0378331005" below.
+                above = page.lines[li - 1]
+                if _isin_at(above) is None and len(_amount_cells(above)) >= 2:  # "3,716" is ambiguous alone
+                    ln, amounts = above, _amount_cells(above)
+                    hit = (0, hit[1], above.cells[0].text)
             wrapped = (  # long names wrap: "MI Somerset … Accumulation" / "5,649.12 | £1.52 | £8,593.18"
                 page.lines[li - 1].text
                 if li and len(ln.cells) == 3 and len(page.lines[li - 1].cells) == 1
