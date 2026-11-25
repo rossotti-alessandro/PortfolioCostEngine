@@ -26,7 +26,35 @@ def test_valid_ibans_are_found(iban: str) -> None:
 
 
 def test_iban_with_wrong_check_digits_is_not_flagged() -> None:
-    assert detect("IBAN CH94 0076 2011 6238 5295 7") == []
+    assert detect("Ref CH94 0076 2011 6238 5295 7") == []
+
+
+def test_labelled_iban_is_hidden_even_when_ocr_broke_it() -> None:
+    # SC-11.9 measurement: OCR swaps 0/O, 1/l, 5/S and a narrow column wraps the number. After the
+    # label "IBAN" a failed check digit means a misread, not a random number, so it is still hidden.
+    assert kinds("IBAN CH93 OO76 2011 6238 5295 7") == [("iban", "CH93 OO76 2011 6238 5295 7")]
+    assert kinds("IBAN CH93 0076 2011\n6238 5295 7\nCHF") == [("iban", "CH93 0076 2011\n6238 5295 7")]
+
+
+def test_a_row_of_years_is_not_a_card() -> None:
+    # Found on a public ETF factsheet: five performance years in a row happen to pass the Luhn check.
+    assert detect("Performance\n2017 2018 2019 2020 2021") == []
+
+
+def test_swiss_national_phone_without_label() -> None:
+    assert kinds("SYNTHETIC\n091 123 45 67\n") == [("phone", "091 123 45 67")]
+    assert detect("Total 091 123 45 CHF, units 100 200 30 40") == []
+
+
+def test_account_number_with_country_prefix() -> None:
+    assert kinds("Kunden-Nr. CH-12345678 page 1") == [("account", "CH-12345678")]
+
+
+def test_a_found_identifier_is_hidden_wherever_it_repeats() -> None:
+    text = (
+        "Konto-Nr. 0235-123456.01\nROSSI M.   0235-123456.01   2/3 and mario@example.com, mario@example.com"
+    )
+    assert [k for k, _ in kinds(text)] == ["account", "account", "email", "email"]
 
 
 def test_ahv_card_email_phone() -> None:
