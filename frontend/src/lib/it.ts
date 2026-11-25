@@ -1275,6 +1275,18 @@ export const IT: Record<string, string> = {
   "Turn on two-step sign-in": "Attiva l'accesso in due passaggi",
   "Turned on two-step sign-in": "Ha attivato l'accesso in due passaggi",
   "Wrong authenticator code": "Codice di autenticazione errato",
+  "Erase {code}": "Cancella {code}",
+  "Deletes the cost review, every document and extracted figure, reviews, proposals and reports. Only a note that a deletion happened is kept. This cannot be undone. Backups expire on their own schedule.":
+    "Elimina l'analisi dei costi, ogni documento e valore estratto, verifiche, proposte e report. Resta solo una nota che la cancellazione è avvenuta. L'operazione non si può annullare. I backup scadono secondo il loro calendario.",
+  Reason: "Motivo",
+  "The prospect asked for deletion": "Il potenziale cliente ha chiesto la cancellazione",
+  "No mandate followed": "Nessun mandato",
+  "Retention period ended": "Periodo di conservazione scaduto",
+  "Uploaded by mistake": "Caricato per errore",
+  "Also delete the linked contact in Clients & pipeline": "Elimina anche il contatto collegato in Clienti e pipeline",
+  "Type {code} to confirm": "Digita {code} per confermare",
+  Erase: "Cancella",
+  "Erased a cost review": "Ha cancellato un'analisi dei costi",
 };
 
 /**

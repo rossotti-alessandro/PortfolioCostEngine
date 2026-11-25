@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import __version__, permissions, scan_upload, security
+from . import __version__, erasure, permissions, scan_upload, security
 from .admin import router as admin_router
 from .analysis import analyse, listed_assets
 from .audit import router as audit_router
@@ -1038,6 +1038,24 @@ def approve(pid: int, body: ApprovalIn, db: DB, c: C) -> dict:
     audit(db, c, p.id, "report.approved", snapshot=r["snapshot_hash"][:12], note=body.note)
     db.commit()
     return {"ok": True}
+
+
+@app.delete("/api/prospects/{pid}")
+def erase_prospect(
+    pid: int,
+    db: DB,
+    c: C,
+    confirm: str,
+    reason: erasure.Reason,
+    erase_contact: bool = False,
+) -> dict:
+    """Erase a prospect and everything derived from it (SC-11.11). ``confirm`` must repeat its code."""
+    if not permissions.can(c.role, "data.erase"):
+        raise HTTPException(403, "only a senior reviewer can erase a cost review")
+    p = get_prospect(db, c, pid)
+    if confirm != p.code:
+        raise HTTPException(400, "type the cost review's code to confirm")
+    return erasure.erase_prospect(db, c.tenant, p.id, c.user, reason, erase_contact)
 
 
 @app.get("/api/prospects/{pid}/audit")

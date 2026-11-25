@@ -25,6 +25,7 @@ const ACTION: Record<string, string> = {
   "document.reclassified": "Changed a document's type",
   "prospect.created": "Started a cost review",
   "prospect.updated": "Edited a cost review",
+  "prospect.erased": "Erased a cost review",
   "internal.viewed": "Opened internal economics",
   "proposal.saved": "Saved a proposal",
   "request.status": "Updated a document request",
