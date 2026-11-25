@@ -7,9 +7,9 @@ owner: "Rebuild CRM for mobile and browser"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-m6dkdk"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/61"
 created_date: "2026-11-25 20:10"
-updated_date: "2026-11-25 19:54"
+updated_date: "2026-11-25 20:05"
 labels:
   - ui
   - crm
