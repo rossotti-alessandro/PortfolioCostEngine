@@ -64,4 +64,11 @@ estimated × 365/days otherwise); else the sum is kept as an estimated lower bou
 
 ## Outcome
 
+- **Status**: completed
+
+Debits of one fee on one cash statement are summed into one atom. Tests in
+`backend/tests/test_analysis_debits.py` (4 x 500 over 12 months = 2,000 observed; 2 x 500 over 181 days
+= 2,016.57; one quarterly debit x 4; unknown period = lower bound + warn) failed first and pass. Demo
+P-1042 totals and the corroboration tests are unchanged.
+
 ## Issues Encountered
