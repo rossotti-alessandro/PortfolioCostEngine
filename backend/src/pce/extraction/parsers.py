@@ -69,6 +69,8 @@ def _footer_or_invested_base(line: Line, amounts: list[tuple[int, Decimal]]) -> 
     if _FOOTER.search(line.text) and bare:
         return True
     return bool(PERCENT.search(line.text) and len(amounts) == 1 and abs(amounts[0][1]) >= _INVESTED_BASE)
+
+
 _SYMBOL_CCY = {"£": "GBP", "€": "EUR", "$": "USD"}
 _QTY_PRICE_VALUE = re.compile(r"quantit|stück|menge|nombre|units", re.I)
 _PRICE_4DP = re.compile(r"^[£$€]?\s*(\d{1,3}(?:,\d{3})*\.\d{2,6})$")

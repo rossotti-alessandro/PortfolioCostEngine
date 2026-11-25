@@ -224,9 +224,7 @@ _NO_CHF_TOTAL = (
     "No CHF total: no exchange rate into CHF is printed on the documents. "
     "Assets are not shown as zero, and no saving is claimed."
 )
-_NO_KNOWN_COST = (
-    "No saving is claimed: no current cost is known. Unknown costs are not treated as zero."
-)
+_NO_KNOWN_COST = "No saving is claimed: no current cost is known. Unknown costs are not treated as zero."
 
 
 def _claim_saving(cmp: Comparison, *, valued: bool, known: Decimal) -> None:
