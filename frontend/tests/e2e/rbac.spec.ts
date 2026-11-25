@@ -47,9 +47,6 @@ test("admin adds a viewer; the viewer sets a password, reads, cannot write, and 
   expect(write.status()).toBe(403);
 
   const cookies = await ctx.cookies();
-  await p
-    .click()
-    .catch(() => undefined);
   await p.getByLabel("Account menu").click();
   await p.getByRole("button", { name: "Sign out" }).click();
   await expect(p.getByRole("heading", { name: "Sign in" })).toBeVisible();
