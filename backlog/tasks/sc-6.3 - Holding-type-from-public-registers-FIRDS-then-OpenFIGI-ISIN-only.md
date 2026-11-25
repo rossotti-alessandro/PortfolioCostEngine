@@ -1,11 +1,11 @@
 ---
 id: SC-6.3
 title: Holding type from public registers (FIRDS then OpenFIGI, ISIN only)
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Prove and raise accuracy on realistic portfolios"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 22:25"
@@ -56,15 +56,21 @@ Share class identity and KID retrieval stay in SC-6.1 / SC-6.2.
 
 ## Acceptance Criteria
 
-- [ ] #1 Tests: FIRDS then OpenFIGI mapping, only ISINs sent to the two hosts, cached, offline falls back, switch off sends nothing
-- [ ] #2 A fund named like a company with no KID gets an unknown ongoing-charge atom (not nothing)
-- [ ] #3 Live check on the 137 public benchmark ISINs: types match
+- [x] #1 Tests: FIRDS then OpenFIGI mapping, only ISINs sent to the two hosts, cached, offline falls back, switch off sends nothing
+- [x] #2 A fund named like a company with no KID gets an unknown ongoing-charge atom (not nothing)
+- [x] #3 Live check on the 137 public benchmark ISINs: types match
 
 ## Implementation Notes
 
 ## Outcome
 
-- **Status**: partial
+- **Status**: completed
+
+`pce.instruments.registry.resolve` sets each held ISIN's type from the FIRDS CFI code, else OpenFIGI, at
+upload (`api._register_types`). Tests `backend/tests/test_isin_registry.py` (mock transport: mapping, only
+ISINs sent to the two hosts, cache, offline fallback, switch off, fund-named-like-a-share gets an unknown
+ongoing charge). Live check 2026-11-25 on the 137 public benchmark ISINs: 137/137 types right (108 FIRDS,
+29 OpenFIGI).
 
 ## Issues Encountered
 
@@ -72,3 +78,4 @@ Share class identity and KID retrieval stay in SC-6.1 / SC-6.2.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-12ht53 | 2e4122b | 2026-11-25 | holding type from FIRDS then OpenFIGI |
