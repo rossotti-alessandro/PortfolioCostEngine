@@ -11,6 +11,7 @@ fix or delete the other one in the same PR.
 | Architecture and technology decisions | [docs/adr/](adr/README.md) | coordinator |
 | Backlog: epics, stories, owners, progress | `backlog/tasks/*.md` (board is generated: `backlog/BOARD.md`) | coordinator |
 | Fee categories and cost methodology | `docs/research/FEE_TAXONOMY.md`, `data/taxonomy/fee_taxonomy.csv` | research (SC-2) |
+| End-to-end cost protocol: document set, source tiers, confidence score, conflict rules | `docs/research/COST_PROTOCOL.md` | research (SC-2.4) |
 | Document types and what each contains | `docs/research/DOCUMENT_TAXONOMY.md`, `data/taxonomy/document_types.csv` | research (SC-2) |
 | Public sources, licences, fetch status | `docs/research/SOURCE_REGISTER.md` | research (SC-2) |
 | Go-live gates, pilot, analyst review and incident protocols | [docs/READINESS.md](READINESS.md) | SC-11.10 |
