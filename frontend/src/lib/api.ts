@@ -170,6 +170,41 @@ export const admin = {
     ),
 };
 
+export interface ActivityEvent {
+  id: number;
+  at: string;
+  user: string;
+  action: string;
+  prospect_id: number | null;
+  detail: Record<string, unknown>;
+}
+
+export interface ActivityCheck {
+  ok: boolean;
+  checked: number;
+  unsealed_history: number;
+  other_key: number;
+  deleted: number;
+  problems: { event_id: number; problem: string }[];
+  stable_key: boolean;
+}
+
+/** Roles that may read the firm's activity log (server: permissions "audit.read"). */
+export const AUDIT_ROLES: Role[] = ["admin", "viewer", "senior"];
+
+export function auditRole(): Role | undefined {
+  const cur = getRole();
+  return AUDIT_ROLES.includes(cur) ? cur : AUDIT_ROLES.find((r) => allowedRoles.includes(r));
+}
+
+/** The firm's activity log, newest first, with the tamper check (SC-11.8). */
+export function activity(q: { user?: string; action?: string; before?: number }) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) if (v) params.set(k, String(v));
+  const role = auditRole();
+  return req<{ events: ActivityEvent[]; check: ActivityCheck }>(`/api/audit?${params}`, role ? as(role) : undefined);
+}
+
 export const api = {
   taxonomy: () => req<Taxonomy>("/api/taxonomy"),
   prospects: () => req<ProspectRow[]>("/api/prospects"),

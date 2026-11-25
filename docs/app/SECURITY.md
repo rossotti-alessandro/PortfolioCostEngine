@@ -38,6 +38,7 @@ the web surface. Engineering notes, not a certification.
 | Internal economics (`internal.read`) | | ✓ | ✓ | | |
 | Approve a client report (`report.approve`) | | ✓ | | | |
 | People and sessions (`users.manage`) | | | | | ✓ |
+| Firm activity log (`audit.read`) | | ✓ | | ✓ | ✓ |
 
 The middleware checks this table on every `/api/*` request (path and method decide the permission), on top
 of the route checks. Admin alone sees no client data (least privilege). Four-eyes: the person who uploaded
@@ -82,10 +83,22 @@ leave the server (ADR 0004).
 - Frontend dev only (`vitest` 2, `vite` pulled in by vitest): critical and high advisories in the test runner,
   not shipped in the image. Fix: a dedicated `deps:` PR bumping vitest.
 
+### Activity log (`pce/audit.py`, SC-11.8)
+
+Every `audit_event` row gets an HMAC seal in `audit_seal`, written by a mapper hook in the same
+transaction, so no writer can skip it. Logged: sign-in, failed sign-in (known usernames only), sign-out,
+password change, opening a document or a spreadsheet, downloading a client report, approvals, value
+checks, admin actions, CRM changes, and reading the log itself. Rows hold ids and actions, never document
+text. `GET /api/audit` (page "Activity log") returns the firm's events and a tamper check: an edited row,
+a row inserted by hand (no seal) or a deleted row (a gap in the ids) is reported. Key: `PCE_AUDIT_KEY`,
+else `PCE_SECRET_KEY`; without a stable key, seals written before a restart are counted as "other key",
+not as tampering. Rows written before sealing began are "unsealed history". Limits: someone with write
+access to the database and the key can forge seals; deleting the newest rows together with their seals leaves no gap. A copy to
+write-once storage (SC-11.9 backups) closes both.
+
 ## Known limits
 
 - No SSO and no MFA yet: Microsoft 365 sign-in with MFA is SC-11.7.
-- Sign-ins, views and downloads are not all in the audit log yet: SC-11.8.
 - The viewer role is enforced by the server; the interface still shows some buttons that then answer 403.
 - `--forwarded-allow-ips '*'` trusts `X-Forwarded-For`; a client can spoof its address to dodge the
   per-client limit, which is why the per-username limit exists.
