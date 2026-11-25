@@ -1,0 +1,90 @@
+---
+id: SC-8.28
+title: Scan documents with the phone camera and upload photos
+status: To Do
+assignee: []
+owner: ""
+model: ""
+progress: 0
+branch: ""
+pr: ""
+created_date: "2026-11-25 19:55"
+updated_date: "2026-11-25 19:55"
+labels:
+  - ui
+  - intake
+dependencies: []
+parent_task_id: SC-8
+priority: P1
+paths_owned:
+  - "backend/src/pce/api.py"
+  - "backend/src/pce/scan_upload.py"
+  - "backend/tests/test_scan_upload.py"
+  - "frontend/src/pages/Documents.tsx"
+  - "frontend/src/components/ScanDialog.tsx"
+  - "frontend/src/lib/photos.ts"
+  - "frontend/src/lib/photos.test.ts"
+  - "frontend/src/lib/api.ts"
+  - "frontend/src/lib/it.ts"
+  - "frontend/tests/e2e/scan.spec.ts"
+spec_ref: docs/research/UX_RECOMMENDATIONS.md
+rule_refs:
+  - ".claude/rules/frontend.md"
+  - ".claude/rules/privacy.md"
+  - ".claude/rules/extraction.md"
+---
+
+> **One-liner**: On a phone the analyst taps "Scan with camera", shoots one or more pages of a paper document, and FeeLens stores them as one PDF that the existing OCR path reads; photos (JPEG/PNG) can also be uploaded or dropped like PDFs.
+
+## Description
+
+### Context
+
+Uploads accept only PDF and XLSX (`pce.api.ALLOWED`). A prospect often brings paper statements; the
+analyst has a phone, not a scanner. Ale asked (2026-11-25) for camera capture on mobile.
+
+### User Flow Impact
+
+Documents page: a "Scan with camera" button next to "Choose files". It opens a dialog: take a page,
+see thumbnails, retake/remove/reorder, add more pages, then "Save as one document". Each photo is
+shrunk on the phone before upload (faster on mobile data). Photos chosen or dropped one by one become
+one document each.
+
+### Performance / Efficiency Impact
+
+Phone photos (3-12 MB) are resized in the browser to at most 2400 px on the long side, JPEG 0.85:
+about 0.5-1 MB per page. OCR time per page is unchanged.
+
+### Proposed Approach
+
+1. `pce/scan_upload.py`: `photos_to_pdf(pages: list[bytes]) -> bytes`. Uses the accuracy thread's
+   `pce.extraction.photo` cleanup (rotation, crop, deskew, lighting) when present; otherwise Pillow:
+   EXIF transpose, RGB, one PDF page per photo at 300 dpi. Bytes sniffed with libmagic; max 30 pages.
+2. `POST /api/prospects/{id}/documents`: JPEG/PNG accepted; `combine=true` turns all photos of the
+   request into one PDF. The stored file is the PDF; the original photos are not kept.
+3. Frontend `lib/photos.ts` (resize/re-encode, also turns iPhone HEIC into JPEG where the browser can
+   decode it) and `components/ScanDialog.tsx` using `<input capture="environment">` (the phone's own
+   camera app: works on iOS and Android, no camera permission for the site, no Permissions-Policy change).
+
+### Risks & Follow-ups
+
+Live in-page camera with edge detection (getUserMedia) is a follow-up; it needs `camera=(self)` in the
+Permissions-Policy. Handwriting is out of scope here (accuracy thread).
+
+## Acceptance Criteria
+
+- [ ] #1 Three synthetic page photos uploaded with combine=true become one 3-page PDF document that is OCR-read
+- [ ] #2 A file that claims .jpg but is not an image is refused; PDF/XLSX uploads behave as before (regression guard)
+
+## Implementation Notes
+
+## Outcome
+
+- **Status**: partial
+
+## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
