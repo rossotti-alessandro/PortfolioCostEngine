@@ -101,11 +101,13 @@ def infer_asset_class(name: str, given: str | None) -> tuple[str, bool]:
 def _product_gap(holding: dict) -> bool:
     """True when a missing KID must be an unknown product-cost atom, never a silent zero.
 
-    Equity and cash do not get a made-up TER. A fund or ETF does, with or without an ISIN. Any other
-    holding does only when its ISIN is checksum-valid, so a joined KID can be asked for by share class.
+    Equity, cash and plain bonds have no ongoing charge, so they get no made-up TER (a bond fund is
+    classed FUND by its name, and a KID for the bond's ISIN makes it a FUND before this check; SC-9.10).
+    A fund or ETF does, with or without an ISIN. Any other holding does only when its ISIN is
+    checksum-valid, so a joined KID can be asked for by share class.
     """
     kind = holding["asset_class"]
-    if kind in ("CASH", "EQUITY"):
+    if kind in ("CASH", "EQUITY", "BOND"):
         return False
     if kind in ("FUND", "ETF"):
         return True

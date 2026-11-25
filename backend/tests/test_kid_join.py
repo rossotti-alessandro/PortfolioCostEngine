@@ -97,3 +97,37 @@ def test_performance_fee_share_of_outperformance_is_not_a_rate_on_assets() -> No
     assert perf.extra["share_of_outperformance_pct"] == "15"
     plain = _kid_pages(["Commissions liées aux résultats", "0,10% de la valeur", "10 €"])
     assert next(f for f in parse_kid(plain, prof) if f.fee_code == "FUND_PERFORMANCE").value == "0.10"
+
+
+# SC-9.10: a plain bond has no ongoing charge; only a bond fund (or a KID for its ISIN) has one.
+BOND = make_synthetic_isin("BOND000001")
+
+
+def _bond(name: str, kid: bool = False) -> dict:
+    docs, _ = _facts(with_kid=False)
+    base = {"currency": "CHF", "fee_code": None, "measurement": None, "extra": {}, "status": "extracted"}
+    facts = [
+        {**base, "id": 1, "document_id": 1, "key": "position:1", "kind": "position", "field": "market_value",
+         "label": name, "value": "100000.00", "isin": BOND},
+    ]  # fmt: skip
+    if kid:
+        facts.append(
+            {**base, "id": 2, "document_id": 2, "key": f"product:{BOND}:ongoing", "kind": "product_cost",
+             "field": "ongoing_pct", "label": "Ongoing charges", "value": "0.40", "currency": None,
+             "isin": BOND, "fee_code": "FUND_ONGOING", "measurement": "estimated"}
+        )  # fmt: skip
+    r = analyse({"domicile": "CH"}, docs, facts, PROPOSAL_DEFAULTS)
+    return {a["fee_code"]: a for a in r["current"]["atoms"] if a["instrument_id"] == BOND}
+
+
+def test_plain_bond_without_a_kid_has_no_product_cost() -> None:
+    assert _bond("Synthetic Confederation 1.5% 2030 Bond") == {}
+
+
+def test_bond_fund_without_a_kid_still_has_an_unknown_ongoing_charge() -> None:
+    atoms = _bond("Synthetic Global Bond Fund I")
+    assert atoms and all(a["amount"] is None for a in atoms.values())
+
+
+def test_bond_with_a_kid_counts_its_ongoing_charge() -> None:
+    assert _bond("Synthetic Confederation 1.5% 2030 Bond", kid=True)["FUND_ONGOING"]["amount"] == "400.00"
