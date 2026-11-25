@@ -90,7 +90,22 @@ FEE_LABELS: list[tuple[str, re.Pattern[str]]] = [
         "STAMP_DUTY_CH",
         re.compile(r"stamp duty|umsatzabgabe|tassa di bollo|droit de timbre|eidg\. abgabe", re.I),
     ),
-    ("FX_COMMISSION", re.compile(r"foreign exchange|\bfx\b|devisen|cambi|opérations de change", re.I)),
+    (
+        "FX_COMMISSION",
+        re.compile(
+            r"foreign exchange|\bfx\b|devisen|cambi|opérations de change|commission de change|"
+            r"currency conversion|conversione valut|währungsumrechnung",
+            re.I,
+        ),
+    ),
+    (
+        "THIRD_PARTY_TRADING",
+        re.compile(
+            r"fremde spesen|spese di terzi|spese reclamate da terzi|frais de tiers|third[- ]party|"
+            r"exchange and regulatory|regulatory fees?|börsengebühr",
+            re.I,
+        ),
+    ),
     (
         "BROKERAGE",
         re.compile(

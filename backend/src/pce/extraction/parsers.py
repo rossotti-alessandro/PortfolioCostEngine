@@ -221,7 +221,10 @@ def classify(pages: list[PageInfo]) -> DocumentProfile:
             as_of = ds[0]
     currency = None
     m = re.search(
-        r"(?:reference currency|currency|values in|valori in|währung)\s*:?\s*(CHF|EUR|USD|GBP)", alltext, re.I
+        r"(?:reference currency|currency|values in|valori in|währung|monnaie de référence|"
+        r"valuta di riferimento)\s*:?\s*(CHF|EUR|USD|GBP)",
+        alltext,
+        re.I,
     )
     if m:
         currency = m.group(1).upper()
@@ -314,9 +317,9 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
             if no_isin_table and re.search(r"\bweight\b|\(%\)", low) and not _QTY_PRICE_VALUE.search(low):
                 in_table = no_isin_table = False  # an allocation table follows: its numbers are not holdings
                 continue
-            if "isin" in low and ("value" in low or "valore" in low or "wert" in low):
+            if "isin" in low and re.search(r"value|valore|wert|valeur", low):
                 in_table = True
-                m = re.search(r"(?:value|valore|wert)\s+(CHF|EUR|USD)", ln.text, re.I)
+                m = re.search(r"(?:value|valore|wert|valeur)\s+(CHF|EUR|USD)", ln.text, re.I)
                 if m:
                     ccy = m.group(1).upper()
                 continue
@@ -328,6 +331,12 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
                 continue
             hit = _isin_at(ln)
             amounts = _amount_cells(ln)
+            if hit is not None and not amounts and len(ln.cells) == 1 and li and in_table:
+                # Broker layout: "Apple Inc | 120 | 228.50 | USD | 27,420.00" then "ISIN US0378331005" below.
+                above = page.lines[li - 1]
+                if _isin_at(above) is None and len(_amount_cells(above)) >= 2:  # "3,716" is ambiguous alone
+                    ln, amounts = above, _amount_cells(above)
+                    hit = (0, hit[1], above.cells[0].text)
             wrapped = (  # long names wrap: "MI Somerset … Accumulation" / "5,649.12 | £1.52 | £8,593.18"
                 page.lines[li - 1].text
                 if li and len(ln.cells) == 3 and len(page.lines[li - 1].cells) == 1
@@ -1011,6 +1020,15 @@ def _example_currency(cell: str, page: PageInfo) -> str | None:
     return _SYMBOL_CCY.get(g, g) if g else None
 
 
+_OUTPERFORMANCE = re.compile(
+    r"au-delà|surperformance|above|outperform|in excess|hurdle|high[- ]water|oltre|sovraperformance|"
+    r"über|mehrertrag|übersteig|benchmark|indice|index",
+    re.I,
+)
+PERF_MAX_PCT = Decimal("5")  # above this a performance "rate" is a share of outperformance, never of assets
+_EXAMPLE_AMOUNT = re.compile(r"(\d[\d'’.,]*)\s*(?:€|EUR|USD|CHF|\$)(?!\w)")
+
+
 def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     facts: list[Fact] = []
     isin = None
@@ -1045,7 +1063,9 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
         ),
         (
             re.compile(
-                r"performance fee|commissioni di performance|erfolgsgebühr|commissions liées aux", re.I
+                # Anchored: the words also appear in conversion-fee, entry-charge and benchmark sentences.
+                r"^(?:performance fees?|commissioni di performance|erfolgsgebühr|commissions liées aux)",
+                re.I,
             ),
             "FUND_PERFORMANCE",
             "estimated",
@@ -1099,19 +1119,35 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 continue
             for pat, code, meas in mapping:
                 if pat.search(label) and not any(f.key == f"kid:{code}" for f in facts):
+                    rate, extra = parse_percent(pm.group(0)), {}
+                    if code == "FUND_PERFORMANCE" and src is not ln:
+                        break  # the line below is a footnote (switching, entry charges)
+                    tail = src.text[src.text.find(pm.group(0)) :]
+                    if code == "FUND_PERFORMANCE" and (_OUTPERFORMANCE.search(tail) or rate > PERF_MAX_PCT):
+                        # "15% above the index": a share of the outperformance, not of the assets. The KID's
+                        # cost-impact column on its 10,000 example is the annual estimate (5 EUR -> 0.05%).
+                        impact = _EXAMPLE_AMOUNT.findall(src.text)
+                        derived = (
+                            (parse_amount(impact[-1]) / 100).quantize(Decimal("0.01")) if impact else None
+                        )
+                        if derived is None or derived > PERF_MAX_PCT:
+                            break  # no usable cost impact: leave it unknown rather than invent a rate
+                        extra["share_of_outperformance_pct"] = str(rate)
+                        rate = derived
                     facts.append(
                         Fact(
                             key=f"kid:{code}",
                             kind="product_cost",
                             field="rate_pct",
                             label=label,
-                            value=str(parse_percent(pm.group(0))),
+                            value=str(rate),
                             isin=isin,
                             fee_code=code,
                             measurement=meas,
                             extra={
                                 "included_in": "FUND_ONGOING" if code == "FUND_MGMT_FEE" else None,
                                 "document_date": prof.as_of,
+                                **extra,
                             },
                             evidence=_ev(src, page),
                         )
@@ -1449,6 +1485,27 @@ def _ms(start: float, end: float | None = None) -> int:
     return round(((end if end is not None else time.perf_counter()) - start) * 1000)
 
 
+def reconcile_positions(facts: list[Fact], prof: DocumentProfile) -> None:
+    """OCR-read holdings that do not add up to the printed total all go to review (SC-9.8).
+
+    OCR on a poor scan or a dark photo drops decimal points ("79'897.04" read as "7989704"): a value
+    100 times too large that looks perfectly valid on its own. The printed total is the check: when the
+    holdings (cash included) do not sum to it exactly, or no total was read, no OCR-read holding is shown
+    as accepted. Born-digital values are read exactly, so this applies to OCR pages only.
+    """
+    if prof.doc_type != DocType.PORTFOLIO_STATEMENT or not set(prof.engines) & set(OCR_ENGINES):
+        return
+    pos = [f for f in facts if f.kind == "position" and f.value is not None]
+    totals = {Decimal(f.value) for f in facts if f.kind == "doc_total" and f.value is not None}
+    if not pos or sum((Decimal(f.value) for f in pos), Decimal(0)) in totals:
+        return
+    for f in pos:
+        f.review = f.review or Review()
+        f.review.status = "needs_review"
+        if "total_not_reconciled" not in f.review.reasons:
+            f.review.reasons.append("total_not_reconciled")
+
+
 def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo]]:
     name = filename.lower()
     if name.endswith((".xlsx", ".xlsm")):
@@ -1474,6 +1531,7 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
         "find_and_verify": _ms(t3),
     }
     _resolve_dollars(pages, facts, prof)
+    reconcile_positions(facts, prof)
     prof.possible_misses = _possible_misses(pages, facts)
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None

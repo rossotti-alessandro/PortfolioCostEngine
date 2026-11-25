@@ -92,3 +92,9 @@ def test_mask_uses_stable_tokens_and_keeps_fees() -> None:
 def test_span_carries_no_text() -> None:
     (span,) = detect("IBAN CH9300762011623852957")
     assert "CH93" not in span.model_dump_json()
+
+
+def test_italian_securities_dossier_number_is_an_account() -> None:
+    """Found by the realistic benchmark (SC-9.8): "Dossier titoli n." was not masked. SYNTHETIC number."""
+    text = "Dossier titoli n.: 512-339201.04"
+    assert kinds(text) == [("account", "512-339201.04")]

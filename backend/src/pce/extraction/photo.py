@@ -1,0 +1,116 @@
+"""Phone photos of paper documents to a clean PDF the OCR path can read (SC-9.8).
+
+A camera picture is not a scan: the page is tilted in perspective, lies on a darker table, is lit
+unevenly and is stored sideways with an EXIF rotation flag. Each photo is turned upright, the page's
+four corners are found (the page is the large bright region), the page is warped flat to A4 proportions,
+uneven lighting is divided out against a blurred copy of itself, and the result becomes one PDF page.
+
+Pillow and numpy only (no OpenCV). Never fails on a hard photo: if no page outline is found, the
+whole picture is kept and only the lighting is corrected, so OCR still sees every pixel.
+"""
+
+from __future__ import annotations
+
+import io
+
+import numpy as np
+from PIL import Image, ImageFilter, ImageOps
+
+MAX_SIDE = 2600  # pixels on the long side after cleanup: ~300 dpi on A4, enough for OCR
+A4_RATIO = 297 / 210
+MIN_PAGE_SHARE = 0.25  # a page outline covering less of the picture is not trusted
+
+
+def _otsu(gray: np.ndarray) -> int:
+    hist = np.bincount(gray.ravel(), minlength=256).astype(float)
+    total = gray.size
+    cum, cum_mean = np.cumsum(hist), np.cumsum(hist * np.arange(256))
+    w0 = cum / total
+    w1 = 1 - w0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        m0 = cum_mean / cum
+        m1 = (cum_mean[-1] - cum_mean) / (total - cum)
+        between = w0 * w1 * (m0 - m1) ** 2
+    return int(np.nanargmax(between))
+
+
+def page_corners(gray: Image.Image) -> list[tuple[float, float]] | None:
+    """Top-left, top-right, bottom-right, bottom-left of the bright page, or None when unclear."""
+    small = gray.resize((max(1, gray.width // 4), max(1, gray.height // 4))).filter(
+        ImageFilter.GaussianBlur(3)
+    )
+    a = np.asarray(small)
+    if a.min() == a.max():
+        return None  # one flat tone: no page edge to find
+    mask = a > _otsu(a)
+    if mask.mean() < MIN_PAGE_SHARE or mask.mean() > 0.97:
+        return None
+    ys, xs = np.nonzero(mask)
+    s, d = xs + ys, xs - ys
+    pts = [(xs[s.argmin()], ys[s.argmin()]), (xs[d.argmax()], ys[d.argmax()]),
+           (xs[s.argmax()], ys[s.argmax()]), (xs[d.argmin()], ys[d.argmin()])]  # fmt: skip
+    quad = np.array(pts, dtype=float)
+    x, y = quad[:, 0], quad[:, 1]
+    area = 0.5 * abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+    if area < MIN_PAGE_SHARE * a.size:
+        return None
+    return [(float(px) * 4, float(py) * 4) for px, py in pts]
+
+
+def perspective_coeffs(dst: list[tuple[float, float]], src: list[tuple[float, float]]) -> list[float]:
+    """Coefficients Pillow's PERSPECTIVE transform needs: output pixel (dst) -> input pixel (src)."""
+    rows = []
+    for (x, y), (u, v) in zip(dst, src, strict=True):
+        rows.append([x, y, 1, 0, 0, 0, -u * x, -u * y])
+        rows.append([0, 0, 0, x, y, 1, -v * x, -v * y])
+    b = np.array([c for pt in src for c in pt], dtype=float)
+    return list(np.linalg.solve(np.array(rows, dtype=float), b))
+
+
+def _even_light(gray: Image.Image) -> Image.Image:
+    """Divide by a heavily blurred copy: shadows and vignetting go, ink stays dark."""
+    small = gray.resize((max(1, gray.width // 8), max(1, gray.height // 8)))
+    bg = small.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.GaussianBlur(8)).resize(gray.size)
+    a = np.asarray(gray, dtype=float)
+    b = np.maximum(np.asarray(bg, dtype=float), 1.0)
+    out = np.clip(a / b * 255.0, 0, 255).astype(np.uint8)
+    return ImageOps.autocontrast(Image.fromarray(out), cutoff=1)
+
+
+def clean_photo(data: bytes) -> Image.Image:
+    """One photo (JPEG/PNG bytes) to an upright, flattened, evenly lit grayscale page."""
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
+    gray = img.convert("L")
+    corners = page_corners(gray)
+    if corners:
+        tl, tr, br, bl = corners
+        width = max(np.hypot(tr[0] - tl[0], tr[1] - tl[1]), np.hypot(br[0] - bl[0], br[1] - bl[1]))
+        portrait = width < max(np.hypot(bl[0] - tl[0], bl[1] - tl[1]), np.hypot(br[0] - tr[0], br[1] - tr[1]))
+        w = (
+            int(min(MAX_SIDE / A4_RATIO, max(width, 800)))
+            if portrait
+            else int(min(MAX_SIDE, max(width, 800)))
+        )
+        h = int(w * A4_RATIO) if portrait else int(w / A4_RATIO)
+        coeffs = perspective_coeffs([(0, 0), (w, 0), (w, h), (0, h)], corners)
+        gray = gray.transform((w, h), Image.Transform.PERSPECTIVE, coeffs, Image.Resampling.BICUBIC)
+    elif max(gray.size) > MAX_SIDE:
+        gray.thumbnail((MAX_SIDE, MAX_SIDE))
+    return _even_light(gray)
+
+
+def images_to_pdf(photos: list[bytes]) -> bytes:
+    """Several photos of one document, in order, to one PDF with a page per photo."""
+    if not photos:
+        raise ValueError("no photos")
+    pages = [clean_photo(p) for p in photos]
+    buf = io.BytesIO()
+    # 8.27 in is the A4 width: the PDF page comes out A4-sized whatever the photo's pixel count.
+    res = pages[0].width / (8.27 if pages[0].height >= pages[0].width else 11.69)
+    pages[0].save(buf, "PDF", resolution=res, save_all=True, append_images=pages[1:])
+    return buf.getvalue()
+
+
+def image_to_pdf(data: bytes) -> bytes:
+    """One photo to a one-page PDF."""
+    return images_to_pdf([data])
