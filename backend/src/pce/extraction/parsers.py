@@ -1025,6 +1025,7 @@ _OUTPERFORMANCE = re.compile(
     r"über|mehrertrag|übersteig|benchmark|indice|index",
     re.I,
 )
+PERF_MAX_PCT = Decimal("5")  # above this a performance "rate" is a share of outperformance, never of assets
 _EXAMPLE_AMOUNT = re.compile(r"(\d[\d'’.,]*)\s*(?:€|EUR|USD|CHF|\$)(?!\w)")
 
 
@@ -1062,7 +1063,9 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
         ),
         (
             re.compile(
-                r"performance fee|commissioni di performance|erfolgsgebühr|commissions liées aux", re.I
+                # Anchored: the words also appear in conversion-fee, entry-charge and benchmark sentences.
+                r"^(?:performance fees?|commissioni di performance|erfolgsgebühr|commissions liées aux)",
+                re.I,
             ),
             "FUND_PERFORMANCE",
             "estimated",
@@ -1117,16 +1120,20 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             for pat, code, meas in mapping:
                 if pat.search(label) and not any(f.key == f"kid:{code}" for f in facts):
                     rate, extra = parse_percent(pm.group(0)), {}
-                    if code == "FUND_PERFORMANCE" and _OUTPERFORMANCE.search(
-                        src.text[src.text.find(pm.group(0)) :]
-                    ):
+                    if code == "FUND_PERFORMANCE" and src is not ln:
+                        break  # the line below is a footnote (switching, entry charges)
+                    tail = src.text[src.text.find(pm.group(0)) :]
+                    if code == "FUND_PERFORMANCE" and (_OUTPERFORMANCE.search(tail) or rate > PERF_MAX_PCT):
                         # "15% above the index": a share of the outperformance, not of the assets. The KID's
                         # cost-impact column on its 10,000 example is the annual estimate (5 EUR -> 0.05%).
                         impact = _EXAMPLE_AMOUNT.findall(src.text)
-                        if not impact:
-                            break
+                        derived = (
+                            (parse_amount(impact[-1]) / 100).quantize(Decimal("0.01")) if impact else None
+                        )
+                        if derived is None or derived > PERF_MAX_PCT:
+                            break  # no usable cost impact: leave it unknown rather than invent a rate
                         extra["share_of_outperformance_pct"] = str(rate)
-                        rate = (parse_amount(impact[-1]) / 100).quantize(Decimal("0.01"))
+                        rate = derived
                     facts.append(
                         Fact(
                             key=f"kid:{code}",
