@@ -19,7 +19,7 @@ import CostsPage from "./pages/Costs";
 import DocumentsPage from "./pages/Documents";
 import HowItWorksPage from "./pages/HowItWorks";
 import InternalPage from "./pages/Internal";
-import { RequireAuth } from "./pages/Login";
+import { RequireAuth, TwoStepPage } from "./pages/Login";
 import PipelinePage from "./pages/Pipeline";
 import ProspectsPage from "./pages/Prospects";
 import ReportPage from "./pages/Report";
@@ -43,6 +43,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "/admin", element: <AdminPage /> },
       { path: "/activity", element: <ActivityPage /> },
+      { path: "/account/two-step", element: <TwoStepPage /> },
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },

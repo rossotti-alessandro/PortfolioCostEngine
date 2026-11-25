@@ -174,6 +174,7 @@ def reset_password(username: str, a: A) -> dict:
         _audit(s, a, "user.password_reset", username=username)
         s.commit()
     pw = _one_time_password()
+    auth.set_mfa(username, None)  # a lost phone is the usual reason; they add the app again
     auth.set_password(username, pw, must_change=True)  # also ends their sessions
     return {"username": username, "one_time_password": pw}
 

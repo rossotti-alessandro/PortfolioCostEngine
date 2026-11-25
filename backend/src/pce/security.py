@@ -7,6 +7,7 @@ the middleware is defence in depth for routes that forget it.
 
 from __future__ import annotations
 
+import hmac
 import os
 from typing import Annotated
 from urllib.parse import urlsplit
@@ -24,7 +25,8 @@ SESSION_COOKIE = "__Host-feelens_session" if COOKIE_SECURE else "feelens_session
 CSRF_HEADER = "X-CSRF-Token"
 PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/me", "/api/auth/logout"}
 # Signed in but still on a one-time password: only these, so the first thing done is choosing a password.
-FIRST_SIGN_IN_API = {"/api/auth/password"}
+FIRST_SIGN_IN_API = {"/api/auth/password", "/api/auth/mfa"}
+MFA_REQUIRED = "authenticator code required"  # the frontend matches it: show the code field
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 # Uploads: 20 files of at most 25 MB each (pce.api.MAX_UPLOAD_BYTES), plus multipart overhead.
 MAX_BODY_BYTES = int(os.environ.get("PCE_MAX_REQUEST_MB", "100")) * 1024 * 1024
@@ -109,6 +111,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             return _deny(403, "missing or invalid CSRF token")
         if acc.must_change_password and path not in FIRST_SIGN_IN_API:
             return _deny(403, "choose a new password first")
+        if auth.mfa_setup_needed(acc) and path not in FIRST_SIGN_IN_API:
+            return _deny(403, "set up your authenticator app first")
         if path not in FIRST_SIGN_IN_API:
             role = permissions.active_role(acc.roles, request.headers.get("x-role"))
             if role is None:
@@ -127,6 +131,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 class LoginIn(BaseModel):
     username: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=200)
+    code: str | None = Field(default=None, max_length=12)
 
 
 def _me(acc: auth.Account, token: str) -> dict:
@@ -137,6 +142,8 @@ def _me(acc: auth.Account, token: str) -> dict:
         "roles": list(acc.roles),
         "admin": acc.admin,
         "must_change_password": acc.must_change_password,
+        "mfa": bool(acc.totp_secret),
+        "mfa_setup_needed": auth.mfa_setup_needed(acc),
         "csrf_token": auth.csrf_token(token),
     }
 
@@ -157,9 +164,28 @@ def login(body: LoginIn, request: Request, response: Response) -> dict:
         if known:  # an unknown name has no firm to file it under; the throttle still counts it
             audit.log(known.tenant, known.username, "auth.login_failed")
         raise HTTPException(401, "wrong username or password")
+    if acc.totp_secret:
+        # Counted as a failure too: otherwise "code required" would confirm a password for free.
+        if not body.code or not auth.verify_totp(acc.totp_secret, body.code, acc.username):
+            auth.PER_CLIENT.fail(ck)
+            auth.PER_USER.fail(uk)
+            if body.code:
+                audit.log(acc.tenant, acc.username, "auth.mfa_failed")
+            raise HTTPException(401, MFA_REQUIRED if not body.code else "wrong authenticator code")
     auth.PER_CLIENT.reset(ck)
+    token = _start_session(response, acc)
+    audit.log(
+        acc.tenant,
+        acc.username,
+        "auth.login",
+        session=(auth.session_id(token) or "")[:8],
+        mfa=bool(acc.totp_secret),
+    )
+    return _me(acc, token)
+
+
+def _start_session(response: Response, acc: auth.Account) -> str:
     token = auth.issue_session(acc)
-    audit.log(acc.tenant, acc.username, "auth.login", session=(auth.session_id(token) or "")[:8])
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -169,7 +195,7 @@ def login(body: LoginIn, request: Request, response: Response) -> dict:
         httponly=True,
         samesite="strict",
     )
-    return _me(acc, token)
+    return token
 
 
 @router.get("/me")
@@ -214,14 +240,43 @@ def change_password(
     audit.log(acc.tenant, acc.username, "auth.password_changed")
     fresh = auth.get_account(acc.username)
     assert fresh is not None
-    token = auth.issue_session(fresh)
-    response.set_cookie(
-        SESSION_COOKIE,
-        token,
-        max_age=auth.SESSION_TTL_S,
-        path="/",
-        secure=COOKIE_SECURE,
-        httponly=True,
-        samesite="strict",
-    )
+    token = _start_session(response, fresh)
     return _me(fresh, token)
+
+
+# ------------------------------------------------------------------ authenticator app (SC-11.7)
+def _mfa_proof(username: str, secret: str) -> str:
+    """Binds a proposed key to this person, so the browser cannot swap in a key of its own choosing."""
+    return auth.csrf_token(f"totp-setup:{username}:{secret}")
+
+
+@router.get("/mfa")
+def mfa_start(request: Request) -> dict:
+    """A new key to add to the authenticator app. Nothing is stored until a code from it is confirmed."""
+    acc: auth.Account = request.state.account
+    secret = auth.new_totp_secret()
+    proof = _mfa_proof(acc.username, secret)
+    return {"secret": secret, "uri": auth.totp_uri(secret, acc.username), "proof": proof}
+
+
+class MfaIn(BaseModel):
+    secret: str = Field(min_length=16, max_length=64)
+    proof: str = Field(min_length=1, max_length=100)
+    code: str = Field(min_length=6, max_length=12)
+
+
+@router.post("/mfa")
+def mfa_finish(body: MfaIn, request: Request, response: Response) -> dict:
+    """Turn the second factor on. Every other session of this person ends; this one is renewed."""
+    acc: auth.Account = request.state.account
+    if acc.username in auth._accounts:
+        raise HTTPException(400, "this account's authenticator is set in the server environment")
+    if not hmac.compare_digest(_mfa_proof(acc.username, body.secret), body.proof):
+        raise HTTPException(400, "this setup key expired, reload the page")
+    if not auth.verify_totp(body.secret, body.code, acc.username):
+        raise HTTPException(400, "the code does not match, check the phone's clock and try again")
+    auth.set_mfa(acc.username, body.secret)
+    audit.log(acc.tenant, acc.username, "auth.mfa_enabled")
+    fresh = auth.get_account(acc.username)
+    assert fresh is not None
+    return _me(fresh, _start_session(response, fresh))
