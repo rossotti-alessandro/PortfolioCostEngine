@@ -1,9 +1,10 @@
 """Phone photos of paper documents to a clean PDF the OCR path can read (SC-9.8).
 
 A camera picture is not a scan: the page is tilted in perspective, lies on a darker table, is lit
-unevenly and is stored sideways with an EXIF rotation flag. Each photo is turned upright, the page's
-four corners are found (the page is the large bright region), the page is warped flat to A4 proportions,
-uneven lighting is divided out against a blurred copy of itself, and the result becomes one PDF page.
+unevenly and is stored sideways, with or without an EXIF rotation flag. Each photo is turned upright, the
+page's four corners are found (the page is the large bright region), the page is warped flat to A4
+proportions, uneven lighting is divided out against a blurred copy of itself, and the result becomes
+one PDF page.
 
 Pillow and numpy only (no OpenCV). Never fails on a hard photo: if no page outline is found, the
 whole picture is kept and only the lighting is corrected, so OCR still sees every pixel.
@@ -15,6 +16,8 @@ import io
 
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
+
+from . import layout
 
 MAX_SIDE = 2600  # pixels on the long side after cleanup: ~300 dpi on A4, enough for OCR
 A4_RATIO = 297 / 210
@@ -96,7 +99,46 @@ def clean_photo(data: bytes) -> Image.Image:
         gray = gray.transform((w, h), Image.Transform.PERSPECTIVE, coeffs, Image.Resampling.BICUBIC)
     elif max(gray.size) > MAX_SIDE:
         gray.thumbnail((MAX_SIDE, MAX_SIDE))
-    return _even_light(gray)
+    return _not_upside_down(_text_horizontal(_even_light(gray)))
+
+
+def _text_horizontal(page: Image.Image) -> Image.Image:
+    """Turn a page whose text runs top to bottom (photo taken sideways, no EXIF flag) by 90 degrees.
+
+    Lines of text make the ink profile across rows swing between line and gap; across columns it is
+    flat. When the column profile swings more, the text is vertical. A page that ends up upside down is
+    righted next by ``_not_upside_down`` (SC-9.12).
+    """
+    small = page.copy()
+    small.thumbnail((800, 800))
+    a = np.asarray(small, dtype=float)
+    if a.min() == a.max():  # one flat tone: nothing to tell
+        return page
+    ink = a < _otsu(a.astype(np.uint8))
+    if ink.mean() < 0.005:
+        return page
+    rows, cols = ink.mean(axis=1), ink.mean(axis=0)
+    return page.rotate(90, expand=True) if cols.std() > 1.3 * rows.std() else page
+
+
+def _not_upside_down(page: Image.Image) -> Image.Image:
+    """Turn an upside-down page by 180 degrees.
+
+    The OCR reader rights each upside-down line, but leaves the lines in reverse order with the amount
+    before its label, which breaks every table row. Read a small copy both ways without that correction;
+    upside-down text scores clearly lower (SC-9.12). Needs RapidOCR; without it the page is kept.
+    """
+    if layout.ocr_engine() != "rapidocr":
+        return page
+    small = page.copy()
+    small.thumbnail((1000, 1000))
+    a = np.asarray(small.convert("RGB"))
+
+    def confidence(img: np.ndarray) -> float:
+        scores = layout.rapid(np.ascontiguousarray(img), use_cls=False).scores or ()
+        return sum(scores) / len(scores) if scores else 0.0
+
+    return page.rotate(180) if confidence(a[::-1, ::-1]) > confidence(a) + 0.05 else page
 
 
 def images_to_pdf(photos: list[bytes]) -> bytes:

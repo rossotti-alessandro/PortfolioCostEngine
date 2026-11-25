@@ -195,20 +195,25 @@ def ocr_engine() -> str:
     return "rapidocr" if importlib.util.find_spec("rapidocr") else "tesseract-ocr"
 
 
-def _rapid_lines(pdf: pypdfium2.PdfDocument, index: int, number: int) -> list[Line]:
-    import numpy as np
+def rapid(img, **kw):
+    """Run the process's one RapidOCR engine (models load once, about a second; calls are serialised)."""
     from rapidocr import RapidOCR
 
     global _RAPID
+    with _RAPID_LOCK:
+        if _RAPID is None:
+            _RAPID = RapidOCR(params={"Global.log_level": "critical"})
+        return _RAPID(img, **kw)
+
+
+def _rapid_lines(pdf: pypdfium2.PdfDocument, index: int, number: int) -> list[Line]:
+    import numpy as np
+
     with ocr_slot():
         with _PDFIUM_LOCK:
             img = np.array(pdf[index].render(scale=OCR_DPI / 72).to_pil().convert("RGB"))
-        # One engine per process (loading the models takes about a second); onnxruntime already uses
-        # every core per call, so calls are serialised rather than run side by side.
-        with _RAPID_LOCK:
-            if _RAPID is None:
-                _RAPID = RapidOCR(params={"Global.log_level": "critical"})
-            res = _RAPID(img)
+        # onnxruntime already uses every core per call, so calls are serialised rather than run side by side
+        res = rapid(img)
         del img
     scale = 72.0 / OCR_DPI
     cells, confs = [], []
