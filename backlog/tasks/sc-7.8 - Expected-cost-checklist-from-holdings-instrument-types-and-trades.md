@@ -1,15 +1,15 @@
 ---
 id: SC-7.8
 title: Expected-cost checklist from holdings, instrument types and trades
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Design complete portfolio cost protocol"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-7crdzy"
 pr: ""
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:50"
+updated_date: "2026-11-25 23:51"
 labels:
   - finance
 dependencies:
