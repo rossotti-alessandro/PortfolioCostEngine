@@ -57,3 +57,43 @@ def test_share_without_a_kid_still_gets_no_invented_product_cost() -> None:
     assert not any(
         a["instrument_id"] == ISIN and a["fee_code"] == "FUND_ONGOING" for a in r["current"]["atoms"]
     )
+
+
+def _kid_pages(perf_row: list[str]):
+    from pce.extraction.layout import Cell, Line, PageInfo
+
+    rows = [
+        ["SYNTHETIC KID ISIN FR0011169341"],
+        ["Frais de gestion et autres frais", "2,00% par an", "194 €"],
+        perf_row,
+    ]
+    lines = [
+        Line(
+            1,
+            [
+                Cell(t, (50.0 + 200 * i, 100.0 + 20 * n, 240.0 + 200 * i, 112.0 + 20 * n))
+                for i, t in enumerate(r)
+            ],
+            "pdfplumber-text",
+        )
+        for n, r in enumerate(rows)
+    ]
+    return [PageInfo(1, 595.0, 842.0, "pdfplumber-text", lines)]
+
+
+def test_performance_fee_share_of_outperformance_is_not_a_rate_on_assets() -> None:
+    """Found end to end (SC-9.8): "15% TTC au-delà de l'indice ... 5 €" was counted as 15% of the holding.
+    The 15% applies to outperformance only; the KID's own cost-impact column (5 EUR on the 10,000 example)
+    is the annual estimate: 0.05%."""
+    from pce.extraction.models import DocType, DocumentProfile
+    from pce.extraction.parsers import parse_kid
+
+    prof = DocumentProfile(doc_type=DocType.KID, type_score=5)
+    pages = _kid_pages(
+        ["Commissions liées aux résultats", "15% TTC au-delà de l'indice Euro Stoxx TR.", "5 €"]
+    )
+    perf = next(f for f in parse_kid(pages, prof) if f.fee_code == "FUND_PERFORMANCE")
+    assert perf.value == "0.05"
+    assert perf.extra["share_of_outperformance_pct"] == "15"
+    plain = _kid_pages(["Commissions liées aux résultats", "0,10% de la valeur", "10 €"])
+    assert next(f for f in parse_kid(plain, prof) if f.fee_code == "FUND_PERFORMANCE").value == "0.10"

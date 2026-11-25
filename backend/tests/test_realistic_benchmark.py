@@ -78,3 +78,29 @@ def test_every_layout_reads_all_holdings_the_total_and_every_fee(statements, lay
     assert r["total_ok"]
     assert r["fee_codes"][0] == r["fee_codes"][1]
     assert r["wrong"] == 0
+
+
+def test_scanned_holdings_that_do_not_add_up_to_the_printed_total_go_to_review() -> None:
+    """Benchmark 2026-11-25: on fax-quality scans and dark photos OCR drops decimal points ("79'897.04" ->
+    "7989704") and every such value was shown as accepted. When OCR-read holdings do not reconcile with
+    the printed total, each holding must ask for a person."""
+    from pce.extraction.models import DocType, DocumentProfile, Evidence, Fact
+    from pce.extraction.parsers import reconcile_positions
+
+    def pos(v: str, kind: str = "position") -> Fact:
+        return Fact(
+            key=f"p{v}", kind=kind, field="market_value", label="x", value=v, evidence=Evidence(page=1)
+        )
+
+    prof = DocumentProfile(doc_type=DocType.PORTFOLIO_STATEMENT, type_score=5, engines=["rapidocr"])
+    bad = [pos("7989704"), pos("1000.00"), pos("80897.04", "doc_total")]
+    reconcile_positions(bad, prof)
+    assert all(f.review and f.review.status == "needs_review" for f in bad if f.kind == "position")
+    assert "total_not_reconciled" in bad[0].review.reasons
+    good = [pos("79897.04"), pos("1000.00"), pos("80897.04", "doc_total")]
+    reconcile_positions(good, prof)
+    assert all(f.review is None or f.review.status == "accepted" for f in good)
+    digital = DocumentProfile(doc_type=DocType.PORTFOLIO_STATEMENT, type_score=5, engines=["pdfplumber-text"])
+    other = [pos("7989704"), pos("80897.04", "doc_total")]
+    reconcile_positions(other, digital)
+    assert other[0].review is None  # born-digital values are read exactly; a gap there means a missed row

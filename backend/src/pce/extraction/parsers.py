@@ -1020,6 +1020,14 @@ def _example_currency(cell: str, page: PageInfo) -> str | None:
     return _SYMBOL_CCY.get(g, g) if g else None
 
 
+_OUTPERFORMANCE = re.compile(
+    r"au-delà|surperformance|above|outperform|in excess|hurdle|high[- ]water|oltre|sovraperformance|"
+    r"über|mehrertrag|übersteig|benchmark|indice|index",
+    re.I,
+)
+_EXAMPLE_AMOUNT = re.compile(r"(\d[\d'’.,]*)\s*(?:€|EUR|USD|CHF|\$)(?!\w)")
+
+
 def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     facts: list[Fact] = []
     isin = None
@@ -1108,19 +1116,31 @@ def parse_kid(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
                 continue
             for pat, code, meas in mapping:
                 if pat.search(label) and not any(f.key == f"kid:{code}" for f in facts):
+                    rate, extra = parse_percent(pm.group(0)), {}
+                    if code == "FUND_PERFORMANCE" and _OUTPERFORMANCE.search(
+                        src.text[src.text.find(pm.group(0)) :]
+                    ):
+                        # "15% above the index": a share of the outperformance, not of the assets. The KID's
+                        # cost-impact column on its 10,000 example is the annual estimate (5 EUR -> 0.05%).
+                        impact = _EXAMPLE_AMOUNT.findall(src.text)
+                        if not impact:
+                            break
+                        extra["share_of_outperformance_pct"] = str(rate)
+                        rate = (parse_amount(impact[-1]) / 100).quantize(Decimal("0.01"))
                     facts.append(
                         Fact(
                             key=f"kid:{code}",
                             kind="product_cost",
                             field="rate_pct",
                             label=label,
-                            value=str(parse_percent(pm.group(0))),
+                            value=str(rate),
                             isin=isin,
                             fee_code=code,
                             measurement=meas,
                             extra={
                                 "included_in": "FUND_ONGOING" if code == "FUND_MGMT_FEE" else None,
                                 "document_date": prof.as_of,
+                                **extra,
                             },
                             evidence=_ev(src, page),
                         )
@@ -1458,6 +1478,27 @@ def _ms(start: float, end: float | None = None) -> int:
     return round(((end if end is not None else time.perf_counter()) - start) * 1000)
 
 
+def reconcile_positions(facts: list[Fact], prof: DocumentProfile) -> None:
+    """OCR-read holdings that do not add up to the printed total all go to review (SC-9.8).
+
+    OCR on a poor scan or a dark photo drops decimal points ("79'897.04" read as "7989704"): a value
+    100 times too large that looks perfectly valid on its own. The printed total is the check: when the
+    holdings (cash included) do not sum to it exactly, or no total was read, no OCR-read holding is shown
+    as accepted. Born-digital values are read exactly, so this applies to OCR pages only.
+    """
+    if prof.doc_type != DocType.PORTFOLIO_STATEMENT or not set(prof.engines) & set(OCR_ENGINES):
+        return
+    pos = [f for f in facts if f.kind == "position" and f.value is not None]
+    totals = {Decimal(f.value) for f in facts if f.kind == "doc_total" and f.value is not None}
+    if not pos or sum((Decimal(f.value) for f in pos), Decimal(0)) in totals:
+        return
+    for f in pos:
+        f.review = f.review or Review()
+        f.review.status = "needs_review"
+        if "total_not_reconciled" not in f.review.reasons:
+            f.review.reasons.append("total_not_reconciled")
+
+
 def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo]]:
     name = filename.lower()
     if name.endswith((".xlsx", ".xlsm")):
@@ -1483,6 +1524,7 @@ def extract(filename: str, data: bytes) -> tuple[ExtractionResult, list[PageInfo
         "find_and_verify": _ms(t3),
     }
     _resolve_dollars(pages, facts, prof)
+    reconcile_positions(facts, prof)
     prof.possible_misses = _possible_misses(pages, facts)
     ent = next(
         (f.extra for f in facts if f.key == "meta:issuing_entity" and not f.extra.get("inferred")), None
