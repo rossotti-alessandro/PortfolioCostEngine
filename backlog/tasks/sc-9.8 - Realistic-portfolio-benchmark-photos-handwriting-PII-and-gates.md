@@ -19,8 +19,8 @@ priority: P0
 paths_owned:
   - "backend/src/pce/evaluation/realistic/**"
   - "backend/src/pce/extraction/photo.py"
-  - "backend/tests/unit/test_realistic*.py"
-  - "backend/tests/unit/test_photo*.py"
+  - "backend/tests/test_realistic*.py"
+  - "backend/tests/test_photo*.py"
   - "docs/research/REALISTIC_BENCHMARK.md"
 spec_ref: docs/EVALUATION_PROTOCOL.md
 rule_refs: [".claude/rules/extraction.md", ".claude/rules/privacy.md", ".claude/rules/finance.md"]
