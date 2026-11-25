@@ -103,6 +103,15 @@ class AuditEvent(Base):
     detail: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class AuditSeal(Base):
+    """HMAC of one audit_event row (SC-11.8). A changed, deleted or hand-inserted event fails the check."""
+
+    __tablename__ = "audit_seal"
+    event_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key_id: Mapped[str] = mapped_column(String(16))
+    mac: Mapped[str] = mapped_column(String(64))
+
+
 class RequestState(Base):
     __tablename__ = "request_state"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

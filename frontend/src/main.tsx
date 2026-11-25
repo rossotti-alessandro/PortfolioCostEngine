@@ -11,6 +11,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "./index.css";
 import { allowedRoleList } from "./lib/api";
 import { useLang } from "./lib/i18n";
+import ActivityPage from "./pages/Activity";
 import AdminPage from "./pages/Admin";
 import CataloguePage from "./pages/Catalogue";
 import ComparePage from "./pages/Compare";
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "/admin", element: <AdminPage /> },
+      { path: "/activity", element: <ActivityPage /> },
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },

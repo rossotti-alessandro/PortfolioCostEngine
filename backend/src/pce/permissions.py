@@ -10,6 +10,9 @@ Roles
 - viewer: read-only (compliance, auditor). Never internal economics, never writes.
 - admin: manages people and sessions of its own firm. Holds no client-data rights by itself, so an
   IT administrator does not read portfolios (least privilege). The env break-glass admin holds every role.
+
+The firm's activity log (who signed in, viewed, downloaded, changed what) is read by admin, viewer
+(compliance) and senior: ``audit.read``.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "internal.read": frozenset({"senior", "relationship_manager"}),
     "report.approve": frozenset({"senior"}),
     "users.manage": frozenset({"admin"}),
+    "audit.read": frozenset({"admin", "viewer", "senior"}),
 }
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
@@ -35,6 +39,8 @@ def required(method: str, path: str) -> str:
     """The permission a request needs. Unknown /api paths fall into the data permissions."""
     if path.startswith("/api/admin/"):
         return "users.manage"
+    if path == "/api/audit":
+        return "audit.read"
     if path.endswith("/internal"):
         return "internal.read"
     if path.endswith("/approve"):

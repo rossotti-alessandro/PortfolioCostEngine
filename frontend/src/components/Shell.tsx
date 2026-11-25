@@ -1,4 +1,15 @@
-import { type Me, ROLE_LABEL, type Role, allowedRoleList, api, auth, getRole, setRole, signedOut } from "@/lib/api";
+import {
+  type Me,
+  ROLE_LABEL,
+  type Role,
+  allowedRoleList,
+  api,
+  auditRole,
+  auth,
+  getRole,
+  setRole,
+  signedOut,
+} from "@/lib/api";
 import { PRODUCT } from "@/lib/brand";
 import { chf, cn } from "@/lib/format";
 import { setLang, t, useLang } from "@/lib/i18n";
@@ -13,6 +24,7 @@ import {
   Lock,
   LogOut,
   Menu,
+  ScrollText,
   ShieldCheck,
   UserCog,
   Users,
@@ -339,6 +351,11 @@ export function AppShell() {
           {allowedRoleList().includes("admin") && (
             <NavLink to="/admin" className={navCls}>
               <UserCog className="h-4 w-4" /> {t("Team & access")}
+            </NavLink>
+          )}
+          {auditRole() && (
+            <NavLink to="/activity" className={navCls}>
+              <ScrollText className="h-4 w-4" /> {t("Activity log")}
             </NavLink>
           )}
         </nav>
