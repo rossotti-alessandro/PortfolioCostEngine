@@ -110,4 +110,4 @@ tesseract-ocr-fra ghostscript qpdf libmagic1` or six tests fail for environment 
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
-| claude/project-thread-m6dkdk |  | 2026-11-25 | ruff/biome formatting after the Cursor commits |
+| claude/project-thread-m6dkdk | 2b4c662 | 2026-11-25 | ruff/biome formatting after the Cursor commits (landed in the claim commit: agent-start.sh commits the working tree) |
