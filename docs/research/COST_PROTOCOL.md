@@ -36,8 +36,11 @@ implicit range) plus the gaps.
 10. Taxonomy lacks derivatives, private markets, hedge funds, crypto, securities lending, cash drag, hedged
     classes, bond mark-ups and a MiFID category column.
 
-Gaps 1-3 and 9 are small local fixes. Gaps 5-6 are the foundation. Gaps 7-8 need Ale's approval for
-ISIN-only public lookups and reference FX rates.
+Gaps 1-3 and 9 are small local fixes. Gaps 5-6 are the foundation.
+
+**Decisions (Ale, 2026-11-25):** ISIN-only lookups to public registers are approved (live: SC-6.3, PR #70;
+ECB/SNB reference rates follow the same rule, no client data). Implicit costs are shown as a separate range
+and never added to the headline totals. Done since: gap 3 (SC-7.7, PR #66), gap 7 (SC-6.3), gap 1 (SC-7.8).
 
 ## 1. The analyst's job today, and the documents it needs
 
@@ -245,13 +248,13 @@ internal margin kept out of the client payload.
 
 | # | Gap | Where | Impact | Effort | Story |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Expected-cost checklist has 3 items per bank; FX margin, fund transaction costs, stamp duty, VAT, structured costs, cash interest never become UNKNOWN, so `is_complete` can be true while layers are unexamined | `analysis.py:38` `SERVICE_CORE` | High | Small | SC-7.8 |
+| 1 | Expected-cost checklist has 3 items per bank; FX margin, fund transaction costs, stamp duty, VAT, structured costs, cash interest never become UNKNOWN, so `is_complete` can be true while layers are unexamined | `analysis.py:38` `SERVICE_CORE` | High | Small | SC-7.8 (done) |
 | 2 | Bank ex-post product-cost total used only as cross-check; no KID means product cost unknown | `analysis.py:921` | High | Small | SC-7.9 |
-| 3 | Same-fee debits in one cash statement collapse: later ones become corroborating; with no period word the single debit counts as observed annual. 4 x CHF 500 gives CHF 500 | `analysis.py:508-509` | High | Small | SC-7.7 |
+| 3 | Same-fee debits in one cash statement collapse: later ones become corroborating; with no period word the single debit counts as observed annual. 4 x CHF 500 gives CHF 500 | `analysis.py:508-509` | High | Small | SC-7.7 (done, PR #66) |
 | 4 | No transaction table or parser for transaction lists | `db.py`, `extraction/parsers.py` | High for active portfolios | Medium | SC-7.12 |
 | 5 | No Account / Instrument / Position / Transaction tables; holdings are dicts rebuilt from facts; atoms carry no currency or period | `db.py` | High | Large | SC-7.12 |
 | 6 | One source per figure, no tier, no score | `finance/ledger.py` `FeeAtom` | High | Medium | SC-7.13 |
-| 7 | Asset class from the name | `analysis.py:73` `infer_asset_class` | High | Medium | SC-6.1 |
+| 7 | Asset class from the name | `analysis.py:73` `infer_asset_class` | High | Medium | SC-6.3 (done, PR #70) |
 | 8 | `BASE_CCY = "CHF"` ignores `Prospect.base_ccy`; only printed FX rates convert | `analysis.py:32`, `:261` | Medium-high | Small | SC-7.11 |
 | 9 | Product cost = current value x rate (taxonomy says average value x rate x days/365); `meta:average_assets` parsed, unused | `finance/scenarios.py:192`, `extraction/parsers.py:619` | Medium | Small | SC-7.10 |
 | 10 | Taxonomy lacks asset classes above and a MiFID category column | `data/taxonomy/fee_taxonomy.csv` | Medium | Small | SC-2.5 |
@@ -286,6 +289,5 @@ All tables except Instrument are tenant- and prospect-scoped, with an isolation 
 | 9 | SC-2.5 Taxonomy extension | 10, 12 | Small | Yes, taxonomy |
 | 10 | SC-7.14 Implicit costs | implicit | Medium | Yes |
 
-Decisions for Ale: ISIN-only lookups and reference FX; implicit costs as a separate range never in headline
-totals; source tiers and score bands as a starting point; whether private markets are in pilot scope; ask
+Open decisions for Ale: source tiers and score bands as a starting point; whether private markets are in pilot scope; ask
 Massimo for manual-review time and usual document set.
