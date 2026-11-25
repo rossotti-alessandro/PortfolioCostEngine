@@ -45,6 +45,7 @@ _PHONE_LABELLED = re.compile(
 # Label words that name an identifier, in IT/DE/FR/EN. The number must follow the label
 # directly, so "Portfolio value: 1'234" is not an account; dates, periods and amounts are excluded below.
 _BASE = (
+    r"(?:dossier|conto|deposito) titoli|"
     r"konto|conto|account|acct|compte|depot|deposito|dossier|rapporto|relazione|relationship|"
     r"portfolio|portafoglio|portefeuille|client|cliente|kunde|kunden|customer|mandat[eo]?|stamm"
 )

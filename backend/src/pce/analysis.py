@@ -739,7 +739,13 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     rates: list[ProductRate] = []
     extra_product_atoms: list[FeeAtom] = []
     for h in holdings:
-        if not _product_gap(h):
+        if h["asset_class"] != "CASH" and product_docs.get(h["isin"] or ""):
+            # A KID for this exact ISIN proves a packaged product, even when its name reads like a share
+            # ("Comgest Monde C"); ignoring it would report the cost complete without the fund's charges.
+            if h["asset_class"] in ("EQUITY", "BOND"):
+                is_sp = product_doc_meta[h["isin"]]["doc_type"] == "termsheet"
+                h["asset_class"] = "STRUCTURED" if is_sp else "FUND"
+        elif not _product_gap(h):
             continue  # equity and cash: no invented TER
         isin = h["isin"]
         fs = product_docs.get(isin or "", [])
