@@ -1,15 +1,15 @@
 ---
 id: SC-9.11
 title: No saving claim when the comparison is not like for like
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Improve CRM UX, camera scan and access control"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-m6dkdk"
 pr: ""
 created_date: "2026-11-25 22:20"
-updated_date: "2026-11-25 22:16"
+updated_date: "2026-11-25 22:17"
 labels:
   - finance
 dependencies: []
