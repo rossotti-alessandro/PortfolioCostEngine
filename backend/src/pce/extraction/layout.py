@@ -54,12 +54,15 @@ def ocr_slot() -> threading.BoundedSemaphore:
 def ocr_workers() -> int:
     """Pages OCR'd at once: ``PCE_OCR_WORKERS``, else the CPU quota this process really has.
 
-    ``os.cpu_count()`` reports the host's cores; a container's quota (Render free: 0.15 CPU) is in
-    cgroup ``cpu.max``. Oversubscribing a fractional CPU only adds memory, so the floor is used."""
+    Linux reports the CPUs this process may use via ``os.sched_getaffinity``. macOS has no
+    affinity API, so the fallback is ``os.cpu_count()``. A container quota (Render free: 0.15 CPU)
+    is in cgroup ``cpu.max``. Oversubscribing a fractional CPU only adds memory, so the floor is used.
+    """
     env = os.environ.get("PCE_OCR_WORKERS")
     if env:
         return max(1, int(env))
-    cpus = len(os.sched_getaffinity(0))
+    getaffinity = getattr(os, "sched_getaffinity", None)
+    cpus = len(getaffinity(0)) if getaffinity is not None else (os.cpu_count() or 1)
     try:
         quota, period = CGROUP_CPU_MAX.read_text().split()
         if quota != "max":

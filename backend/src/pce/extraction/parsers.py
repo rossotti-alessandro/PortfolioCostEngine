@@ -51,6 +51,24 @@ def _ev(line: Line, page: PageInfo, cells=None) -> Evidence:
 
 
 _CCY_SYMBOL = re.compile(r"^([-−(]?)\s*(?:[£$€]|GBP)\s*")
+_FOOTER = re.compile(r"©|\b(?:page|seite|pagina|pagine)\b|\btel\.?\b|www\.|https?://", re.I)
+# Same cut as the finder: CHF 10'000 beside a rate is the example investment, not the fee.
+_INVESTED_BASE = Decimal("10000")
+
+
+def _footer_or_invested_base(line: Line, amounts: list[tuple[int, Decimal]]) -> bool:
+    """A footer page number, or the single large amount an illustration invests next to a rate.
+
+    Neither is a cost. A real fee on the same line (a second amount, or a smaller amount
+    next to its rate) is kept.
+
+    shortcut: a real fee of CHF 10'000 or more printed beside its rate on one line is skipped
+    with the invested amount, upgrade when the column header says which number is the cost.
+    """
+    bare = all(a == a.to_integral_value() and abs(a) < _INVESTED_BASE for _, a in amounts)
+    if _FOOTER.search(line.text) and bare:
+        return True
+    return bool(PERCENT.search(line.text) and len(amounts) == 1 and abs(amounts[0][1]) >= _INVESTED_BASE)
 _SYMBOL_CCY = {"£": "GBP", "€": "EUR", "$": "USD"}
 _QTY_PRICE_VALUE = re.compile(r"quantit|stück|menge|nombre|units", re.I)
 _PRICE_4DP = re.compile(r"^[£$€]?\s*(\d{1,3}(?:,\d{3})*\.\d{2,6})$")
@@ -584,6 +602,8 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
             elif re.search(r"inducement|incentiv", low) or ("retrocession" in low and len(ln.cells) == 1):
                 section = "inducements"
             amounts = _amount_cells(ln)
+            if _footer_or_invested_base(ln, amounts):
+                continue  # a page number or the invested amount is not the cost
             if not amounts or len(ln.cells) < 2:
                 if amounts and re.search(r"average assets|patrimonio medio|durchschnittliches", low):
                     pass
@@ -699,17 +719,22 @@ _RULE_PATTERNS = [
         "MGMT_DISCRETIONARY",
         "aum",
     ),
-    (  # before custody: "commissione sul controvalore dell'operazione" is a trading fee
-        re.compile(r"brokerage|courtage|intermediazione|negoziazione|transaction fee|dell'operazione", re.I),
+    (  # before custody: "commissione sul controvalore dell'operazione" is a trading fee.
+        # "order commission" must not inherit an advisory or custody heading.
+        re.compile(
+            r"brokerage|courtage|intermediazione|negoziazione|transaction fee|dell'operazione|"
+            r"order commission|commissions? per order|commissions? on orders",
+            re.I,
+        ),
         "BROKERAGE",
         "trade_notional",
     ),
-    (re.compile(r"custody|custodia|depot|garde", re.I), "CUSTODY_FEE", "custody_eligible"),
-    (
-        re.compile(r"foreign exchange|devisen|cambi\b|opérations de change", re.I),
+    (  # before custody: "FX commission" is not a custody fee, and must not inherit that heading
+        re.compile(r"foreign exchange|\bfx\b|devisen|cambi\b|opérations de change", re.I),
         "FX_COMMISSION",
         "fx_notional",
     ),
+    (re.compile(r"custody|custodia|depot|garde", re.I), "CUSTODY_FEE", "custody_eligible"),
     (
         re.compile(r"transfer of securities|trasferimento|übertrag|transfert", re.I),
         "TRANSFER_OUT",
@@ -868,6 +893,15 @@ def parse_tariff(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
             all_pct = [str(parse_percent(x)) for x in PERCENT.findall(" ".join(c.text for c in ln.cells[1:]))]
             if pm and parse_percent(pm.group(0)) > _MAX_RATE_PCT:
                 continue
+            rate_cells = " ".join(c.text for c in ln.cells[1:])
+            if pm and (
+                re.search(r"%\s*[–\-]\s*\d", rate_cells)
+                or (
+                    not is_band
+                    and re.search(r"\b(?:up to|bis zu|fino a|jusqu['’]à|au plus)\b", rate_cells, re.I)
+                )
+            ):
+                continue  # a range or a ceiling is not the rate charged; the lower bound is not the fee
             if is_band and pm and section:
                 add(
                     Fact(

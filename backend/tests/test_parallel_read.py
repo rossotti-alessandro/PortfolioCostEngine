@@ -78,8 +78,19 @@ def test_ocr_workers(
     if cpu_max is not None:
         quota.write_text(cpu_max + "\n")
     monkeypatch.setattr(layout, "CGROUP_CPU_MAX", quota)
-    monkeypatch.setattr(layout.os, "sched_getaffinity", lambda _pid: set(range(affinity)))
+    monkeypatch.setattr(
+        layout.os, "sched_getaffinity", lambda _pid: set(range(affinity)), raising=False
+    )
     assert layout.ocr_workers() == expected
+
+
+def test_ocr_workers_without_affinity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """macOS has no ``os.sched_getaffinity``; the host CPU count is the allowance, still capped."""
+    monkeypatch.delenv("PCE_OCR_WORKERS", raising=False)
+    monkeypatch.delattr(layout.os, "sched_getaffinity", raising=False)
+    monkeypatch.setattr(layout.os, "cpu_count", lambda: 8)
+    monkeypatch.setattr(layout, "CGROUP_CPU_MAX", tmp_path / "missing-cpu.max")
+    assert layout.ocr_workers() == 4
 
 
 def test_upload_route_runs_off_the_event_loop() -> None:

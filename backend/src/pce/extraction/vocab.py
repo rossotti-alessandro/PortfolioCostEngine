@@ -165,7 +165,13 @@ LANG_HINTS = {
 DATE_DMY = re.compile(r"\b(\d{2})\.(\d{2})\.(\d{4})\b")
 DATE_ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 DATE_SLASH = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
-AMOUNT = re.compile(r"^[-−(]?\s*(?:CHF|EUR|USD)?\s*\d{1,3}(?:['’ ,.]\d{3})*(?:[.,]\d{1,2})?\)?-?$")
+# Grouped (1'500.00, 1,234.56) or a short number. The second branch is 6400.00: OCR often
+# drops the thousands separator, and that amount is unambiguous once it has a decimal.
+AMOUNT = re.compile(
+    r"^[-−(]?\s*(?:CHF|EUR|USD)?\s*"
+    r"(?:\d{1,3}(?:['’ ,.]\d{3})*(?:[.,]\d{1,2})?|\d{4,}[.,]\d{1,2})"
+    r"\)?-?$"
+)
 PERCENT = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
 
 
