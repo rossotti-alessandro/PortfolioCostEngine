@@ -7,9 +7,9 @@ owner: "Improve CRM UX, camera scan and access control"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-m6dkdk"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/67"
 created_date: "2026-11-25 22:10"
-updated_date: "2026-11-25 22:06"
+updated_date: "2026-11-25 22:11"
 labels:
   - finance
 dependencies: []
