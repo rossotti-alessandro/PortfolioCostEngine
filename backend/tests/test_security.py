@@ -1,5 +1,6 @@
 """Login, sessions, CSRF, throttling, headers and upload guards (SC-9.4)."""
 
+import json
 import os
 import re
 import tempfile
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from pce import auth, security
 from pce.api import app, safe_filename
+from pce.demo import spec
 
 PW = "a long enough test password"
 auth.add_account("sec.admin", PW, "sec-firm", auth.ROLES, admin=True)
@@ -165,6 +167,68 @@ def test_upload_rejects_disguised_files_and_cleans_names(statement_pdf):
     assert safe_filename("../../etc/passwd") == "passwd"
     assert safe_filename("C:\\x\\a<b>.pdf") == "ab.pdf"
     assert safe_filename("\x00\n.pdf") == "pdf"
+
+
+def test_analyst_cannot_read_or_rewrite_internal_economics():
+    """Firm margin inputs follow the same gate as GET /internal. Approval stays senior-only."""
+    auth.add_account("sec.rm", PW, "sec-firm", ("relationship_manager",))
+    auth.add_account("sec.senior", PW, "sec-firm", ("senior",))
+    analyst, csrf_a = login("sec.analyst")
+    rm, csrf_rm = login("sec.rm")
+    senior, _csrf_s = login("sec.senior")
+    admin, csrf_admin = login("sec.admin")
+    pid = analyst.post(
+        "/api/prospects",
+        json={"code": "SEC-ROLE", "label": "SYNTHETIC", "domicile": "CH"},
+        headers=csrf_a,
+    ).json()["id"]
+    url = f"/api/prospects/{pid}/proposal"
+
+    as_analyst = analyst.get(url).json()
+    assert "internal" not in as_analyst["config"]
+    assert "servicing_cost" not in json.dumps(as_analyst)
+    # The env admin holds every role; the switch still cannot raise the active role.
+    assert analyst.get(url, headers={"X-Role": "senior"}).status_code == 403
+    dropped = admin.get(url, headers={"X-Role": "analyst"}).json()
+    assert "internal" not in dropped["config"]
+
+    stolen = {
+        "servicing_cost": "1",
+        "onboarding_cost": "1",
+        "min_margin_pct": "1",
+    }
+    wrote = analyst.put(
+        url, json={**as_analyst["config"], "custody_bps": "8", "internal": stolen}, headers=csrf_a
+    )
+    assert wrote.status_code == 200, wrote.text
+    kept = senior.get(url).json()["config"]
+    assert kept["custody_bps"] == "8"
+    assert kept["internal"] == spec.PROPOSAL_DEFAULTS["internal"]
+    assert rm.get(url).json()["config"]["internal"]["servicing_cost"] == kept["internal"]["servicing_cost"]
+    assert admin.get(url, headers={"X-Role": "senior"}).json()["config"]["internal"] == kept["internal"]
+
+    assert analyst.get(f"/api/prospects/{pid}/internal").status_code == 403
+    assert admin.get(f"/api/prospects/{pid}/internal", headers={"X-Role": "analyst"}).status_code == 403
+    assert rm.get(f"/api/prospects/{pid}/internal").status_code == 200
+
+    body = {}
+    assert analyst.post(f"/api/prospects/{pid}/approve", json=body, headers=csrf_a).status_code == 403
+    assert rm.post(f"/api/prospects/{pid}/approve", json=body, headers=csrf_rm).status_code == 403
+    assert (
+        admin.post(
+            f"/api/prospects/{pid}/approve", json=body, headers={**csrf_admin, "X-Role": "analyst"}
+        ).status_code
+        == 403
+    )
+    assert (
+        admin.post(
+            f"/api/prospects/{pid}/approve",
+            json=body,
+            headers={**csrf_admin, "X-Role": "relationship_manager"},
+        ).status_code
+        == 403
+    )
+    assert senior.post(f"/api/prospects/{pid}/approve", json=body, headers=_csrf_s).status_code == 200
 
 
 def test_password_hash_roundtrip():

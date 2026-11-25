@@ -228,7 +228,8 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
 
     counted = [a for a in atoms if a["role"] == "counted" and a["amount"] is not None]
     contrib = sum((Decimal(a["amount"]) for a in counted), Decimal(0))
-    held = sum((Decimal(h["value_ccy"]) for h in holdings if h.get("value_ccy")), Decimal(0))
+    valued_rows = [h for h in holdings if h.get("value")]
+    held = sum((Decimal(h["value"]) for h in valued_rows), Decimal(0))
     cur = analysis.get("current", {})
     stages.append(
         _stage(
@@ -245,7 +246,11 @@ def document_pipeline(d: Document, facts: list[FactRow], analysis: dict, base_cc
             details=[
                 {
                     "label": "Holdings from this document",
-                    "value": f"{len(holdings)} · {held:,.2f} {base_ccy}",
+                    "value": (
+                        f"{len(holdings)} · not valued in {base_ccy}"
+                        if holdings and not valued_rows
+                        else f"{len(valued_rows)} · {held:,.2f} {base_ccy}"
+                    ),
                 },
                 {"label": "Costs counted in the total", "value": str(len(counted))},
                 {

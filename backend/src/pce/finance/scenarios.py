@@ -53,6 +53,8 @@ class Comparison:
     payback_months: Decimal | None
     like_for_like: bool
     caveats: list[str] = field(default_factory=list)
+    # False when there is no CHF asset base or no known current cost: the amounts above are not a claim.
+    saving_claimed: bool = True
 
 
 def compare(
@@ -168,6 +170,8 @@ def product_atoms(holdings: list[HoldingInput], rates: list[ProductRate], prefix
                     )
                 )
                 continue
+            # FEE_TAXONOMY specifies average value × rate × days/365. Statements here carry today's
+            # value only, and the pinned P-1042 total is this form (900'000 × 1.08% = 9'720). Left as is.
             amount = h.value * D(r.rate_pct) / Decimal(100)
             atoms.append(
                 FeeAtom(

@@ -14,11 +14,12 @@ from decimal import Decimal
 from typing import Any
 
 from .extraction.vocab import FEE_LABEL_NAMES
-from .finance.isin import is_synthetic
+from .finance.isin import is_synthetic, is_valid_isin
 from .finance.ledger import AtomRole, FeeAtom, Incidence, Layer, LedgerSummary, Measurement, aggregate
 from .finance.money import ZERO, D, bps_of, money
 from .finance.scenarios import (
     LAYER_BY_CODE,
+    Comparison,
     HoldingInput,
     ProductRate,
     compare,
@@ -43,28 +44,94 @@ SERVICE_CODES = {"ADVISORY_FEE", "MGMT_DISCRETIONARY", "ALL_IN_FEE", "EAM_FEE", 
 LEGAL_SUFFIX = re.compile(r"(?<!\w)(SA|AG|S\.A\.|Ltd|plc|LLC|Europe|GmbH|S\.p\.A\.)(?!\w)\.?", re.I)
 
 
+def listed_assets(holdings: list, total: object) -> object | None:
+    """CHF assets for a list or header.
+
+    A holding with no CHF value (no printed rate, or a market value that was never priced) does not
+    count. When none are valued the stored total is 0, and publishing that 0 renders ``CHF 0`` for a
+    book that was not valued. Missing stays missing.
+    """
+    if not any(h.get("value") not in (None, "") for h in holdings):
+        return None
+    return total
+
+
 def inst_key(name: str | None) -> str:
     if not name:
         return "Unknown institution"
     return re.sub(r"\s+", " ", LEGAL_SUFFIX.sub("", name)).strip(" ,")
 
 
+# ETF before the structured-product words. "Xtrackers" contains "tracker", and a UCITS ETF is not
+# a certificate: those names are funds, so a missing KID is an ongoing charge, not an issuer margin.
+_ETF_NAME = re.compile(r"\betf\b|xtrackers|\bspdr\b")
+_STRUCTURED_NAME = re.compile(
+    r"certificate|certificato|zertifikat|barrier|mini-?future|convertible|\bnote\b|\btracker\b"
+)
+
+
 def infer_asset_class(name: str, given: str | None) -> tuple[str, bool]:
+    """Guess a holding's class from its name.
+
+    An explicit class on the fact is kept. Otherwise an ETF (the word, a UCITS ETF, or the Xtrackers
+    range) is a fund/ETF even when the name also contains a structured-product syllable. Certificate,
+    barrier reverse and mini-future stay structured when the name is not an ETF.
+    """
     if given:
         g = given.upper()
         return ("STRUCTURED" if g.startswith("STRUCT") else g), False
     n = name.lower()
-    if re.search(r"\betf\b", n):
+    if _ETF_NAME.search(n):
         return "ETF", True
-    if re.search(r"convertible|certificate|note|tracker|barrier|zertifikat|certificato", n):
+    if _STRUCTURED_NAME.search(n):
         return "STRUCTURED", True
-    if re.search(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b", n) and "fund" not in n:
-        return "BOND", True
-    if re.search(r"fund|fonds|fondo|sicav", n):
+    # "FD" / "FDS" is how US statements abbreviate a fund, including a bond fund. Checked before the
+    # bond words so "Total Return Bond FD" is a fund, not a plain bond.
+    if re.search(r"fund|fonds|fondo|sicav|\bfds?\b", n):
         return "FUND", True
+    if re.search(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b", n):
+        return "BOND", True
+    if re.search(r"\bucits\b", n):
+        return "ETF", True
     if re.search(r"account|cash|liquid|conto|konto|compte", n):
         return "CASH", True
     return "EQUITY", True
+
+
+def _product_gap(holding: dict) -> bool:
+    """True when a missing KID must be an unknown product-cost atom, never a silent zero.
+
+    Equity and cash do not get a made-up TER. A fund or ETF does, with or without an ISIN. Any other
+    holding does only when its ISIN is checksum-valid, so a joined KID can be asked for by share class.
+    """
+    kind = holding["asset_class"]
+    if kind in ("CASH", "EQUITY"):
+        return False
+    if kind in ("FUND", "ETF"):
+        return True
+    isin = holding.get("isin") or ""
+    return bool(isin and is_valid_isin(isin))
+
+
+def _gap_fee(holding: dict) -> tuple[str, Layer, str]:
+    """Fee code, layer and note for a product whose KID was not joined."""
+    if holding["asset_class"] in ("FUND", "ETF"):
+        return (
+            "FUND_ONGOING",
+            Layer.PRODUCT,
+            "No KID for this exact share class. The ongoing charge is unknown, not zero.",
+        )
+    if holding["asset_class"] == "STRUCTURED":
+        return (
+            "SP_ENTRY_COST",
+            Layer.STRUCTURED,
+            "No KID / termsheet for this exact share class.",
+        )
+    return (
+        "FUND_ONGOING",
+        Layer.PRODUCT,
+        "No KID joined for this ISIN. Product cost is unknown, not zero.",
+    )
 
 
 @dataclass
@@ -85,7 +152,7 @@ class MissingRequest:
     ask_for: str
     reason: str
     blocks: list[str]
-    assets_affected: Decimal
+    assets_affected: Decimal | None
     document_type: str
 
 
@@ -153,6 +220,29 @@ def summary_dict(s: LedgerSummary, atoms: list[FeeAtom]) -> dict:
     }
 
 
+_NO_CHF_TOTAL = (
+    "No CHF total: no exchange rate into CHF is printed on the documents. "
+    "Assets are not shown as zero, and no saving is claimed."
+)
+_NO_KNOWN_COST = (
+    "No saving is claimed: no current cost is known. Unknown costs are not treated as zero."
+)
+
+
+def _claim_saving(cmp: Comparison, *, valued: bool, known: Decimal) -> None:
+    """A saving needs a CHF asset base and at least one known current cost. Otherwise say so."""
+    reasons: list[str] = []
+    if not valued:
+        reasons.append(_NO_CHF_TOTAL)
+    if known <= 0:
+        reasons.append(_NO_KNOWN_COST)
+    if not reasons:
+        return
+    cmp.saving_claimed = False
+    # Drop caveats that describe a difference we are refusing to show.
+    cmp.caveats = reasons
+
+
 def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: dict) -> dict:
     """documents: {id, filename, doc_type, profile}; facts: {id, document_id, key, kind, field, label, value,
     currency, isin, fee_code, measurement, extra, status}; proposal: see demo.spec.PROPOSAL_DEFAULTS."""
@@ -204,6 +294,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 "as_of": prof.get("as_of"),
                 "documents": [],
                 "assets": ZERO,
+                "valued": False,
             },
         )
         inst["documents"].append(d["id"])
@@ -228,10 +319,11 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 continue
             orig = D(f["value"])
             pos_sum += orig  # reconciled in the statement's own currency
+            if orig == 0:
+                continue  # a printed 0 is not a CHF market value; showing it as CHF 0 pretends it was valued
             val, fx_note, _ = to_base(orig, f.get("currency"), ik)
-            if val is None:
-                continue
             ac, inferred = infer_asset_class(f["label"], (f.get("extra") or {}).get("asset_class"))
+            # No printed rate: keep the position so the pipeline can show it, but do not invent CHF.
             holdings.append(
                 {
                     "fact_id": f["id"],
@@ -245,10 +337,13 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     "currency": f.get("currency") or BASE_CCY,
                     "value_ccy": orig,
                     "fx_note": fx_note,
+                    "status": f.get("status") or "extracted",
                     "synthetic_isin": bool(f.get("isin") and is_synthetic(f["isin"])),
                 }
             )
-            inst["assets"] += val
+            if val is not None:
+                inst["assets"] += val
+                inst["valued"] = True
         if total_fact:
             tot = D(total_fact["value"])
             ok = abs(tot - pos_sum) <= Decimal("1.00")
@@ -321,8 +416,12 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     "not a consolidated report repeating another bank's positions.",
                 )
             )
-    total_aum = sum((h["value"] for h in holdings), ZERO)
-    cash = sum((h["value"] for h in holdings if h["asset_class"] == "CASH"), ZERO)
+    total_aum = sum((h["value"] for h in holdings if h["value"] is not None), ZERO)
+    cash = sum(
+        (h["value"] for h in holdings if h["asset_class"] == "CASH" and h["value"] is not None),
+        ZERO,
+    )
+    chf_valued = any(h["value"] is not None for h in holdings)
     if not holdings:
         requests.append(
             MissingRequest(
@@ -353,6 +452,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     "as_of": None,
                     "documents": [],
                     "assets": ZERO,
+                    "valued": False,
                 },
             )
             if d["id"] not in inst["documents"]:
@@ -598,7 +698,21 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     )
                 )
         if not any(a.institution == ik and a.measurement == Measurement.OBSERVED for a in atoms):
-            share = (inst["assets"] / total_aum * 100).quantize(Decimal("0.1")) if total_aum else ZERO
+            if inst.get("valued") and total_aum:
+                share = (inst["assets"] / total_aum * 100).quantize(Decimal("0.1"))
+                reason = (
+                    f"No charged fee is documented for {ik} ({share}% of assets). "
+                    "Service, custody and trading costs are shown as UNKNOWN, not zero."
+                )
+                affected: Decimal | None = inst["assets"]
+            else:
+                # Unvalued assets are not 0% and not CHF 0 affected.
+                reason = (
+                    f"No charged fee is documented for {ik}. Its assets are not valued in CHF, "
+                    "so no share is calculated. Service, custody and trading costs are shown as "
+                    "UNKNOWN, not zero."
+                )
+                affected = None
             requests.append(
                 MissingRequest(
                     f"cost_report:{ik}",
@@ -608,11 +722,9 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     "Annual report on costs and charges (ex-post) for the last 12 months, "
                     "or all fee debit advices "
                     "for the same period, plus the mandate/advisory agreement",
-                    f"No charged fee is documented for {ik} ({share}% of assets). "
-                    "Service, custody and trading "
-                    "costs are shown as UNKNOWN, not zero.",
+                    reason,
                     ["verified current total", "point estimate of the saving", "acquisition decision"],
-                    inst["assets"],
+                    affected,
                     "annual_cost_report",
                 )
             )
@@ -629,42 +741,66 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     rates: list[ProductRate] = []
     extra_product_atoms: list[FeeAtom] = []
     for h in holdings:
-        if h["asset_class"] in ("CASH", "EQUITY", "BOND"):
-            continue
+        if not _product_gap(h):
+            continue  # equity and cash: no invented TER
         isin = h["isin"]
         fs = product_docs.get(isin or "", [])
-        if not fs:
-            atoms_key = f"cur:{h['institution']}:{isin or h['name']}:PRODUCT_UNKNOWN"
+        code, layer, gap_note = _gap_fee(h)
+        if h["value"] is None or not fs:
+            # No CHF basis, or no KID for this ISIN: an explicit unknown. Never amount 0.
+            ccy = h["currency"]
+            if h["value"] is None and fs:
+                note = (
+                    "A KID matches this ISIN, but the position is not valued in CHF, so the "
+                    "ongoing charge is not calculated and is not zero."
+                )
+            elif h["value"] is None:
+                note = (
+                    f"{gap_note} The position is in {ccy} and no {ccy}/{BASE_CCY} rate is printed, "
+                    "so no CHF amount is calculated."
+                )
+            else:
+                note = gap_note
             extra_product_atoms.append(
                 FeeAtom(
-                    atoms_key,
-                    "FUND_ONGOING" if h["asset_class"] in ("FUND", "ETF") else "SP_ENTRY_COST",
-                    Layer.PRODUCT if h["asset_class"] in ("FUND", "ETF") else Layer.STRUCTURED,
+                    f"cur:{h['institution']}:{isin or h['name']}:PRODUCT_UNKNOWN",
+                    code,
+                    layer,
                     f"{h['name']} · product costs",
                     h["institution"],
                     None,
                     Measurement.UNKNOWN,
                     Incidence.EMBEDDED,
                     instrument_id=isin,
-                    note="No KID / termsheet for this exact share class.",
+                    note=note,
                 )
             )
-            requests.append(
-                MissingRequest(
-                    f"kid:{isin or h['name']}",
-                    2,
-                    h["institution"],
-                    f"KID for {h['name']}",
-                    f"Key Information Document (PRIIPs KID or FinSA BIB) for ISIN {isin}, "
-                    "exact share class, current version"
-                    if isin
-                    else f"Product documentation for {h['name']}",
-                    f"Embedded costs of a CHF {h['value']:,.0f} position are unknown.",
-                    ["product cost of this position"],
-                    h["value"],
-                    "kid_priips",
+            if not fs:
+                if h["value"] is None:
+                    reason = (
+                        f"Embedded costs are unknown. The position is denominated in {ccy} and no "
+                        f"{ccy}/{BASE_CCY} rate is printed, so it is not converted and not counted as zero."
+                    )
+                    affected = None
+                else:
+                    reason = f"Embedded costs of a CHF {h['value']:,.0f} position are unknown."
+                    affected = h["value"]
+                requests.append(
+                    MissingRequest(
+                        f"kid:{isin or h['name']}",
+                        2,
+                        h["institution"],
+                        f"KID for {h['name']}",
+                        f"Key Information Document (PRIIPs KID or FinSA BIB) for ISIN {isin}, "
+                        "exact share class, current version"
+                        if isin
+                        else f"Product documentation for {h['name']}",
+                        reason,
+                        ["product cost of this position"],
+                        affected,
+                        "kid_priips",
+                    )
                 )
-            )
             continue
         doc = product_doc_meta[isin]
         ddate = (doc.get("profile") or {}).get("as_of")
@@ -744,6 +880,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         note="Hypothetical example from the KID; never a cost actually paid.",
                     )
                 )
+    # Only CHF-valued positions enter the rate × value product. An unvalued line stays an unknown atom.
     hold_inputs = [
         HoldingInput(
             h["isin"] or h["name"],
@@ -754,6 +891,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             h["institution"],
         )
         for h in holdings
+        if h["value"] is not None
     ]
     cur_product = product_atoms(hold_inputs, rates, "cur")
     for a in cur_product:
@@ -868,7 +1006,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 f"Statement page showing the {ccy}/{BASE_CCY} rate used for the valuation",
                 "Amounts in a foreign currency are not converted with a guessed rate.",
                 ["assets", "costs"],
-                ZERO,
+                None,
                 "portfolio_statement",
             )
         )
@@ -879,6 +1017,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         row = {
             "institution": ik,
             "assets": str(inst["assets"]),
+            "valued": bool(inst.get("valued")),
             "jurisdiction": inst["jurisdiction"],
             "cells": {},
         }
@@ -1003,6 +1142,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     mig = p.get("migration", {})
     transfer_cost = sum((D(v) for v in mig.values()), ZERO)
     same_cmp = compare(cur_cmp, same_sum, transfer_cost, True, cur_ok, same_ok)
+    _claim_saving(same_cmp, valued=chf_valued, known=cur_cmp.total_known)
 
     # optimised: explicit instrument swaps
     swaps = p.get("optimized_swaps", [])
@@ -1059,6 +1199,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         for a in cur_cmp.unknown
     )
     opt_cmp = compare(cur_cmp, opt_sum, transfer_cost + rebuild, False, cur_ok_opt, opt_ok)
+    _claim_saving(opt_cmp, valued=chf_valued, known=cur_cmp.total_known)
 
     internal = internal_economics(
         [a for a in svc if a.fee_code == "EAM_FEE"],
@@ -1069,7 +1210,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         min_margin_pct=D(p["internal"]["min_margin_pct"]),
     )
 
-    requests.sort(key=lambda r: (r.priority, -r.assets_affected))
+    requests.sort(key=lambda r: (r.priority, -(r.assets_affected or ZERO)))
     excluded = [
         {
             "fee_code": a.fee_code,
@@ -1083,9 +1224,12 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     return _ser(
         {
             "engine_version": ENGINE_VERSION,
-            "synthetic": all(h["synthetic_isin"] for h in holdings if h["isin"]) and bool(holdings),
+            "synthetic": bool(holdings)
+            and any(h["isin"] for h in holdings)
+            and all(h["synthetic_isin"] for h in holdings if h["isin"]),
             "aum": {
                 "total": total_aum,
+                "valued": chf_valued,
                 "cash": cash,
                 "custody_eligible": custody_base,
                 "by_institution": {k: v["assets"] for k, v in institutions.items()},
@@ -1094,9 +1238,9 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             "holdings": [
                 {
                     **h,
-                    "value": str(h["value"]),
+                    "value": None if h["value"] is None else str(h["value"]),
                     "weight_pct": str((h["value"] / total_aum * 100).quantize(Decimal("0.1")))
-                    if total_aum
+                    if h["value"] is not None and total_aum
                     else None,
                 }
                 for h in holdings

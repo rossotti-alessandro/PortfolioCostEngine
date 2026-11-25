@@ -25,7 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import __version__, security
-from .analysis import analyse
+from .analysis import analyse, listed_assets
 from .crm.router import router as crm_router
 from .db import (
     Approval,
@@ -451,14 +451,17 @@ def list_prospects(db: DB, c: C) -> list[dict]:
         summary = None
         if docs:
             r = compute(db, c, p)
+            cmp = r["scenarios"]["same_holdings"]["comparison"]
             summary = {
-                "aum": r["aum"]["total"],
+                "aum": listed_assets(r["holdings"], r["aum"]["total"]),
                 "current_known": r["current"]["total_known"],
                 "current_bps": r["current"]["total_bps"],
                 "complete": r["current"]["is_complete"],
                 "open_requests": sum(1 for q in r["requests"] if q["status"] == "open"),
-                "saving": r["scenarios"]["same_holdings"]["comparison"]["annual_saving"],
-                "bound": r["scenarios"]["same_holdings"]["comparison"]["bound"],
+                "saving": (
+                    cmp["annual_saving"] if cmp.get("saving_claimed", True) else None
+                ),
+                "bound": cmp["bound"],
                 "approved": bool(r["approval"] and r["approval"]["valid"]),
             }
         out.append(
@@ -809,6 +812,11 @@ def analysis(pid: int, db: DB, c: C) -> dict:
     return client_safe(compute(db, c, p))  # internal economics only via /internal with an authorised role
 
 
+def _sees_internal(role: str) -> bool:
+    """Firm servicing cost, onboarding cost and minimum margin."""
+    return role in ("senior", "relationship_manager")
+
+
 def client_safe(r: dict) -> dict:
     """Drop internal economics: the computed margin and the firm's cost and minimum-margin inputs."""
     r.pop("internal", None)
@@ -819,7 +827,7 @@ def client_safe(r: dict) -> dict:
 
 @app.get("/api/prospects/{pid}/internal")
 def internal(pid: int, db: DB, c: C) -> dict:
-    if c.role not in ("senior", "relationship_manager"):
+    if not _sees_internal(c.role):
         raise HTTPException(403, "internal economics are restricted to senior and relationship-manager roles")
     p = get_prospect(db, c, pid)
     r = compute(db, c, p)
@@ -843,8 +851,11 @@ def get_proposal(pid: int, db: DB, c: C) -> dict:
         .where(ProposalVersion.prospect_id == p.id, ProposalVersion.tenant_id == c.tenant)
         .order_by(ProposalVersion.id.desc())
     )
+    cfg = p.proposal or spec.PROPOSAL_DEFAULTS
+    if not _sees_internal(c.role):
+        cfg = {k: v for k, v in cfg.items() if k != "internal"}
     return {
-        "config": p.proposal or spec.PROPOSAL_DEFAULTS,
+        "config": cfg,
         "history": [
             {"version": v.version, "user": v.user, "at": v.at, "summary": v.summary} for v in versions
         ],
@@ -854,7 +865,11 @@ def get_proposal(pid: int, db: DB, c: C) -> dict:
 @app.put("/api/prospects/{pid}/proposal")
 def put_proposal(pid: int, body: dict, db: DB, c: C) -> dict:
     p = get_prospect(db, c, pid)
-    cfg = {**(p.proposal or spec.PROPOSAL_DEFAULTS), **body}
+    stored = p.proposal or spec.PROPOSAL_DEFAULTS
+    # The compare screen saves the whole config. An analyst's copy must not change firm inputs;
+    # dropping the key keeps the stored block instead of answering 403 and blocking the save.
+    updates = body if _sees_internal(c.role) else {k: v for k, v in body.items() if k != "internal"}
+    cfg = {**stored, **updates}
     try:  # validate by running the calculation before saving
         for u, r in cfg["eam_tiers"]:
             D(r)

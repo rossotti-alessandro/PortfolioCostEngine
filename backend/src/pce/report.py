@@ -103,6 +103,7 @@ IT = {
     "recupero {payback}",
     "{n} months.": "{n} mesi.",
     "not reached.": "non raggiunto.",
+    "Not valued in CHF": "Non valutato in CHF",
     "Client domicile {code}: Swiss VAT applied to proposed fees.": "Domicilio del cliente {code}: IVA "
     "svizzera applicata alle commissioni proposte.",
     "Client domicile {code}: Swiss VAT not applied to proposed fees.": "Domicilio del cliente {code}: IVA "
@@ -115,6 +116,15 @@ IT = {
     "costi sconosciuti; la differenza indicata riguarda solo i costi noti.",
     "No annual saving on known costs: the proposal is not cheaper on this evidence.": "Nessun risparmio "
     "annuo sui costi noti: su queste evidenze la proposta non è più economica.",
+    "What cannot be claimed": "Cosa non si può affermare",
+    "No CHF total: no exchange rate into CHF is printed on the documents. "
+    "Assets are not shown as zero, and no saving is claimed.": "Nessun totale in CHF: nei documenti non è "
+    "stampato un cambio verso il CHF. Il patrimonio non è mostrato come zero e non si afferma alcun risparmio.",
+    "No saving is claimed: no current cost is known. Unknown costs are not treated as zero.": "Nessun "
+    "risparmio è affermato: nessun costo attuale è noto. I costi sconosciuti non sono trattati come zero.",
+    "{n} positions were read. Their market values stay in the statement currency; none is published as "
+    "CHF assets.": "{n} posizioni sono state lette. I valori di mercato restano nella valuta "
+    "dell'estratto; nessuno è pubblicato come patrimonio in CHF.",
     "Cost item": "Voce di costo",
     "Status": "Stato",
     "Source": "Fonte",
@@ -292,47 +302,66 @@ def render_client_report(r: dict, lang: str = "en") -> bytes:
             ),
         ]
     else:
-        saves, label, word, amount = saving_parts(same["annual_saving"], same["bound"])
-        kpis = [
-            (tr("Assets reviewed"), chf(r["aum"]["total"]), tr("{n} banks", n=len(r["institutions"])), NAVY),
-            (
-                tr("Current known annual cost"),
-                chf(cur["total_known"]),
-                f"{cur['total_bps']} bps" + ("" if cur["is_complete"] else f" · {tr('incomplete')}"),
-                NAVY,
-            ),
-            (
-                tr("With {firm}, same holdings", firm=firm),
-                chf(prop["total_known"]),
-                f"{prop['total_bps']} bps",
-                NAVY,
-            ),
-            (
-                tr(label),
-                f"{tr(word)} {chf(amount)}".strip() if word else chf(amount),
-                tr("first year {amount} after switching costs", amount=chf(same["first_year_net"]))
-                if saves
-                else "",
-                TEAL if saves else NAVY,
-            ),
-        ]
-        box = [
-            [p(k, "kpi_label"), Spacer(1, 3), p(v, "kpi", col), Spacer(1, 2), p(sub, "small")]
-            for k, v, sub, col in kpis
-        ]
-        kt = Table([box], colWidths=[(usable - 24) / 4] * 4)
-        kt.setStyle(
-            TableStyle(
-                [("BOX", (i, 0), (i, 0), 0.6, LINE) for i in range(4)]
-                + [
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                    ("TOPPADDING", (0, 0), (-1, -1), 7),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-                ]
+        valued = bool(r.get("aum", {}).get("valued", True))
+        claimed = bool(same.get("saving_claimed", True))
+        if not claimed:
+            # No CHF base, or no known current cost: say what is refused. Do not print a saving or CHF 0.
+            story.append(p(tr("What cannot be claimed"), "h2"))
+            for caveat in same["caveats"]:
+                story.append(p(tr(caveat)))
+            if not valued:
+                story.append(
+                    p(
+                        tr(
+                            "{n} positions were read. Their market values stay in the statement currency; "
+                            "none is published as CHF assets.",
+                            n=len(r["holdings"]),
+                        )
+                    )
+                )
+        if claimed:
+            saves, label, word, amount = saving_parts(same["annual_saving"], same["bound"])
+            assets_kpi = chf(r["aum"]["total"]) if valued else tr("Not valued in CHF")
+            kpis = [
+                (tr("Assets reviewed"), assets_kpi, tr("{n} banks", n=len(r["institutions"])), NAVY),
+                (
+                    tr("Current known annual cost"),
+                    chf(cur["total_known"]),
+                    f"{cur['total_bps']} bps" + ("" if cur["is_complete"] else f" · {tr('incomplete')}"),
+                    NAVY,
+                ),
+                (
+                    tr("With {firm}, same holdings", firm=firm),
+                    chf(prop["total_known"]),
+                    f"{prop['total_bps']} bps",
+                    NAVY,
+                ),
+                (
+                    tr(label),
+                    f"{tr(word)} {chf(amount)}".strip() if word else chf(amount),
+                    tr("first year {amount} after switching costs", amount=chf(same["first_year_net"]))
+                    if saves
+                    else "",
+                    TEAL if saves else NAVY,
+                ),
+            ]
+            box = [
+                [p(k, "kpi_label"), Spacer(1, 3), p(v, "kpi", col), Spacer(1, 2), p(sub, "small")]
+                for k, v, sub, col in kpis
+            ]
+            kt = Table([box], colWidths=[(usable - 24) / 4] * 4)
+            kt.setStyle(
+                TableStyle(
+                    [("BOX", (i, 0), (i, 0), 0.6, LINE) for i in range(4)]
+                    + [
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                        ("TOPPADDING", (0, 0), (-1, -1), 7),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                    ]
+                )
             )
-        )
-        story += [Spacer(1, 4), kt]
+            story += [Spacer(1, 4), kt]
 
         rv = r.get("review") or {"facts": 0, "reviewed": 0, "rejected": 0}
         checked = rv["reviewed"] + rv["rejected"]
@@ -363,47 +392,53 @@ def render_client_report(r: dict, lang: str = "en") -> bytes:
                 )
             )
 
-        story.append(p(tr("Annual cost by layer (like-for-like, same holdings)"), "h2"))
         unknown_layers = {a["layer"] for a in cur["atoms"] if a["role"] == "unknown"}
-        rows = [
-            [
-                p(tr("Layer"), "head"),
-                p(tr("Today"), "head_r"),
-                p(firm, "head_r"),
-                p(tr("Difference"), "head_r"),
-            ]
-        ]
-        for layer, name in LAYER_NAMES.items():
-            a = Decimal(cur["by_layer"].get(layer, "0"))
-            b = Decimal(prop["by_layer"].get(layer, "0"))
-            if a == 0 and b == 0 and layer not in unknown_layers:
-                continue
-            rows.append(
-                cells([tr(name) + (" *" if layer in unknown_layers else ""), chf(a), chf(b), chf(a - b)], 1)
-            )
-        rows.append(
-            bold(
+        if claimed:
+            story.append(p(tr("Annual cost by layer (like-for-like, same holdings)"), "h2"))
+            rows = [
                 [
-                    tr("Total known"),
-                    chf(cur["total_known"]),
-                    chf(prop["total_known"]),
-                    chf(same["annual_saving"]),
-                ],
-                1,
-            )
-        )
-        story.append(table(rows, [usable * 0.43, usable * 0.19, usable * 0.19, usable * 0.19], 1, total=True))
-        if unknown_layers:
-            story.append(
-                p(
-                    tr(
-                        "* includes costs that could not be quantified from the documents "
-                        "provided (see below)."
-                    ),
-                    "small",
-                    AMBER,
+                    p(tr("Layer"), "head"),
+                    p(tr("Today"), "head_r"),
+                    p(firm, "head_r"),
+                    p(tr("Difference"), "head_r"),
+                ]
+            ]
+            for layer, name in LAYER_NAMES.items():
+                a = Decimal(cur["by_layer"].get(layer, "0"))
+                b = Decimal(prop["by_layer"].get(layer, "0"))
+                if a == 0 and b == 0 and layer not in unknown_layers:
+                    continue
+                rows.append(
+                    cells(
+                        [tr(name) + (" *" if layer in unknown_layers else ""), chf(a), chf(b), chf(a - b)],
+                        1,
+                    )
+                )
+            rows.append(
+                bold(
+                    [
+                        tr("Total known"),
+                        chf(cur["total_known"]),
+                        chf(prop["total_known"]),
+                        chf(same["annual_saving"]),
+                    ],
+                    1,
                 )
             )
+            story.append(
+                table(rows, [usable * 0.43, usable * 0.19, usable * 0.19, usable * 0.19], 1, total=True)
+            )
+            if unknown_layers:
+                story.append(
+                    p(
+                        tr(
+                            "* includes costs that could not be quantified from the documents "
+                            "provided (see below)."
+                        ),
+                        "small",
+                        AMBER,
+                    )
+                )
         for ex in r.get("comparison_exclusions", []):
             story.append(
                 p(
