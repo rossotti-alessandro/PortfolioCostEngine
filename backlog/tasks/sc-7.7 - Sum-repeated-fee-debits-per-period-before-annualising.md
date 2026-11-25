@@ -1,11 +1,11 @@
 ---
 id: SC-7.7
 title: Sum repeated fee debits per period before annualising
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Prove and raise accuracy on realistic portfolios"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 20:50"
@@ -52,11 +52,15 @@ Changes current totals on documents with repeated debits; demo P-1042 pinned tot
 
 ## Acceptance Criteria
 
-- [ ] #1 Test: 4 debits of 500 in a 12-month statement give 2000 annual
-- [ ] #2 Test: one debit with unknown period is flagged as a lower bound
-- [ ] #3 Existing corroboration test (debits x4 equal report) stays green
+- [x] #1 Test: 4 debits of 500 in a 12-month statement give 2000 annual
+- [x] #2 Test: one debit with unknown period is flagged as a lower bound
+- [x] #3 Existing corroboration test (debits x4 equal report) stays green
 
 ## Implementation Notes
+
+Annualisation order: a stated frequency (quarter words) first, since it matches the tariff exactly
+(average debit × periods per year); else the days the statement covers (observed when 360-366 days,
+estimated × 365/days otherwise); else the sum is kept as an estimated lower bound with a warn check.
 
 ## Outcome
 
