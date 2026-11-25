@@ -17,7 +17,9 @@ import shutil
 from decimal import Decimal
 from pathlib import Path
 
-from ...demo.offline import run
+from ...analysis import analyse
+from ...demo.offline import load_folder
+from ...demo.spec import PROPOSAL_DEFAULTS
 from ...report import render_client_report
 from . import degrade
 from .generate import LAYOUTS, render
@@ -64,9 +66,12 @@ def main() -> None:
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     built = build_prospect(a.out, a.layout, a.condition)
-    result = run(a.out / "documents")
+    docs, facts = load_folder(a.out / "documents")
+    result = analyse({"domicile": "CH"}, docs, facts, PROPOSAL_DEFAULTS)
     (a.out / "analysis.json").write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
     client = {k: v for k, v in result.items() if k != "internal"}  # as api.client_safe does
+    client["documents"] = docs  # as api.compute adds: nothing checked by a person yet in this run
+    client["review"] = {"facts": len(facts), "reviewed": 0, "rejected": 0}
     client["prospect"] = {
         "code": "R-4242",
         "label": "Realistic test prospect (synthetic)",
