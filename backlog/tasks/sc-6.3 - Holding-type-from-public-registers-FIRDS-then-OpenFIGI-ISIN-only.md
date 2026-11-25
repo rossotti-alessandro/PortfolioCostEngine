@@ -1,12 +1,12 @@
 ---
 id: SC-6.3
 title: Holding type from public registers (FIRDS then OpenFIGI, ISIN only)
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Prove and raise accuracy on realistic portfolios"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 22:25"
 updated_date: "2026-11-25 22:25"
