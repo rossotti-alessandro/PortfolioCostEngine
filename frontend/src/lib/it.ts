@@ -1158,6 +1158,58 @@ export const IT: Record<string, string> = {
   "No contacts in this stage.": "Nessun contatto in questa fase.",
   Call: "Chiamata",
   Meeting: "Incontro",
+  "A client report is approved by a senior who did not upload documents or correct values in it.":
+    "Un rapporto per il cliente è approvato da un senior che non ha caricato documenti né corretto valori.",
+  "A role change ends the person's open sessions.": "Un cambio di ruolo chiude le sessioni aperte della persona.",
+  "Acting as": "Ruolo attivo",
+  "Add a person": "Aggiungi una persona",
+  "Add and show password": "Aggiungi e mostra la password",
+  "Adds people, sets roles, resets passwords. Sees no client data by itself.":
+    "Aggiunge persone, assegna ruoli, reimposta password. Da solo non vede dati dei clienti.",
+  "Admin (people and access)": "Amministratore (persone e accessi)",
+  "Choose your password": "Scegliete la vostra password",
+  Copy: "Copia",
+  "Edit {name}": "Modifica {name}",
+  "Full name": "Nome e cognome",
+  "Give it to the person in private (not by email). It is shown only now.":
+    "Consegnatela alla persona in privato (non per email). È mostrata solo ora.",
+  "Like an analyst, plus internal economics and approving client reports.":
+    "Come un analista, più economia interna e approvazione dei rapporti.",
+  "Like an analyst, plus internal economics. Cannot approve.":
+    "Come un analista, più economia interna. Non può approvare.",
+  "New one-time password for {name}": "Nuova password monouso per {name}",
+  "New password (12+ characters)": "Nuova password (almeno 12 caratteri)",
+  "New password again": "Ripetete la nuova password",
+  "One-time password": "Password monouso",
+  "One-time password for {name}": "Password monouso per {name}",
+  "Only the server's break-glass admin can sign in. Add your colleagues here.":
+    "Solo l'amministratore di emergenza del server può accedere. Aggiungete qui i colleghi.",
+  People: "Persone",
+  "Prepares cost reviews and works the CRM.": "Prepara le analisi dei costi e lavora nel CRM.",
+  Roles: "Ruoli",
+  "Save password": "Salva la password",
+  "Sees everything except internal economics. Changes nothing.":
+    "Vede tutto tranne l'economia interna. Non modifica nulla.",
+  "Sign {name} out everywhere": "Disconnetti {name} ovunque",
+  "Team & access": "Team e accessi",
+  "The one-time password is wrong.": "La password monouso è errata.",
+  "The password could not be changed.": "Non è stato possibile cambiare la password.",
+  "The two new passwords differ.": "Le due nuove password sono diverse.",
+  "They get a one-time password and choose their own at first sign-in.":
+    "Riceve una password monouso e sceglie la propria al primo accesso.",
+  "Use at least 12 characters.": "Usate almeno 12 caratteri.",
+  "Viewer (read-only)": "Lettore (sola lettura)",
+  "Welcome, {name}. Replace the one-time password you were given with your own.":
+    "Benvenuto, {name}. Sostituite la password monouso ricevuta con una vostra.",
+  "What each role may do": "Cosa può fare ogni ruolo",
+  "Who can sign in and what they may do. A new role or a deactivation ends the person's open sessions.":
+    "Chi può accedere e cosa può fare. Un nuovo ruolo o una disattivazione chiude le sessioni aperte.",
+  deactivated: "disattivato",
+  "has not chosen a password yet": "non ha ancora scelto la password",
+  "{n} signed in": "{n} sessioni attive",
+  "Deactivate {name}": "Disattiva {name}",
+  "Reactivate {name}": "Riattiva {name}",
+  Save: "Salva",
 };
 
 /**

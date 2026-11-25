@@ -9,7 +9,9 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "./index.css";
+import { allowedRoleList } from "./lib/api";
 import { useLang } from "./lib/i18n";
+import AdminPage from "./pages/Admin";
 import CataloguePage from "./pages/Catalogue";
 import ComparePage from "./pages/Compare";
 import CostsPage from "./pages/Costs";
@@ -23,6 +25,12 @@ import ReportPage from "./pages/Report";
 import ReviewPage from "./pages/Review";
 import { crmRoutes } from "./pages/crm/routes";
 
+/** Home is the CRM; an account that only manages people (no client-data role) lands on Team & access. */
+function Home() {
+  const roles = allowedRoleList();
+  return <Navigate to={roles.length === 1 && roles[0] === "admin" ? "/admin" : "/crm"} replace />;
+}
+
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1, refetchOnWindowFocus: false } },
 });
@@ -31,7 +39,8 @@ const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/crm" replace /> },
+      { index: true, element: <Home /> },
+      { path: "/admin", element: <AdminPage /> },
       { path: "/prospects", element: <ProspectsPage /> },
       { path: "/catalogue", element: <CataloguePage /> },
       { path: "/how-it-works", element: <HowItWorksPage /> },

@@ -138,6 +138,34 @@ class Approval(Base):
     note: Mapped[str] = mapped_column(Text, default="")
 
 
+class UserAccount(Base):
+    """A named person (SC-11.12). The env admin is not stored here: it is the break-glass account."""
+
+    __tablename__ = "user_account"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True)  # global: sign-in has no tenant field
+    display_name: Mapped[str] = mapped_column(String(200), default="")
+    password_hash: Mapped[str] = mapped_column(String(300))
+    roles: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(default=True)
+    must_change_password: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[str] = mapped_column(String(32), default=now)
+    created_by: Mapped[str] = mapped_column(String(100), default="")
+
+
+class AuthSession(Base):
+    """Server-side record of a sign-in, so sign-out, idle timeout and revocation take effect at once."""
+
+    __tablename__ = "auth_session"
+    sid: Mapped[str] = mapped_column(String(64), primary_key=True)
+    username: Mapped[str] = mapped_column(String(100), index=True)
+    created_at: Mapped[float] = mapped_column()
+    last_seen: Mapped[float] = mapped_column()
+    expires_at: Mapped[float] = mapped_column()
+    revoked: Mapped[bool] = mapped_column(default=False)
+
+
 def data_dir() -> Path:
     d = Path(os.environ.get("PCE_DATA_DIR", Path(__file__).resolve().parents[3] / "var"))
     d.mkdir(parents=True, exist_ok=True)

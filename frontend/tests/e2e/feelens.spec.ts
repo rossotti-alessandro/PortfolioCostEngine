@@ -118,7 +118,7 @@ test("07 roles: analysts cannot see internal margin, seniors can", async ({ page
   await page.goto(`/p/${id}/internal`);
   await expect(page.getByText("Restricted to senior reviewers")).toBeVisible();
   await page.getByLabel("Account menu").click();
-  await page.getByLabel("Demo role").selectOption("senior");
+  await page.getByLabel("Acting as").selectOption("senior");
   await expect(page.getByRole("heading", { name: "Internal economics" })).toBeVisible();
   await shot(page, "09-internal-senior");
   const client = await (

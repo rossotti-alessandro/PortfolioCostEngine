@@ -10,20 +10,44 @@ import type {
   Taxonomy,
 } from "./types";
 
-export type Role = "analyst" | "senior" | "relationship_manager";
+export type Role = "analyst" | "senior" | "relationship_manager" | "viewer" | "admin";
 
 export const ROLE_LABEL: Record<Role, string> = {
   analyst: "Analyst",
   senior: "Senior reviewer",
   relationship_manager: "Relationship manager",
+  viewer: "Viewer (read-only)",
+  admin: "Admin (people and access)",
+};
+
+/** What each role may do, in plain words (the server enforces pce.permissions). */
+export const ROLE_HELP: Record<Role, string> = {
+  analyst: "Prepares cost reviews and works the CRM.",
+  senior: "Like an analyst, plus internal economics and approving client reports.",
+  relationship_manager: "Like an analyst, plus internal economics. Cannot approve.",
+  viewer: "Sees everything except internal economics. Changes nothing.",
+  admin: "Adds people, sets roles, resets passwords. Sees no client data by itself.",
 };
 
 export interface Me {
   username: string;
+  display_name?: string;
   tenant: string;
   roles: Role[];
   admin: boolean;
+  must_change_password?: boolean;
   csrf_token: string;
+}
+
+export interface TeamMember {
+  username: string;
+  display_name: string;
+  roles: Role[];
+  active: boolean;
+  must_change_password: boolean;
+  created_at: string;
+  created_by: string;
+  live_sessions: number;
 }
 
 // The session lives in an HttpOnly cookie the page cannot read. The CSRF token is kept in memory only
@@ -60,7 +84,10 @@ export function getRole(): Role {
   } catch {
     /* storage unavailable: default role */
   }
-  return allowedRoles.includes("analyst") ? "analyst" : allowedRoles[0];
+  // Same default as the server (pce.permissions.active_role).
+  return (["analyst", "senior", "relationship_manager", "viewer", "admin"] as Role[]).find((r) =>
+    allowedRoles.includes(r),
+  ) as Role;
 }
 
 export function setRole(r: Role) {
@@ -115,6 +142,23 @@ export const auth = {
   me: () => req<Me>("/api/auth/me"),
   login: (username: string, password: string) => req<Me>("/api/auth/login", json({ username, password })),
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  changePassword: (current: string, next: string) => req<Me>("/api/auth/password", json({ current, new: next })),
+};
+
+/** Team & access (admin role only, SC-11.12). */
+export const admin = {
+  users: () => req<{ users: TeamMember[]; roles: Role[] }>("/api/admin/users"),
+  create: (b: { username: string; display_name: string; roles: Role[] }) =>
+    req<TeamMember & { one_time_password: string }>("/api/admin/users", json(b)),
+  update: (username: string, b: { roles?: Role[]; active?: boolean; display_name?: string }) =>
+    req<TeamMember>(`/api/admin/users/${encodeURIComponent(username)}`, json(b, "PATCH")),
+  resetPassword: (username: string) =>
+    req<{ username: string; one_time_password: string }>(
+      `/api/admin/users/${encodeURIComponent(username)}/reset-password`,
+      { method: "POST" },
+    ),
+  signOut: (username: string) =>
+    req<{ ended: number }>(`/api/admin/users/${encodeURIComponent(username)}/sign-out`, { method: "POST" }),
 };
 
 export const api = {

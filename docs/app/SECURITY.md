@@ -14,13 +14,35 @@ the web surface. Engineering notes, not a certification.
 | `PCE_SECRET_KEY` | 32+ random characters. Signs session cookies and CSRF tokens. Must stay the same across restarts. |
 | `PCE_COOKIE_SECURE` | `1` (default): `__Host-` cookie, `Secure`, HSTS. `0` only for plain-HTTP local development and tests. |
 
-- Accounts live in the environment, not the database, because the Render free plan has an ephemeral disk.
-  No admin configured means nobody can sign in (fail closed).
-- Sessions are stateless: an HMAC-SHA256-signed cookie with username, expiry (12 h) and a fingerprint of
-  the password hash. `HttpOnly`, `SameSite=Strict`, `Path=/`. They survive restarts and the free plan's sleep.
-- Sign everyone out: change `PCE_SECRET_KEY`. Changing the password also ends that account's sessions.
-- Tenant and user come from the session only. `X-Role` picks among the roles the account holds (the demo
-  role switch); a role the account lacks returns 403. `X-Tenant-Id` and `X-User` are ignored.
+- Two kinds of account (SC-11.12):
+  - **Break-glass admin** from the environment. Holds every role, never stored in the database, so a lost
+    or reset database never locks the firm out. Its password is changed in the environment only.
+  - **Named people** in the `user_account` table, added by an admin on **Team & access** (`/admin`). They get
+    a one-time password, shown once, and must choose their own (12+ characters) before anything else works.
+    On the Render free plan the disk is ephemeral: named people vanish on restart (pilot: persistent disk).
+- No admin configured and no named people means nobody can sign in (fail closed).
+- Sessions are server-side (`auth_session`). The cookie is HMAC-SHA256-signed and carries the session id,
+  username, 12 h expiry and a fingerprint of the password hash. `HttpOnly`, `SameSite=Strict`, `Path=/`.
+  A session ends on sign-out (also for a copied cookie), after `PCE_IDLE_TIMEOUT_MIN` (30) minutes without
+  activity, when an admin signs the person out everywhere, changes their roles or deactivates them, and when
+  the password changes. Rotating `PCE_SECRET_KEY` still signs everyone out.
+- Tenant and user come from the session only. `X-Role` picks the role a request acts in, among the roles
+  the account holds; a role the account lacks returns 403. `X-Tenant-Id` and `X-User` are ignored.
+
+### Roles and permissions (`pce/permissions.py`)
+
+| Permission | analyst | senior | relationship_manager | viewer | admin |
+|---|---|---|---|---|---|
+| Read prospects, documents, costs, CRM (`data.read`) | ✓ | ✓ | ✓ | ✓ | |
+| Change anything (`data.write`) | ✓ | ✓ | ✓ | | |
+| Internal economics (`internal.read`) | | ✓ | ✓ | | |
+| Approve a client report (`report.approve`) | | ✓ | | | |
+| People and sessions (`users.manage`) | | | | | ✓ |
+
+The middleware checks this table on every `/api/*` request (path and method decide the permission), on top
+of the route checks. Admin alone sees no client data (least privilege). Four-eyes: the person who uploaded
+a document or corrected a value of a review cannot approve it (`PCE_FOUR_EYES=0` turns this off for a
+one-person demo only).
 
 ### On Render
 
@@ -47,7 +69,7 @@ Counters are in memory and reset on restart.
 
 ## Uploads
 
-PDF and XLSX only; at most 20 files and 25 MB each per request. The extension, the leading bytes and
+PDF, XLSX and JPEG/PNG photos (a phone scan becomes one PDF, SC-8.28; photos are not kept); at most 20 files and 25 MB each per request. The extension, the leading bytes and
 libmagic must agree. XLSX: uncompressed size cap (zip bombs) and no macros. File names are reduced to a
 clean base name. Stored by SHA-256, served back with `nosniff` and `no-store`. Client documents never
 leave the server (ADR 0004).
@@ -62,7 +84,8 @@ leave the server (ADR 0004).
 
 ## Known limits
 
-- One admin account. More users or SSO: SC-11.2.
-- Stateless sessions cannot be revoked one by one (rotate the key instead).
+- No SSO and no MFA yet: Microsoft 365 sign-in with MFA is SC-11.7.
+- Sign-ins, views and downloads are not all in the audit log yet: SC-11.8.
+- The viewer role is enforced by the server; the interface still shows some buttons that then answer 403.
 - `--forwarded-allow-ips '*'` trusts `X-Forwarded-For`; a client can spoof its address to dodge the
   per-client limit, which is why the per-username limit exists.
