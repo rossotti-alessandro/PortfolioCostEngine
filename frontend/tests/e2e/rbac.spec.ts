@@ -8,7 +8,6 @@ test("admin adds a viewer; the viewer sets a password, reads, cannot write, and 
 }) => {
   const username = `e2e.viewer${Date.now() % 100000}`;
   await page.goto("/crm");
-  await page.evaluate(() => localStorage.setItem("pce.role", "admin"));
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Team & access" })).toBeVisible();
   await page.getByRole("button", { name: "Add a person" }).click();

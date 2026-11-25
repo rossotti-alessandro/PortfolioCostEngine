@@ -145,20 +145,29 @@ export const auth = {
   changePassword: (current: string, next: string) => req<Me>("/api/auth/password", json({ current, new: next })),
 };
 
-/** Team & access (admin role only, SC-11.12). */
+/** Act in a given role for one call (pages that need a role other than the one picked in "Acting as"). */
+const as = (role: Role, init: RequestInit = {}): RequestInit => ({
+  ...init,
+  headers: { ...(init.headers as Record<string, string>), "X-Role": role },
+});
+
+/** Team & access (admin role only, SC-11.12). Always sent as admin, whatever "Acting as" says. */
 export const admin = {
-  users: () => req<{ users: TeamMember[]; roles: Role[] }>("/api/admin/users"),
+  users: () => req<{ users: TeamMember[]; roles: Role[] }>("/api/admin/users", as("admin")),
   create: (b: { username: string; display_name: string; roles: Role[] }) =>
-    req<TeamMember & { one_time_password: string }>("/api/admin/users", json(b)),
+    req<TeamMember & { one_time_password: string }>("/api/admin/users", as("admin", json(b))),
   update: (username: string, b: { roles?: Role[]; active?: boolean; display_name?: string }) =>
-    req<TeamMember>(`/api/admin/users/${encodeURIComponent(username)}`, json(b, "PATCH")),
+    req<TeamMember>(`/api/admin/users/${encodeURIComponent(username)}`, as("admin", json(b, "PATCH"))),
   resetPassword: (username: string) =>
     req<{ username: string; one_time_password: string }>(
       `/api/admin/users/${encodeURIComponent(username)}/reset-password`,
-      { method: "POST" },
+      as("admin", { method: "POST" }),
     ),
   signOut: (username: string) =>
-    req<{ ended: number }>(`/api/admin/users/${encodeURIComponent(username)}/sign-out`, { method: "POST" }),
+    req<{ ended: number }>(
+      `/api/admin/users/${encodeURIComponent(username)}/sign-out`,
+      as("admin", { method: "POST" }),
+    ),
 };
 
 export const api = {
