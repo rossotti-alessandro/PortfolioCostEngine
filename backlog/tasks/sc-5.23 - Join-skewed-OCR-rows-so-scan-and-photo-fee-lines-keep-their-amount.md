@@ -7,9 +7,9 @@ owner: "Prove and raise accuracy on realistic portfolios"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-12ht53"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/68"
 created_date: "2026-11-25 21:40"
-updated_date: "2026-11-25 22:07"
+updated_date: "2026-11-25 22:18"
 labels:
   - extraction
   - ocr
