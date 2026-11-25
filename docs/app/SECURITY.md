@@ -83,6 +83,17 @@ leave the server (ADR 0004).
 - Frontend dev only (`vitest` 2, `vite` pulled in by vitest): critical and high advisories in the test runner,
   not shipped in the image. Fix: a dedicated `deps:` PR bumping vitest.
 
+### Erasure and retention (`pce/erasure.py`, `pce/retention.py`, SC-11.11)
+
+A senior (`data.erase`) erases a cost review from the Cost reviews list: fixed reason, the review's code
+typed to confirm. It deletes the prospect, its documents and stored files (a file shared with another
+review of the firm stays), facts, reviews, proposals, approvals, document requests and the review's
+activity-log entries; the linked CRM contact is deleted with its notes and stages, or only unlinked. One
+`prospect.erased` entry stays, with the reason, counts and the ids of the removed log entries, so the
+tamper check counts those gaps as made by the application. `python -m pce.retention --days 90 [--dry-run]`
+erases reviews with no activity for that long, except those whose contact reached "won". Backups keep the
+data until they expire.
+
 ### Two-step sign-in (TOTP, SC-11.7)
 
 A named person turns it on from the account menu ("Turn on two-step sign-in"): the server proposes a key
@@ -105,7 +116,7 @@ a row inserted by hand (no seal) or a deleted row (a gap in the ids) is reported
 else `PCE_SECRET_KEY`; without a stable key, seals written before a restart are counted as "other key",
 not as tampering. Rows written before sealing began are "unsealed history". Limits: someone with write
 access to the database and the key can forge seals; deleting the newest rows together with their seals leaves no gap. A copy to
-write-once storage (SC-11.9 backups) closes both.
+write-once storage (backups) closes both.
 
 ## Known limits
 

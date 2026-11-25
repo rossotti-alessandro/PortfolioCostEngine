@@ -12,10 +12,13 @@ Roles
   IT administrator does not read portfolios (least privilege). The env break-glass admin holds every role.
 
 The firm's activity log (who signed in, viewed, downloaded, changed what) is read by admin, viewer
-(compliance) and senior: ``audit.read``.
+(compliance) and senior: ``audit.read``. Erasing a prospect and everything derived from it (SC-11.11)
+cannot be undone and is ``data.erase``: senior only.
 """
 
 from __future__ import annotations
+
+import re
 
 ROLES = ("analyst", "senior", "relationship_manager", "viewer", "admin")
 
@@ -26,6 +29,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "report.approve": frozenset({"senior"}),
     "users.manage": frozenset({"admin"}),
     "audit.read": frozenset({"admin", "viewer", "senior"}),
+    "data.erase": frozenset({"senior"}),
 }
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
@@ -41,6 +45,8 @@ def required(method: str, path: str) -> str:
         return "users.manage"
     if path == "/api/audit":
         return "audit.read"
+    if method == "DELETE" and re.fullmatch(r"/api/prospects/\d+", path):
+        return "data.erase"
     if path.endswith("/internal"):
         return "internal.read"
     if path.endswith("/approve"):
