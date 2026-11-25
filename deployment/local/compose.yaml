@@ -1,0 +1,30 @@
+# FeeLens pilot: one office machine, real client data. Read docs/app/PILOT_INSTALL.md first.
+# Data lives in ./data, which must sit on an encrypted disk (BitLocker, FileVault or LUKS).
+services:
+  feelens:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PCE_DATA_DIR: /app/var
+      PCE_ALLOW_EXTERNAL_AI: "false"
+      PCE_REQUIRE_MFA: "1"
+      PCE_COOKIE_SECURE: "1"
+      PCE_AUTOSEED: "0"
+    volumes:
+      - ./data:/app/var
+    # No published port: only Caddy reaches the app, over the internal network.
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    depends_on: [feelens]
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/data
