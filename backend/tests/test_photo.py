@@ -92,3 +92,15 @@ def test_upside_down_photo_is_turned_back() -> None:
     out = np.asarray(clean_photo(buf.getvalue()).resize((100, 140)), dtype=float)
     ref = np.asarray(page.resize((100, 140)), dtype=float)
     assert np.abs(out - ref).mean() < np.abs(out[::-1, ::-1] - ref).mean()
+
+
+@pytest.mark.ocr
+def test_a_detection_only_call_does_not_switch_off_reading_for_later_calls() -> None:
+    """SC-9.12: RapidOCR keeps the last call's switches; the orientation checks must not leak them."""
+    from pce.extraction import layout
+
+    page = Image.new("RGB", (600, 120), "white")
+    ImageDraw.Draw(page).text((20, 40), "Custody fee 1'234.50", font=ImageFont.load_default(28), fill="black")
+    a = np.asarray(page)
+    layout.rapid(a, use_cls=False, use_rec=False)
+    assert layout.rapid(a).txts

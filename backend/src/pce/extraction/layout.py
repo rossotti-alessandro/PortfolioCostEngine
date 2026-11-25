@@ -196,7 +196,11 @@ def ocr_engine() -> str:
 
 
 def rapid(img, **kw):
-    """Run the process's one RapidOCR engine (models load once, about a second; calls are serialised)."""
+    """Run the process's one RapidOCR engine (models load once, about a second; calls are serialised).
+
+    RapidOCR keeps a call's ``use_*`` switches for the next calls, so every call states all three.
+    """
+    kw = {"use_det": True, "use_cls": True, "use_rec": True, **kw}
     from rapidocr import RapidOCR
 
     global _RAPID

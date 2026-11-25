@@ -106,7 +106,8 @@ def _text_horizontal(page: Image.Image) -> Image.Image:
     """Turn a page whose text runs top to bottom (photo taken sideways, no EXIF flag) by 90 degrees.
 
     Lines of text make the ink profile across rows swing between line and gap; across columns it is
-    flat. When the column profile swings more, the text is vertical. A page that ends up upside down is
+    flat. When the column profile swings more, the text is vertical. With RapidOCR the text boxes decide
+    instead: most of them taller than wide means vertical text. A page that ends up upside down is
     righted next by ``_not_upside_down`` (SC-9.12).
     """
     small = page.copy()
@@ -117,6 +118,13 @@ def _text_horizontal(page: Image.Image) -> Image.Image:
     ink = a < _otsu(a.astype(np.uint8))
     if ink.mean() < 0.005:
         return page
+    if layout.ocr_engine() == "rapidocr":  # text boxes say it best; ink misjudges a near-empty page
+        boxes = layout.rapid(np.asarray(small.convert("RGB")), use_cls=False, use_rec=False).boxes
+        if boxes is not None and len(boxes) >= 3:  # a clear majority, or the ink decides
+            b = np.asarray(boxes)
+            wide = (np.hypot(*(b[:, 1] - b[:, 0]).T) > np.hypot(*(b[:, 3] - b[:, 0]).T)).mean()
+            if wide >= 0.7 or wide <= 0.3:
+                return page.rotate(90, expand=True) if wide <= 0.3 else page
     rows, cols = ink.mean(axis=1), ink.mean(axis=0)
     return page.rotate(90, expand=True) if cols.std() > 1.3 * rows.std() else page
 
