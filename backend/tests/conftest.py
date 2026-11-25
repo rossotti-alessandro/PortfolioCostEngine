@@ -10,6 +10,7 @@ import pytest
 # Before any pce import: a fixed signing key, and plain-HTTP cookies so TestClient keeps them.
 os.environ.setdefault("PCE_SECRET_KEY", "test-only-signing-key-" + "x" * 32)
 os.environ.setdefault("PCE_COOKIE_SECURE", "0")
+os.environ.setdefault("PCE_PUBLIC_ISIN_LOOKUP", "0")  # tests never call public registers (SC-6.3)
 
 FEE_LINE = "Custody fee 0.25% p.a. CHF 1,250.00"
 

@@ -48,6 +48,7 @@ from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
 from .finance.money import D
+from .instruments import registry
 from .pipeline_view import document_pipeline
 from .review_points import review_points
 
@@ -310,6 +311,16 @@ def sniffed_type(data: bytes) -> str:
     return magic.from_buffer(data[:8192], mime=True)
 
 
+def _register_types(facts: list) -> None:
+    """Holdings get their type from a public register (ISIN only, SC-6.3); the name rule stays fallback."""
+    held = [f for f in facts if f.kind == "position" and f.isin and not (f.extra or {}).get("asset_class")]
+    types = registry.resolve([f.isin for f in held])
+    for f in held:
+        if hit := types.get(f.isin):
+            extra = {"asset_class": hit["asset_class"], "asset_class_source": hit["source"]}
+            f.extra = {**(f.extra or {}), **extra}
+
+
 def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tuple[Document, bool]:
     filename = safe_filename(filename)
     suffix = Path(filename).suffix.lower()
@@ -371,6 +382,7 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
     )
     db.add(doc)
     db.flush()
+    _register_types(res.facts)
     for f in res.facts:
         db.add(
             FactRow(
