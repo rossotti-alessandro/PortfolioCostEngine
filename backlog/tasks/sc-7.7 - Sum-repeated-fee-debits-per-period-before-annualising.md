@@ -72,3 +72,9 @@ Debits of one fee on one cash statement are summed into one atom. Tests in
 P-1042 totals and the corroboration tests are unchanged.
 
 ## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-12ht53 | 3846579 | 2026-11-25 | sum repeated debits before annualising |
