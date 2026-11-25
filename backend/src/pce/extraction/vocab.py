@@ -190,7 +190,16 @@ AMOUNT = re.compile(
 PERCENT = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
 
 
+# OCR on photos adds accents to a plain "i" ("Commissioní"); no fee word in the four languages needs them.
+_OCR_I = str.maketrans("íìï", "iii")
+
+
+def ocr_clean(text: str) -> str:
+    return text.translate(_OCR_I)
+
+
 def map_fee_label(text: str) -> str | None:
+    text = ocr_clean(text)
     for code, pat in FEE_LABELS:
         if pat.search(text):
             return code

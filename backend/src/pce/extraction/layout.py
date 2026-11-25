@@ -147,7 +147,20 @@ def _digital_lines(page: pdfplumber.page.Page, number: int) -> list[Line]:
     return _group(cells, number, "pdfplumber-text", 1.0)
 
 
-def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float = 3.0) -> list[Line]:
+def _same_row(c: Cell, row: list[Cell]) -> bool:
+    """A slightly skewed scan or photo drops the right-hand amount a few points below its label, past the
+    centre tolerance. Join it when it overlaps the row by most of its height and sits beside, not under,
+    the row's cells (SC-5.23)."""
+    top, bottom = min(x.bbox[1] for x in row), max(x.bbox[3] for x in row)
+    overlap = min(bottom, c.bbox[3]) - max(top, c.bbox[1])
+    height = min(c.bbox[3] - c.bbox[1], bottom - top)
+    beside = all(c.bbox[0] >= x.bbox[2] or c.bbox[2] <= x.bbox[0] for x in row)
+    return height > 0 and overlap >= 0.6 * height and beside
+
+
+def _group(
+    cells: list[Cell], number: int, engine: str, conf: float, tol: float = 3.0, skew: bool = False
+) -> list[Line]:
     cells.sort(key=lambda c: ((c.bbox[1] + c.bbox[3]) / 2, c.bbox[0]))
     lines: list[list[Cell]] = []
     for c in cells:
@@ -155,7 +168,7 @@ def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float 
         if lines:
             last = lines[-1]
             lyc = sum((x.bbox[1] + x.bbox[3]) / 2 for x in last) / len(last)
-            if abs(yc - lyc) <= tol:
+            if abs(yc - lyc) <= tol or (skew and _same_row(c, last)):
                 last.append(c)
                 continue
         lines.append([c])
@@ -192,7 +205,9 @@ def _rapid_lines(pdf: pypdfium2.PdfDocument, index: int, number: int) -> list[Li
             cells.append(Cell(text.strip(), bbox))
             confs.append(float(score))
     # RapidOCR boxes one text run each and does not group them into lines; group by vertical centre.
-    return _group(cells, number, "rapidocr", round(sum(confs) / len(confs), 3) if confs else 0.0, tol=4.0)
+    return _group(
+        cells, number, "rapidocr", round(sum(confs) / len(confs), 3) if confs else 0.0, tol=4.0, skew=True
+    )
 
 
 def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -> list[Line]:
