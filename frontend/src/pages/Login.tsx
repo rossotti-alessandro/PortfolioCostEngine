@@ -76,7 +76,6 @@ function LoginPage({ onDone }: { onDone: (me: Me) => void }) {
                 pattern="[0-9 ]{6,7}"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                autoFocus
                 required
               />
             </Field>
