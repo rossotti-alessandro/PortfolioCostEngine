@@ -127,7 +127,7 @@ function AccountMenu() {
             await auth.logout().catch(() => undefined);
             signedOut(qc);
           }}
-          className="flex w-full items-center gap-1.5 rounded-[var(--radius-control)] px-1.5 py-1 text-[12.5px] font-medium text-muted hover:bg-paper hover:text-ink"
+          className="flex min-h-9 w-full items-center gap-1.5 rounded-[var(--radius-control)] px-1.5 text-[12.5px] font-medium text-muted hover:bg-paper hover:text-ink"
         >
           <LogOut className="h-3.5 w-3.5" /> {t("Sign out")}
         </button>
@@ -229,18 +229,59 @@ function StepBar({ pid }: { pid: number }) {
   );
 }
 
-/** Left navigation (240px) per DESIGN_SYSTEM.md §3; below md it is a drawer behind the top bar's menu button. */
+const NAV_KEY = "feelens.nav";
+
+/** Wide windows start open. Only an explicit "closed" hides the column; the phone drawer is not stored. */
+function sidebarStoredOpen(): boolean {
+  try {
+    return localStorage.getItem(NAV_KEY) !== "closed";
+  } catch {
+    return true;
+  }
+}
+
+function storeSidebar(open: boolean) {
+  try {
+    localStorage.setItem(NAV_KEY, open ? "open" : "closed");
+  } catch {
+    // private mode: the choice lasts for this page only
+  }
+}
+
+/** Menu control shared by the phone bar and the wide-window bar. The name follows what the next click does. */
+function NavToggle({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={t(open ? "Close menu" : "Open menu")}
+      aria-expanded={open}
+      aria-controls="app-nav"
+      onClick={onClick}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-navy-900 hover:bg-paper"
+    >
+      <Menu className="h-5 w-5" aria-hidden />
+    </button>
+  );
+}
+
+/** Left navigation (240px) per DESIGN_SYSTEM.md §3. Wide windows collapse it from the workspace bar; below md it is a drawer. */
 export function AppShell() {
   const path = useLocation().pathname;
-  const [open, setOpen] = useState(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: close the drawer whenever the route changes
-  useEffect(() => setOpen(false), [path]);
+  const [drawer, setDrawer] = useState(false);
+  const [sidebar, setSidebar] = useState(sidebarStoredOpen);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close the phone drawer whenever the route changes
+  useEffect(() => setDrawer(false), [path]);
   useEffect(() => {
-    if (!open) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    if (!drawer) return;
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(false);
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
-  }, [open]);
+  }, [drawer]);
+  function toggleSidebar() {
+    const next = !sidebar;
+    setSidebar(next);
+    storeSidebar(next);
+  }
   return (
     <div className="flex min-h-full flex-col md:flex-row">
       <a
@@ -251,31 +292,23 @@ export function AppShell() {
       </a>
       <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-3 backdrop-blur md:hidden">
         <Brand />
-        <button
-          type="button"
-          aria-label={t("Menu")}
-          aria-expanded={open}
-          aria-controls="app-nav"
-          onClick={() => setOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-navy-900 hover:bg-paper"
-        >
-          <Menu className="h-5 w-5" aria-hidden />
-        </button>
+        <NavToggle open={drawer} onClick={() => setDrawer((v) => !v)} />
       </header>
-      {open && (
+      {drawer && (
         <button
           type="button"
           tabIndex={-1}
           aria-label={t("Close menu")}
-          onClick={() => setOpen(false)}
+          onClick={() => setDrawer(false)}
           className="pce-fade fixed inset-0 z-40 bg-navy-900/30 md:hidden"
         />
       )}
       <aside
         id="app-nav"
         className={cn(
-          "no-print fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-line bg-surface px-3 py-4 transition-transform duration-200 md:sticky md:top-0 md:z-auto md:h-screen md:w-[240px] md:translate-x-0 md:transition-none",
-          open ? "translate-x-0 shadow-xl" : "-translate-x-full",
+          "no-print fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-line bg-surface px-3 py-4 transition-transform duration-200 md:sticky md:top-0 md:z-auto md:h-screen md:w-[240px] md:translate-x-0 md:shadow-none md:transition-none",
+          drawer ? "translate-x-0 shadow-xl" : "-translate-x-full",
+          !sidebar && "md:hidden",
         )}
       >
         <div className="flex items-center justify-between">
@@ -283,7 +316,7 @@ export function AppShell() {
           <button
             type="button"
             aria-label={t("Close menu")}
-            onClick={() => setOpen(false)}
+            onClick={() => setDrawer(false)}
             className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] text-muted hover:bg-paper md:hidden"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -312,26 +345,36 @@ export function AppShell() {
           <AccountMenu />
         </div>
       </aside>
-      <main id="main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
-        <Outlet />
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="no-print sticky top-0 z-30 hidden h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur md:flex">
+          <NavToggle open={sidebar} onClick={toggleSidebar} />
+          {!sidebar && <Brand />}
+        </header>
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
 
 export function ProspectLayout() {
   const pid = Number(useParams().id);
+  const review = useLocation().pathname.endsWith("/review");
   const { data } = useQuery({ queryKey: ["analysis", pid], queryFn: () => api.analysis(pid) });
   const contact = useQuery({ queryKey: ["crm-by-prospect", pid], queryFn: () => crm.byProspect(pid), retry: false });
+  // Check values is full-bleed (DESIGN_SYSTEM §3): the source page is the work surface.
+  // The wide-window menu bar is h-14, so the review fills the rest of the viewport.
+  const frame = review ? "max-w-none px-3 sm:px-4" : "max-w-[1440px] px-4 sm:px-8";
   return (
-    <div>
+    <div className={cn(review && "xl:flex xl:h-[calc(100dvh-3.5rem)] xl:flex-col")}>
       {data?.synthetic && (
-        <div className="no-print border-b border-amber-700/20 bg-amber-50 px-4 py-1 text-center text-[12.5px] text-amber-700">
+        <div className="no-print shrink-0 border-b border-amber-700/20 bg-amber-50 px-4 py-1 text-center text-[12.5px] text-amber-700">
           {t("SYNTHETIC demo data. Banks, client, ISINs and amounts are invented.")}
         </div>
       )}
-      <div className="no-print border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-3.5 sm:px-8">
+      <div className="no-print shrink-0 border-b border-line bg-surface">
+        <div className={cn("mx-auto flex flex-wrap items-center justify-between gap-3 pb-2 pt-3.5", frame)}>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[12px] text-subtle">
               {contact.data ? (
@@ -358,7 +401,7 @@ export function ProspectLayout() {
           </div>
           {data && (
             <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-              {data.holdings.length > 0 && (
+              {data.aum.valued && (
                 <>
                   <span className="num font-medium text-ink">{chf(data.aum.total)}</span>
                   <span>·</span>
@@ -367,7 +410,7 @@ export function ProspectLayout() {
               <span>{t("{n} banks", { n: data.institutions.length })}</span>
               <span>·</span>
               <span>{t("Domicile {code}", { code: data.client_domicile })}</span>
-              {data.holdings.length === 0 ? (
+              {data.aum.valued === false || data.holdings.length === 0 ? (
                 <Badge tone="amber">
                   {t(
                     data.documents.some((d) => d.doc_type === "portfolio_statement")
@@ -383,11 +426,18 @@ export function ProspectLayout() {
             </div>
           )}
         </div>
-        <div className="mx-auto max-w-[1200px] px-2 sm:px-6">
+        <div className={cn("mx-auto", review ? "px-1 sm:px-2" : "max-w-[1440px] px-2 sm:px-6")}>
           <StepBar pid={pid} />
         </div>
       </div>
-      <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8">
+      <div
+        className={cn(
+          "mx-auto",
+          review
+            ? "flex min-h-0 flex-1 flex-col px-3 py-3 sm:px-4 xl:overflow-hidden"
+            : "max-w-[1440px] px-4 py-6 sm:px-8",
+        )}
+      >
         <Outlet />
       </div>
     </div>
@@ -395,7 +445,7 @@ export function ProspectLayout() {
 }
 
 export function Page({ children }: { children: ReactNode }) {
-  return <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8">{children}</div>;
+  return <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-8">{children}</div>;
 }
 
 export function PageTitle({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {

@@ -77,7 +77,7 @@ export default function PipelinePage() {
   if (q.error || !q.data) return <ErrorBox error={q.error} />;
   const p = q.data;
   return (
-    <div className="max-w-4xl">
+    <div>
       <PageTitle
         title={t("How this document was processed")}
         subtitle={t(

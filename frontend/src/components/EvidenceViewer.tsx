@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button, Spinner } from "./ui";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -57,6 +57,7 @@ export function PdfEvidence({
   const [zoom, setZoom] = useState(1);
   const [showAll, setShowAll] = useState(!focus);
   const [size, setSize] = useState<{ w: number; h: number; scale: number } | null>(null);
+  const [boxW, setBoxW] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -65,15 +66,34 @@ export function PdfEvidence({
     if (pageProp) setPage(pageProp);
   }, [pageProp]);
 
+  // The page is drawn to the stage width. Measure again when the column changes size.
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const read = () => {
+      const style = getComputedStyle(el);
+      const pad = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+      const next = Math.max(0, Math.floor(el.clientWidth - pad));
+      setBoxW((w) => (Math.abs(w - next) < 2 ? w : next));
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    window.addEventListener("resize", read);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", read);
+    };
+  }, []);
+
   useEffect(() => {
-    if (!pdf || !canvasRef.current || !wrapRef.current) return;
+    if (!pdf || !canvasRef.current || !wrapRef.current || boxW < 48) return;
     let task: pdfjs.RenderTask | null = null;
     let cancelled = false;
     pdf.getPage(Math.min(page, pdf.numPages)).then((p) => {
       if (cancelled || !canvasRef.current || !wrapRef.current) return;
       const base = p.getViewport({ scale: 1 });
-      const avail = Math.max(320, wrapRef.current.clientWidth - 2);
-      const scale = (avail / base.width) * zoom;
+      const scale = (boxW / base.width) * zoom;
       const vp = p.getViewport({ scale });
       const dpr = window.devicePixelRatio || 1;
       const c = canvasRef.current;
@@ -89,7 +109,7 @@ export function PdfEvidence({
       cancelled = true;
       task?.cancel();
     };
-  }, [pdf, page, zoom]);
+  }, [pdf, page, zoom, boxW]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-scroll when the selection or the rendered size changes
   useEffect(() => {
@@ -154,7 +174,10 @@ export function PdfEvidence({
           </div>
         )}
       </div>
-      <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-auto bg-[#e9e7e1] p-3">
+      <div
+        ref={wrapRef}
+        className="relative min-h-0 flex-1 overflow-auto overscroll-contain bg-[#e9e7e1] p-3 [scrollbar-gutter:stable]"
+      >
         {!pdf && <Spinner label={t("Opening document")} />}
         <div className="relative mx-auto w-fit shadow-[0_2px_10px_rgb(0_0_0/0.12)]">
           <canvas ref={canvasRef} className="block bg-white" />

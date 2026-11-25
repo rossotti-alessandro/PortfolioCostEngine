@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEASUREMENT, assets, chf, savingParts } from "./format";
+import { MEASUREMENT, assets, chf, knownCost, moneyOr, savingParts } from "./format";
 
 describe("chf", () => {
   it("uses the Swiss apostrophe and a true minus sign", () => {
@@ -9,6 +9,22 @@ describe("chf", () => {
   it("never renders a missing amount as zero", () => {
     expect(chf(null)).toBe("–");
     expect(chf(undefined)).toBe("–");
+  });
+});
+
+describe("moneyOr", () => {
+  it("does not turn a missing stage total into CHF 0", () => {
+    expect(moneyOr(undefined, "Not estimated")).toBe("Not estimated");
+    expect(moneyOr("", "–")).toBe("–");
+    expect(moneyOr("0", "Not estimated")).toBe("CHF 0");
+  });
+});
+
+describe("knownCost", () => {
+  it("does not publish an incomplete zero as a known cost", () => {
+    expect(knownCost("0.00", false)).toBeNull();
+    expect(knownCost("61449.60", false)).toBe("61449.60");
+    expect(knownCost("0", true)).toBe("0");
   });
 });
 

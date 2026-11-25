@@ -1,6 +1,6 @@
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
-import { BOUND_TEXT, assets, chf, cn } from "@/lib/format";
+import { BOUND_TEXT, assets, chf, cn, knownCost } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, ChevronRight, FileSearch, Info, MessageSquarePlus, Trophy, XCircle } from "lucide-react";
@@ -128,16 +128,27 @@ function CostReviewPanel({ pid, code }: { pid: number; code: string | null }) {
       {a && (
         <div className="grid grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-4">
           {[
-            [t("Assets"), assets(a.aum.total, a.holdings.length > 0, t("Not valued yet"))],
+            [
+              t("Assets"),
+              assets(
+                a.aum.total,
+                a.aum.valued !== false && a.holdings.some((h) => h.value != null),
+                t("Not valued in CHF"),
+              ),
+            ],
             [
               t("Known annual cost"),
-              a.current.total_bps
-                ? `${chf(a.current.total_known)} · ${Number(a.current.total_bps).toFixed(0)} bps`
-                : chf(a.current.total_known),
+              knownCost(a.current.total_known, a.current.is_complete) == null
+                ? t("Not determined")
+                : a.current.total_bps
+                  ? `${chf(a.current.total_known)} · ${Number(a.current.total_bps).toFixed(0)} bps`
+                  : chf(a.current.total_known),
             ],
             [
               t("Saving, same holdings"),
-              cmp ? `${t(BOUND_TEXT[cmp.bound] ?? "")} ${chf(cmp.annual_saving)}`.trim() : "–",
+              cmp && cmp.saving_claimed !== false
+                ? `${t(BOUND_TEXT[cmp.bound] ?? "")} ${chf(cmp.annual_saving)}`.trim()
+                : t("No saving is claimed"),
             ],
             [
               t("Evidence"),
@@ -361,7 +372,7 @@ export default function ContactPage() {
     <div>
       {c.synthetic && <SyntheticBanner />}
       <div className="border-b border-line bg-surface">
-        <div className="mx-auto max-w-[1200px] px-4 py-4 sm:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-8">
           <div className="flex items-center gap-1.5 text-[12px] text-subtle">
             <Link to="/crm" className="hover:text-ink">
               {t("Clients & pipeline")}
@@ -388,7 +399,7 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-[1200px] space-y-4 px-4 py-6 sm:px-8">
+      <div className="mx-auto max-w-[1440px] space-y-4 px-4 py-6 sm:px-8">
         <StageTrack c={c} onMove={setTo} />
         {c.prospect ? <CostReviewPanel pid={c.prospect.id} code={c.prospect.code} /> : <StartCostReview c={c} />}
         <div className="grid gap-4 lg:grid-cols-[1fr_340px]">

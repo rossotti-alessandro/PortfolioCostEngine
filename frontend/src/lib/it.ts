@@ -342,6 +342,8 @@ export const IT: Record<string, string> = {
   "Upload documents first.": "Caricate prima i documenti.",
   "Scanned · OCR": "Scansionato · OCR",
   "Extracted values": "Valori estratti",
+  "Details of this value": "Dettagli di questo valore",
+  "Value list": "Elenco valori",
   "{done}/{total} reviewed": "{done}/{total} verificati",
   move: "sposta",
   accept: "accetta",
@@ -926,6 +928,24 @@ export const IT: Record<string, string> = {
   "No statement of assets yet": "Ancora nessun estratto patrimoniale",
   "No position valued in CHF yet": "Ancora nessuna posizione valutata in CHF",
   "Not valued yet": "Non ancora valutato",
+  "Not valued in CHF": "Non valutato in CHF",
+  unchecked: "non verificato",
+  "No saving is claimed": "Nessun risparmio è affermato",
+  "Priority {n} · not valued in CHF": "Priorità {n} · non valutato in CHF",
+  "{positions} positions were read, but none is valued in CHF because no exchange rate is printed. No asset total is shown.":
+    "{positions} posizioni sono state lette, ma nessuna è valutata in CHF perché non è stampato un cambio. Nessun totale patrimoniale è mostrato.",
+  "{n} positions are not valued in CHF: no exchange rate is printed for their currency.":
+    "{n} posizioni non sono valutate in CHF: per la loro valuta non è stampato un cambio.",
+  "{n} positions were read. Their market values stay in the statement currency; none is published as CHF assets.":
+    "{n} posizioni sono state lette. I valori di mercato restano nella valuta dell'estratto; nessuno è pubblicato come patrimonio in CHF.",
+  "As extracted from each bank's statement. A line without a printed exchange rate into CHF is not valued, and is not shown as zero.":
+    "Come estratte dall'estratto di ogni banca. Una riga senza un cambio stampato verso il CHF non è valutata e non è mostrata come zero.",
+  "No CHF total: no exchange rate into CHF is printed on the documents. Assets are not shown as zero, and no saving is claimed.":
+    "Nessun totale in CHF: nei documenti non è stampato un cambio verso il CHF. Il patrimonio non è mostrato come zero e non si afferma alcun risparmio.",
+  "No saving is claimed: no current cost is known. Unknown costs are not treated as zero.":
+    "Nessun risparmio è affermato: nessun costo attuale è noto. I costi sconosciuti non sono trattati come zero.",
+  "No KID for this exact share class. The ongoing charge is unknown, not zero.":
+    "Nessun KID per questa classe di quote. Il costo corrente è sconosciuto, non zero.",
   "Proposal costs more per year": "La proposta costa di più all'anno",
   "costs more": "costa di più",
   "PDF in English": "PDF in inglese",
@@ -1101,6 +1121,7 @@ export const IT: Record<string, string> = {
   "Management or advisory fee (if any)": "Commissione di gestione o consulenza (se presente)",
   "Skip to content": "Vai al contenuto",
   Menu: "Menu",
+  "Open menu": "Apri menu",
   "Close menu": "Chiudi menu",
   "{name} moved to {stage}": "{name} spostato in {stage}",
   "Only PDF or XLSX files can be read": "Si possono leggere solo file PDF o XLSX",

@@ -20,7 +20,7 @@ export default function ProspectsPage() {
   });
   const [open, setOpen] = useState(false);
   return (
-    <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8">
+    <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-navy-900">{t("Cost reviews")}</h1>
@@ -92,7 +92,9 @@ export default function ProspectsPage() {
                     <td className="num px-3 py-3 text-right">
                       {p.summary ? (
                         <>
-                          {chf(p.summary.current_known)}
+                          {Number(p.summary.current_known) === 0 && !p.summary.complete
+                            ? t("Not determined")
+                            : chf(p.summary.current_known)}
                           <div className="text-[12px] text-subtle">{bps(p.summary.current_bps)}</div>
                         </>
                       ) : (
@@ -109,7 +111,7 @@ export default function ProspectsPage() {
                       )}
                     </td>
                     <td className="num px-3 py-3 text-right">
-                      {p.summary ? (
+                      {p.summary?.saving != null ? (
                         <>
                           <span className="text-[12px] text-subtle">
                             {Number(p.summary.saving) < 0 && `${t("costs more")} `}
@@ -119,6 +121,8 @@ export default function ProspectsPage() {
                             {chf(savingParts(p.summary.saving, p.summary.bound).value)}
                           </span>
                         </>
+                      ) : p.summary ? (
+                        <span className="text-subtle">{t("No saving is claimed")}</span>
                       ) : (
                         "–"
                       )}

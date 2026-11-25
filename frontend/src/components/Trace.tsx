@@ -166,13 +166,24 @@ function SumView({ x, onPick }: { x: SumTarget; onPick: (t: TraceTarget) => void
   return (
     <div className="space-y-3 text-[13px]">
       <div>
-        <div className="num text-2xl font-semibold text-navy-900">{chf(x.amount, 2)}</div>
+        {counted.length === 0 && unknown.length > 0 && !(Number(x.amount) > 0) ? (
+          <div className="text-2xl font-semibold text-red-700">{t("Not determined")}</div>
+        ) : (
+          <div className="num text-2xl font-semibold text-navy-900">{chf(x.amount, 2)}</div>
+        )}
         <p className="mt-1 text-muted">
-          {t("Sum of {n} counted lines. Click a line to see its calculation and the page it was read from.", {
-            n: counted.length,
-          })}
+          {counted.length > 0 &&
+            t("Sum of {n} counted lines. Click a line to see its calculation and the page it was read from.", {
+              n: counted.length,
+            })}
           {unknown.length > 0 &&
-            ` ${t("{n} more are not determined and are not counted as zero: the real figure is at least this.", { n: unknown.length })}`}
+            ` ${
+              counted.length > 0
+                ? t("{n} more are not determined and are not counted as zero: the real figure is at least this.", {
+                    n: unknown.length,
+                  })
+                : t("No document shows this cost yet. It is not counted as zero; see what is missing.")
+            }`}
         </p>
       </div>
       <table className="w-full">

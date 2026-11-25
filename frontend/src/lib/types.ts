@@ -178,6 +178,8 @@ export interface Comparison {
   annual_saving: string;
   annual_saving_bps: string | null;
   bound: "point" | "at_least" | "at_most" | "indeterminate";
+  /** False when there is no CHF asset base or no known current cost. The amounts are then not a claim. */
+  saving_claimed?: boolean;
   migration_one_off: string;
   first_year_net: string;
   payback_months: string | null;
@@ -216,8 +218,11 @@ export interface Holding {
   name: string;
   asset_class: string;
   asset_class_inferred: boolean;
-  value: string;
+  value: string | null;
   currency: string;
+  value_ccy?: string;
+  /** Fact status. ``extracted`` means a person has not checked the line. */
+  status?: "extracted" | "accepted" | "corrected" | "rejected" | "manual";
   synthetic_isin: boolean;
   weight_pct: string | null;
 }
@@ -243,18 +248,31 @@ export interface Analysis {
   engine_version: string;
   synthetic: boolean;
   prospect: { id: number; code: string; label: string; domicile: string; synthetic: boolean };
-  aum: { total: string; cash: string; custody_eligible: string; by_institution: Record<string, string> };
+  aum: {
+    total: string;
+    valued?: boolean;
+    cash: string;
+    custody_eligible: string;
+    by_institution: Record<string, string>;
+  };
   institutions: {
     name: string;
     legal_name: string | null;
     jurisdiction: string | null;
     as_of: string | null;
     assets: string;
+    valued?: boolean;
     documents: number[];
   }[];
   holdings: Holding[];
   current: Ledger;
-  coverage: { institution: string; assets: string; jurisdiction: string | null; cells: Record<string, string> }[];
+  coverage: {
+    institution: string;
+    assets: string;
+    valued?: boolean;
+    jurisdiction: string | null;
+    cells: Record<string, string>;
+  }[];
   checks: Check[];
   review_points: ReviewPoint[];
   unused_mentions: EvidenceRef[];
@@ -313,12 +331,12 @@ export interface ProspectRow {
   created_at: string;
   documents: number;
   summary: {
-    aum: string;
+    aum: string | null;
     current_known: string;
     current_bps: string | null;
     complete: boolean;
     open_requests: number;
-    saving: string;
+    saving: string | null;
     bound: string;
     approved: boolean;
   } | null;

@@ -2,7 +2,7 @@ import { NotStarted, ReadSummary } from "@/components/ReadSummary";
 import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, ErrorBox, Money, Spinner, StatGrid, inputCls } from "@/components/ui";
 import { api, getRole } from "@/lib/api";
-import { LAYER, chf, savingParts } from "@/lib/format";
+import { LAYER, chf, knownCost, savingParts } from "@/lib/format";
 import { getLang, t, tm } from "@/lib/i18n";
 import type { Analysis } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,9 +24,14 @@ export default function ReportPage() {
   const a = q.data;
   const s = a.scenarios.same_holdings;
   const cur = a.scenarios.current_comparable;
+  const claimed = s.comparison.saving_claimed !== false;
+  const known = knownCost(cur.total_known, cur.is_complete);
   const sv = savingParts(s.comparison.annual_saving, s.comparison.bound);
   const firm = a.proposal_inputs.firm_name;
   const approved = !!a.approval?.valid;
+  const senior = getRole() === "senior";
+  // One filled button: Approve while a senior still owes a decision; otherwise the PDF in the current language.
+  const pdfIsPrimary = !senior || approved;
   const layers = ["L1", "L2", "L3", "L4", "L5", "L9"].filter(
     (k) => Number(cur.by_layer[k] ?? 0) || Number(s.ledger.by_layer[k] ?? 0),
   );
@@ -43,7 +48,7 @@ export default function ReportPage() {
               {(["en", "it"] as const).map((l) => (
                 <Button
                   key={l}
-                  variant={l === getLang() ? "primary" : "outline"}
+                  variant={pdfIsPrimary && l === getLang() ? "primary" : "outline"}
                   loading={dl === l}
                   onClick={async () => {
                     setDl(l);
@@ -82,15 +87,34 @@ export default function ReportPage() {
             </div>
             <div className="space-y-5 p-6">
               <ReadSummary a={a} />
+              {!claimed && (
+                <div className="rounded-[var(--radius-card)] border border-amber-700/25 bg-amber-50 px-4 py-3 text-[13.5px] leading-relaxed text-ink">
+                  <div className="font-semibold text-amber-700">{t("No saving is claimed")}</div>
+                  {s.comparison.caveats.map((c) => (
+                    <p key={c} className="mt-1">
+                      {tm(c)}
+                    </p>
+                  ))}
+                  {a.aum.valued === false && (
+                    <p className="mt-1">
+                      {t(
+                        "{n} positions were read. Their market values stay in the statement currency; none is published as CHF assets.",
+                        { n: a.holdings.length },
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
               <StatGrid className="grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
                 <Fig
                   label={t("Today, known annual cost")}
-                  value={chf(cur.total_known)}
-                  sub={cur.is_complete ? undefined : t("at least; some costs unknown")}
+                  value={known == null ? t("Not determined") : chf(known)}
+                  sub={known != null && !cur.is_complete ? t("at least; some costs unknown") : undefined}
                 />
-                <Fig label={t("With {firm}", { firm })} value={chf(s.ledger.total_known)} />
-                <Fig label={t(sv.label)} prefix={t(sv.prefix)} value={chf(sv.value)} accent={sv.saves} />
+                {claimed && <Fig label={t("With {firm}", { firm })} value={chf(s.ledger.total_known)} />}
+                {claimed && <Fig label={t(sv.label)} prefix={t(sv.prefix)} value={chf(sv.value)} accent={sv.saves} />}
               </StatGrid>
+              {claimed && (
               <table className="w-full text-[13px]">
                 <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
                   <tr className="border-b border-line">
@@ -109,6 +133,7 @@ export default function ReportPage() {
                   ))}
                 </tbody>
               </table>
+              )}
               <div>
                 <div className="text-[13px] font-semibold text-navy-900">{t("Not yet verified")}</div>
                 <ul className="mt-1 space-y-0.5 text-[13px] text-muted">
@@ -122,6 +147,7 @@ export default function ReportPage() {
                     ))}
                 </ul>
               </div>
+              {claimed && (
               <ul className="space-y-0.5 text-[12.5px] text-subtle">
                 {s.comparison.caveats.map((c) => (
                   <li key={c}>{tm(c)}</li>
@@ -135,6 +161,7 @@ export default function ReportPage() {
                     : t("Switching costs {amount}.", { amount: chf(s.comparison.migration_one_off) })}
                 </li>
               </ul>
+              )}
             </div>
           </Card>
           <div className="space-y-4">

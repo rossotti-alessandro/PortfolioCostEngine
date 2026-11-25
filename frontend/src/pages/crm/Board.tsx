@@ -1,5 +1,5 @@
 import { Badge, Button, Card, Empty, ErrorBox, Kpi, Spinner, inputCls } from "@/components/ui";
-import { chf, cn } from "@/lib/format";
+import { chf, cn, moneyOr } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, FlaskConical, GripVertical, Search, Users } from "lucide-react";
@@ -69,7 +69,7 @@ function Headline() {
       <Kpi label={t("Open prospects")} value={f.open} sub={t("{n} contacts in total", { n: f.total })} />
       <Kpi
         label={t("Pipeline assets")}
-        value={chf(f.pipeline_aum.CHF ?? null)}
+        value={moneyOr(f.pipeline_aum.CHF, f.pipeline_aum_unknown ? t("Not estimated") : "–")}
         sub={
           f.pipeline_aum_unknown
             ? t("{n} without an estimate (not counted as zero)", { n: f.pipeline_aum_unknown })
@@ -169,7 +169,7 @@ export default function BoardPage() {
                     </div>
                     {s.open && fs && (
                       <div className="num mt-0.5 text-[11.5px] text-subtle">
-                        {chf(fs.aum.CHF ?? "0")}
+                        {moneyOr(fs.aum.CHF, fs.aum_unknown > 0 ? t("Not estimated") : "–")}
                         {fs.aum_unknown > 0 && ` + ${t("{n} not estimated", { n: fs.aum_unknown })}`}
                       </div>
                     )}
@@ -223,7 +223,7 @@ export default function BoardPage() {
                         <label className="mt-2 block">
                           <span className="sr-only">{t("Move {name} to", { name: c.name })}</span>
                           <select
-                            className="h-7 w-full rounded-md border border-line bg-surface px-1.5 text-[12px] text-muted focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                            className="h-9 w-full rounded-md border border-line bg-surface px-1.5 text-[12px] text-muted focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                             value=""
                             onChange={(e) => {
                               const to = e.target.value as StageId;

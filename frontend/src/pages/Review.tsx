@@ -1,49 +1,21 @@
-import { PdfEvidence, SheetEvidence } from "@/components/EvidenceViewer";
-import { SourceCrop } from "@/components/SourceCrop";
-import { Badge, Button, Card, Dialog, ErrorBox, Field, Spinner, inputCls } from "@/components/ui";
+import { Button, Card, Dialog, Field, Spinner, inputCls } from "@/components/ui";
 import { api } from "@/lib/api";
-import { DOC_TYPES, cn, num } from "@/lib/format";
-import { t, tm } from "@/lib/i18n";
-import { isOcrEngine, whyYou } from "@/lib/trail";
+import { cn } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { Fact } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, FileSpreadsheet, FileText, History, Pencil, ScanLine, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { DocumentStage } from "./review/DocumentStage";
+import { ValueRail } from "./review/ValueRail";
+import { QUEUE, type QueueKey } from "./review/shared";
 
-const KIND_LABEL: Record<string, string> = {
-  position: "Positions",
-  doc_total: "Totals",
-  fee_observed: "Fees charged",
-  cash_debit: "Fee debits",
-  fee_rule: "Contract terms",
-  product_cost: "Product costs",
-  reported: "Reported by bank",
-  meta: "Document details",
-};
-const STATUS_TONE: Record<string, string> = {
-  extracted: "grey",
-  accepted: "teal",
-  corrected: "violet",
-  rejected: "red",
-  manual: "navy",
-};
-
-/** The queue: what needs a person first, what the checks confirmed, what a person already handled. */
-const QUEUE = [
-  { key: "needs", label: "Needs you", test: (f: Fact) => whyYou(f).length > 0 },
-  { key: "auto", label: "Confirmed by checks", test: (f: Fact) => f.status === "extracted" && !whyYou(f).length },
-  { key: "person", label: "Checked by a person", test: (f: Fact) => f.status !== "extracted" },
-  { key: "all", label: "All", test: () => true },
-] as const;
-type QueueKey = (typeof QUEUE)[number]["key"];
-
-function displayValue(f: Fact) {
-  if (f.value === null) return f.measurement === "unknown" ? t("not disclosed") : String(f.extra?.entity ?? "") || "–";
-  if (f.field === "rate_pct") return `${f.value}%`;
-  return `${f.currency ? `${f.currency} ` : ""}${num(f.value, 2)}`;
-}
-
+/**
+ * Check values. From 1280px the source page takes two thirds of the width and
+ * the value rail takes the remaining third. Below that they stack: the document
+ * first, then the value being checked. The file list is a switcher in the stage,
+ * never a third column.
+ */
 export default function ReviewPage() {
   const pid = Number(useParams().id);
   const [sp, setSp] = useSearchParams();
@@ -109,280 +81,44 @@ export default function ReviewPage() {
     return () => window.removeEventListener("keydown", h);
   }, [move, active, editing, review]);
 
-  const groups = useMemo(() => {
-    const g = new Map<string, Fact[]>();
-    for (const f of ordered) g.set(f.kind, [...(g.get(f.kind) ?? []), f]);
-    return [...g.entries()];
-  }, [ordered]);
-
   if (docs.isLoading) return <Spinner />;
   if (!docs.data?.length) return <Card className="p-8 text-center text-muted">{t("Upload documents first.")}</Card>;
-  const isSheet = doc?.filename.toLowerCase().endsWith(".xlsx");
-  const all = facts.data ?? [];
-  const reviewed = all.filter((f) => f.status !== "extracted").length;
-  const why = active ? whyYou(active) : [];
+  const isSheet = !!doc?.filename.toLowerCase().endsWith(".xlsx");
 
   return (
-    <div className="grid h-[calc(100vh-205px)] min-h-[560px] gap-3 lg:grid-cols-[230px_minmax(0,1fr)_400px]">
-      <Card className="hidden min-h-0 flex-col overflow-hidden lg:flex">
-        <div className="border-b border-line px-3 py-2 text-[12px] font-medium uppercase tracking-wide text-subtle">
-          {t("Documents")}
-        </div>
-        <ul className="min-h-0 flex-1 overflow-auto py-1">
-          {docs.data.map((d) => (
-            <li key={d.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  setSp({ doc: String(d.id) });
-                  setActiveId(null);
-                }}
-                className={cn(
-                  "flex w-full items-start gap-2 px-3 py-2 text-left text-[12.5px] hover:bg-paper",
-                  d.id === docId && "bg-navy-100/70 text-navy-900",
-                )}
-              >
-                {d.filename.endsWith(".xlsx") ? (
-                  <FileSpreadsheet className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-700" />
-                ) : (
-                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-700" />
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{t(DOC_TYPES[d.doc_type])}</span>
-                  <span className="block truncate text-[11.5px] text-subtle">{d.filename}</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card className="flex min-h-0 flex-col overflow-hidden">
-        <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
-          <div className="min-w-0">
-            <div className="truncate text-[13.5px] font-semibold text-navy-900">{doc?.filename}</div>
-            <div className="text-[11.5px] text-subtle">
-              {doc?.profile.institution} · {t(DOC_TYPES[doc?.doc_type ?? "unknown"])} · sha256{" "}
-              {doc?.sha256.slice(0, 10)}…
-            </div>
-          </div>
-          {doc?.profile.engines.some(isOcrEngine) && (
-            <Badge tone="violet">
-              <ScanLine className="h-3 w-3" /> {t("Scanned · OCR")}
-            </Badge>
-          )}
-        </div>
-        <div className="min-h-0 flex-1">
-          {docId &&
-            facts.data &&
-            (isSheet ? (
-              <SheetEvidence docId={docId} facts={facts.data} activeId={activeId} onSelect={select} />
-            ) : (
-              <PdfEvidence
-                docId={docId}
-                facts={facts.data}
-                activeId={activeId}
-                page={active?.evidence.page ?? undefined}
-                onSelect={select}
-              />
-            ))}
-        </div>
-      </Card>
-
-      <Card className="flex min-h-0 flex-col overflow-hidden">
-        <div className="border-b border-line px-4 py-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[13.5px] font-semibold text-navy-900">{t("Extracted values")}</span>
-            <span className="num text-[12px] text-muted">
-              {t("{done}/{total} reviewed", { done: reviewed, total: all.length })}
-            </span>
-          </div>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-[2px] bg-paper">
-            <div
-              className="h-full bg-teal-700 transition-all"
-              style={{ width: `${all.length ? (reviewed / all.length) * 100 : 0}%` }}
-            />
-          </div>
-          <div className="mt-1.5 text-[11px] text-subtle">
-            <kbd className="rounded border border-line px-1">j</kbd>/
-            <kbd className="rounded border border-line px-1">k</kbd> {t("move")} ·{" "}
-            <kbd className="rounded border border-line px-1">a</kbd> {t("accept")} ·{" "}
-            <kbd className="rounded border border-line px-1">e</kbd> {t("correct")} ·{" "}
-            <kbd className="rounded border border-line px-1">r</kbd> {t("reject")}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1" role="tablist" aria-label={t("Values to show")}>
-            {QUEUE.map((q) => {
-              const n = all.filter(q.test).length;
-              return (
-                <button
-                  key={q.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={shownQueue === q.key}
-                  onClick={() => setQueue(q.key)}
-                  className={cn(
-                    "rounded-[3px] px-2 py-0.5 text-[12px] font-medium ring-1 ring-inset",
-                    shownQueue === q.key
-                      ? "bg-navy-900 text-white ring-navy-900"
-                      : q.key === "needs" && n > 0
-                        ? "bg-amber-50 text-amber-700 ring-amber-700/25"
-                        : "text-muted ring-line hover:text-ink",
-                  )}
-                >
-                  {t(q.label)} · <span className="num">{n}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {active && (
-          <div className="border-b border-line bg-paper/60 px-4 py-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-[12px] text-subtle">
-                  {(active.fee_label && tm(active.fee_label)) ??
-                    (KIND_LABEL[active.kind] && t(KIND_LABEL[active.kind]))}
-                </div>
-                <div className="truncate text-[13.5px] font-medium text-ink">{active.label}</div>
-              </div>
-              <Badge tone={STATUS_TONE[active.status]}>{t(active.status)}</Badge>
-            </div>
-            <div className="num mt-2 text-[22px] font-semibold text-navy-900">{displayValue(active)}</div>
-            {why.length > 0 && (
-              <div className="mt-1.5 flex items-start gap-1.5 text-[12px] text-amber-700">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>{t("Why you: {reasons}", { reasons: why.join("; ") })}</span>
-              </div>
-            )}
-            {!isSheet && docId && active.evidence.page && active.evidence.bbox && (
-              <div className="mt-2.5">
-                <SourceCrop
-                  docId={docId}
-                  page={active.evidence.page}
-                  bbox={active.evidence.bbox}
-                  tag={displayValue(active)}
-                />
-              </div>
-            )}
-            {active.status === "corrected" && (
-              <div className="text-[12px] text-violet-700">
-                {t("Extracted: {value} → corrected by reviewer (original kept)", {
-                  value: active.value_extracted ?? "–",
-                })}
-              </div>
-            )}
-            <dl className="mt-2 grid grid-cols-[90px_1fr] gap-x-2 gap-y-0.5 text-[12px]">
-              <dt className="text-subtle">{t("Source")}</dt>
-              <dd className="text-muted">
-                {active.evidence.page
-                  ? t("page {page}, rectangle shown", { page: active.evidence.page })
-                  : t("cell {ref}", { ref: `${active.evidence.sheet}!${active.evidence.cell}` })}
-              </dd>
-              <dt className="text-subtle">{t("Read by")}</dt>
-              <dd className="text-muted">
-                {active.evidence.engine} ·{" "}
-                {t("confidence {pct}%", { pct: Math.round(active.evidence.confidence * 100) })}
-              </dd>
-              {active.isin && (
-                <>
-                  <dt className="text-subtle">ISIN</dt>
-                  <dd className="font-mono text-muted">{active.isin}</dd>
-                </>
-              )}
-              {active.measurement && (
-                <>
-                  <dt className="text-subtle">{t("Status")}</dt>
-                  <dd className="text-muted">{active.measurement}</dd>
-                </>
-              )}
-              <dt className="text-subtle">{t("Text")}</dt>
-              <dd className="line-clamp-2 font-mono text-[11px] text-muted">{active.evidence.snippet}</dd>
-            </dl>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                onClick={() => review.mutate({ id: active.id, action: "accept" })}
-                disabled={active.status === "accepted"}
-              >
-                <Check className="h-3.5 w-3.5" /> {t("Accept")}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEditing("correct")}
-                disabled={active.value === null}
-              >
-                <Pencil className="h-3.5 w-3.5" /> {t("Correct")}
-              </Button>
-              <Button size="sm" variant="danger" onClick={() => setEditing("reject")}>
-                <X className="h-3.5 w-3.5" /> {t("Reject")}
-              </Button>
-              {active.status !== "extracted" && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => review.mutate({ id: active.id, action: "reset", reason: "reset" })}
-                >
-                  {t("Undo")}
-                </Button>
-              )}
-            </div>
-            {review.error && <ErrorBox error={review.error} />}
-            <FactHistory id={active.id} />
-          </div>
-        )}
-        <div className="min-h-0 flex-1 overflow-auto">
-          {facts.isLoading && <Spinner />}
-          {!facts.isLoading && !ordered.length && (
-            <div className="px-4 py-6 text-center text-[12.5px] text-muted">
-              {shownQueue === "needs" ? t("Nothing in this document needs you.") : t("No values here.")}
-            </div>
-          )}
-          {groups.map(([kind, fs]) => (
-            <div key={kind}>
-              <div className="sticky top-0 z-10 bg-surface/95 px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-subtle backdrop-blur">
-                {KIND_LABEL[kind] ? t(KIND_LABEL[kind]) : kind}
-              </div>
-              {fs.map((f) => (
-                <button
-                  type="button"
-                  key={f.id}
-                  onClick={() => setActiveId(f.id)}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 border-l-2 px-4 py-1.5 text-left text-[12.5px] hover:bg-paper",
-                    f.id === activeId ? "border-[#d99a00] bg-amber-50" : "border-transparent",
-                  )}
-                >
-                  <span className="min-w-[35%] flex-1">
-                    <span className={cn("block truncate", f.status === "rejected" && "text-subtle line-through")}>
-                      {f.label}
-                    </span>
-                    {f.fee_label && <span className="block truncate text-[11px] text-subtle">{tm(f.fee_label)}</span>}
-                  </span>
-                  <span className="flex min-w-0 max-w-[60%] items-center gap-2">
-                    <span className="num truncate font-medium text-ink" title={displayValue(f)}>
-                      {displayValue(f)}
-                    </span>
-                    <span
-                      className={cn(
-                        "h-2 w-2 shrink-0 rounded-full",
-                        f.status === "accepted"
-                          ? "bg-teal-700"
-                          : f.status === "corrected"
-                            ? "bg-violet-700"
-                            : f.status === "rejected"
-                              ? "bg-red-700"
-                              : "bg-line-strong",
-                      )}
-                      title={t(f.status)}
-                    />
-                  </span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      </Card>
+    <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(17.5rem,1fr)] xl:grid-rows-[minmax(0,1fr)] xl:overflow-hidden">
+      <DocumentStage
+        docs={docs.data}
+        doc={doc}
+        docId={docId}
+        onSelectDoc={(id) => {
+          setSp({ doc: String(id) });
+          setActiveId(null);
+        }}
+        facts={facts.data}
+        activeId={activeId}
+        activePage={active?.evidence.page ?? undefined}
+        isSheet={isSheet}
+        onSelectFact={select}
+      />
+      <ValueRail
+        all={facts.data ?? []}
+        ordered={ordered}
+        loading={facts.isLoading}
+        shownQueue={shownQueue}
+        onQueue={setQueue}
+        active={active}
+        activeId={activeId}
+        onSelect={setActiveId}
+        docId={docId}
+        isSheet={isSheet}
+        busy={review.isPending}
+        error={review.error}
+        onAccept={() => active && review.mutate({ id: active.id, action: "accept" })}
+        onCorrect={() => setEditing("correct")}
+        onReject={() => setEditing("reject")}
+        onUndo={() => active && review.mutate({ id: active.id, action: "reset", reason: "reset" })}
+      />
       {active && (
         <EditDialog
           mode={editing}
@@ -393,28 +129,6 @@ export default function ReviewPage() {
         />
       )}
     </div>
-  );
-}
-
-function FactHistory({ id }: { id: number }) {
-  const { data } = useQuery({ queryKey: ["history", id], queryFn: () => api.history(id) });
-  if (!data?.length) return null;
-  return (
-    <details className="mt-2 text-[12px]">
-      <summary className="flex cursor-pointer items-center gap-1 text-muted">
-        <History className="h-3 w-3" />{" "}
-        {data.length > 1 ? t("{n} review events", { n: data.length }) : t("{n} review event", { n: data.length })}
-      </summary>
-      <ul className="mt-1 space-y-1">
-        {data.map((h, i) => (
-          <li key={i} className="text-muted">
-            <span className="num text-subtle">{h.at.slice(0, 16).replace("T", " ")}</span> · {h.user} · {h.action}
-            {h.old !== h.new && ` ${h.old ?? "–"} → ${h.new ?? "–"}`}
-            {h.reason && <span className="italic"> “{h.reason}”</span>}
-          </li>
-        ))}
-      </ul>
-    </details>
   );
 }
 

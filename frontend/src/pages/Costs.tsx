@@ -5,7 +5,7 @@ import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { ViewMenu, useHidden } from "@/components/ViewMenu";
 import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Money, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { LAYER, MEASUREMENT, bps, chf, cn, pct } from "@/lib/format";
+import { LAYER, MEASUREMENT, bps, chf, cn, knownCost, num, pct } from "@/lib/format";
 import { t, tm } from "@/lib/i18n";
 import type { Analysis, Atom, Check, MissingRequest } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,12 @@ const COST_SECTIONS = [
 ];
 
 const LAYER_ORDER = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "other"];
+
+/** A layer with no counted amount is not CHF 0 when something in it is still unknown. */
+function layerFigure(known: string | undefined, unknown: boolean) {
+  if (unknown && !(Number(known) > 0)) return <span className="text-red-700">{t("Not determined")}</span>;
+  return chf(known ?? "0");
+}
 
 export default function CostsPage() {
   const id = Number(useParams().id);
@@ -122,13 +128,24 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
   const L = a.current;
   const share = Number(L.verified_share ?? 0);
   const n = L.unknown.length;
+  const known = knownCost(L.total_known, L.is_complete);
+  const valued = a.aum.valued !== false && a.holdings.some((h) => h.value != null);
+  const unvalued = a.holdings.filter((h) => h.value == null).length;
+  const unknownBilled = L.atoms.some((x) => x.role === "unknown" && x.incidence !== "embedded");
+  const unknownEmbedded = L.atoms.some((x) => x.role === "unknown" && x.incidence === "embedded");
   const sum = (title: string, amount: string, f?: (x: Atom) => boolean) => onTrace(sumOf(title, amount, L, f));
+  const figure = (amount: string, unknown: boolean) =>
+    unknown && !(Number(amount) > 0) ? (
+      <span className="text-red-700">{t("Not determined")}</span>
+    ) : (
+      <Money value={chf(amount)} />
+    );
   return (
     <Card className="grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="px-6 py-5">
         <div className="text-[13px] font-medium text-muted">
           {t("Known annual cost today")}
-          {!L.is_complete && <span className="text-amber-700"> · {t("at least")}</span>}
+          {!L.is_complete && known != null && <span className="text-amber-700"> · {t("at least")}</span>}
         </div>
         <button
           type="button"
@@ -136,16 +153,27 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
           title={t("How is this calculated?")}
           className="mt-2 block text-left text-[40px] font-semibold leading-none tracking-tight text-navy-900 decoration-dotted decoration-2 underline-offset-8 hover:underline"
         >
-          <Money value={chf(L.total_known)} />
+          {known == null ? <span className="text-red-700">{t("Not determined")}</span> : <Money value={chf(known)} />}
         </button>
         <p className="mt-3 max-w-[560px] text-[13.5px] leading-relaxed text-muted">
-          {t("{pct} ({bps}) of {aum} across {banks} banks and {positions} positions.", {
-            pct: L.total_bps ? pct(String(Number(L.total_bps) / 100), 2) : "–",
-            bps: L.total_bps ? bps(L.total_bps) : "–",
-            aum: chf(a.aum.total),
-            banks: a.institutions.length,
-            positions: a.holdings.length,
-          })}{" "}
+          {valued
+            ? t("{pct} ({bps}) of {aum} across {banks} banks and {positions} positions.", {
+                pct: L.total_bps ? pct(String(Number(L.total_bps) / 100), 2) : "–",
+                bps: L.total_bps ? bps(L.total_bps) : "–",
+                aum: chf(a.aum.total),
+                banks: a.institutions.length,
+                positions: a.holdings.length,
+              })
+            : t(
+                "{positions} positions were read, but none is valued in CHF because no exchange rate is printed. No asset total is shown.",
+                { positions: a.holdings.length },
+              )}
+          {valued && unvalued > 0 && (
+            <>
+              {" "}
+              {t("{n} positions are not valued in CHF: no exchange rate is printed for their currency.", { n: unvalued })}
+            </>
+          )}{" "}
           {n > 0 ? (
             <span className="text-red-700">
               {t(
@@ -169,7 +197,7 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
               className="text-[17px] font-semibold text-navy-900 hover:underline"
               onClick={() => sum(t("Debited from account"), L.billed_known, (x) => x.incidence !== "embedded")}
             >
-              <Money value={chf(L.billed_known)} />
+              {figure(L.billed_known, unknownBilled)}
             </button>
           </dd>
         </div>
@@ -181,7 +209,7 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
               className="text-[17px] font-semibold text-navy-900 hover:underline"
               onClick={() => sum(t("Inside product price (NAV)"), L.embedded_known, (x) => x.incidence === "embedded")}
             >
-              <Money value={chf(L.embedded_known)} />
+              {figure(L.embedded_known, unknownEmbedded)}
             </button>
           </dd>
         </div>
@@ -295,8 +323,12 @@ function LayerBreakdown({ a, onLayer }: { a: Analysis; onLayer: (k: string) => v
                           fill="var(--color-text)"
                           className="num"
                         >
-                          {chf(r.value)}
-                          {r.unknown && <tspan fill="var(--color-danger)"> + {t("not determined")}</tspan>}
+                          {r.value > 0 && chf(r.value)}
+                          {r.unknown && (
+                            <tspan fill="var(--color-danger)">
+                              {r.value > 0 ? ` + ${t("not determined")}` : t("Not determined")}
+                            </tspan>
+                          )}
                         </text>
                       );
                     }}
@@ -384,7 +416,7 @@ function CoverageMatrix({ a }: { a: Analysis }) {
                 <td className="py-2 pr-2">
                   <div className="font-medium text-ink">{r.institution}</div>
                   <div className="num text-[11.5px] text-subtle">
-                    {chf(r.assets)} · {r.jurisdiction ?? t("jurisdiction ?")}
+                    {r.valued === false ? t("Not valued in CHF") : chf(r.assets)} · {r.jurisdiction ?? t("jurisdiction ?")}
                   </div>
                 </td>
                 {layers.map((l) => {
@@ -470,7 +502,10 @@ function LedgerTable({
                     </td>
                     <td className="num px-5 py-2 text-right font-semibold">
                       <button type="button" className="hover:underline" onClick={() => onLayer(g.key)}>
-                        {chf(a.current.by_layer[g.key] ?? "0")}
+                        {layerFigure(
+                          a.current.by_layer[g.key],
+                          g.atoms.some((x) => x.role === "unknown"),
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -489,7 +524,14 @@ function LedgerTable({
                           )}
                         >
                           <td className="py-2 pl-12 pr-3">
-                            <div className={cn("font-medium", muted ? "text-subtle" : "text-ink")}>{x.label}</div>
+                            <div className={cn("font-medium", muted ? "text-subtle" : "text-ink")}>
+                              {x.label}{" "}
+                              {x.evidence &&
+                                x.evidence.length > 0 &&
+                                x.evidence.every((e) => e.status === "extracted") && (
+                                  <Badge tone="amber">{t("unchecked")}</Badge>
+                                )}
+                            </div>
                             <div className="text-[12px] text-muted">
                               {tm(x.fee_label)}
                               {x.role === "included_in_parent" &&
@@ -533,7 +575,11 @@ function LedgerTable({
               </td>
               <td className="num px-5 py-2.5 text-right">
                 <button type="button" className="hover:underline" onClick={onTotal}>
-                  {chf(a.current.total_known)}
+                  {knownCost(a.current.total_known, a.current.is_complete) == null ? (
+                    <span className="text-red-700">{t("Not determined")}</span>
+                  ) : (
+                    chf(a.current.total_known)
+                  )}
                 </button>
               </td>
             </tr>
@@ -672,7 +718,9 @@ function Requests({ a }: { a: Analysis }) {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="text-[11.5px] font-semibold uppercase tracking-wide text-amber-700">
-                  {t("Priority {n} · {amount} affected", { n: r.priority, amount: chf(r.assets_affected) })}
+                  {r.assets_affected == null
+                    ? t("Priority {n} · not valued in CHF", { n: r.priority })
+                    : t("Priority {n} · {amount} affected", { n: r.priority, amount: chf(r.assets_affected) })}
                 </div>
                 <div className="mt-0.5 font-semibold text-navy-900">{tm(r.title)}</div>
               </div>
@@ -712,7 +760,12 @@ function Requests({ a }: { a: Analysis }) {
 function Holdings({ a }: { a: Analysis }) {
   return (
     <Card>
-      <CardHeader title={t("Positions")} subtitle={t("As extracted from each bank's statement, valued in CHF.")} />
+      <CardHeader
+        title={t("Positions")}
+        subtitle={t(
+          "As extracted from each bank's statement. A line without a printed exchange rate into CHF is not valued, and is not shown as zero.",
+        )}
+      />
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead className="bg-paper text-left text-[11.5px] uppercase tracking-wide text-subtle">
@@ -728,7 +781,14 @@ function Holdings({ a }: { a: Analysis }) {
           <tbody className="divide-y divide-line">
             {a.holdings.map((h) => (
               <tr key={h.fact_id}>
-                <td className="px-5 py-2 font-medium">{h.name}</td>
+                <td className="px-5 py-2 font-medium">
+                  {h.name}{" "}
+                  {h.status === "extracted" && (
+                    <Badge tone="amber" title={t("Not yet checked by a person")}>
+                      {t("unchecked")}
+                    </Badge>
+                  )}
+                </td>
                 <td className="px-3 py-2 font-mono text-[12px] text-muted">
                   {h.isin ?? "–"} {h.synthetic_isin && <Badge className="ml-1">{t("synthetic")}</Badge>}
                 </td>
@@ -740,7 +800,20 @@ function Holdings({ a }: { a: Analysis }) {
                 <td className="num px-3 py-2 text-right text-muted">
                   {h.weight_pct ? `${Number(h.weight_pct).toFixed(1)}%` : "–"}
                 </td>
-                <td className="num px-5 py-2 text-right">{chf(h.value)}</td>
+                <td className="num px-5 py-2 text-right">
+                  {h.value == null ? (
+                    <span>
+                      {h.value_ccy && (
+                        <span className="block">
+                          {h.currency} {num(h.value_ccy, 2)}
+                        </span>
+                      )}
+                      <span className="text-[11.5px] font-medium text-amber-700">{t("Not valued in CHF")}</span>
+                    </span>
+                  ) : (
+                    chf(h.value)
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

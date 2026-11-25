@@ -81,9 +81,11 @@ export default function DocumentsPage() {
           "Upload everything the prospect has: statements from each bank, annual cost reports, cash statements, fee agreements and product KIDs. Files are processed on this machine only.",
         )}
         actions={
-          <Link to={`/p/${pid}/review`}>
-            <Button>{t("Review extracted values")}</Button>
-          </Link>
+          docs.data?.length ? (
+            <Link to={`/p/${pid}/review`}>
+              <Button variant={rows.length ? "outline" : "primary"}>{t("Review extracted values")}</Button>
+            </Link>
+          ) : undefined
         }
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">

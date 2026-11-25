@@ -42,6 +42,7 @@ export default function ComparePage() {
     );
   const sc = mode === "same" ? a.scenarios.same_holdings : a.scenarios.optimized;
   const cmp = sc.comparison;
+  const claimed = cmp.saving_claimed !== false;
   const sv = savingParts(cmp.annual_saving, cmp.bound);
   const firm = a.proposal_inputs.firm_name;
   const today = sumOf(t("Today (comparable)"), cmp.current_known, a.scenarios.current_comparable);
@@ -83,7 +84,25 @@ export default function ComparePage() {
           </div>
         }
       />
-      {!cmp.like_for_like && (
+      {!claimed && (
+        <Card>
+          <CardHeader title={t("No saving is claimed")} />
+          <div className="space-y-2 p-5 text-[13.5px] leading-relaxed text-ink">
+            {cmp.caveats.map((c) => (
+              <p key={c}>{tm(c)}</p>
+            ))}
+            {a.aum.valued === false && (
+              <p>
+                {t(
+                  "{n} positions were read. Their market values stay in the statement currency; none is published as CHF assets.",
+                  { n: a.holdings.length },
+                )}
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
+      {claimed && !cmp.like_for_like && (
         <div
           className="flex gap-2.5 rounded-[var(--radius-card)] border border-amber-700/25 bg-amber-50 px-4 py-3 text-[13px] text-amber-700"
           role="note"
@@ -94,6 +113,8 @@ export default function ComparePage() {
           )}
         </div>
       )}
+      {claimed && (
+        <>
       <StatGrid>
         <Kpi
           label={t("Today (comparable)")}
@@ -187,8 +208,25 @@ export default function ComparePage() {
           </ul>
         </Card>
       </div>
+        </>
+      )}
+      {!claimed && (
+        <Card>
+          <CardHeader title={t("Not yet verified")} />
+          <ul className="space-y-1 p-5 text-[13px] text-muted">
+            {a.current.atoms
+              .filter((x) => x.role === "unknown")
+              .map((x) => (
+                <li key={x.id}>
+                  {tm(x.label)}: {tm(x.fee_label)}{" "}
+                  <span className="text-red-700">({t("not determined, not counted as zero")})</span>
+                </li>
+              ))}
+          </ul>
+        </Card>
+      )}
 
-      {mode === "optimized" && (
+      {claimed && mode === "optimized" && (
         <Card>
           <CardHeader
             title={t("Instrument changes")}
@@ -231,7 +269,7 @@ export default function ComparePage() {
         </Card>
       )}
 
-      <ProposalLines ledger={sc.ledger} onPick={pick} firm={firm} />
+      {claimed && <ProposalLines ledger={sc.ledger} onPick={pick} firm={firm} />}
       <ProposalEditor a={a} />
       <TraceDialog root={trace} onClose={() => setTrace(null)} />
     </div>

@@ -15,7 +15,23 @@ export function chf(v: string | number | null | undefined, decimals = 0, prefix 
 }
 
 /** Until a position is valued in CHF the total is 0, which would read as an empty portfolio; say so instead. */
-export const assets = (total: string, valued: boolean, notValued: string) => (valued ? chf(total) : notValued);
+export const assets = (total: string | null | undefined, valued: boolean, notValued: string) =>
+  valued ? chf(total) : notValued;
+
+/**
+ * A known total of 0 while the ledger is still incomplete is a gap, not a cost of zero.
+ * Returns null so the caller can print "Not determined".
+ */
+export function knownCost(total: string | null | undefined, complete: boolean): string | null {
+  if (!complete && (total == null || total === "" || Number(total) === 0)) return null;
+  return total ?? null;
+}
+
+/**
+ * Format a CHF amount that may be absent. A missing key is not zero: the caller
+ * passes the already-translated words to show instead ("Not estimated", "–").
+ */
+export const moneyOr = (v: string | null | undefined, unset: string) => (v == null || v === "" ? unset : chf(v));
 
 export const num = (v: string | number | null | undefined, decimals = 0) => chf(v, decimals, "");
 
