@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   ShieldCheck,
+  UserCog,
   Users,
   X,
 } from "lucide-react";
@@ -74,9 +75,9 @@ function RoleSwitch() {
   if (roles.length < 2) return null; // nothing to switch: the account holds one role
   return (
     <label className="block text-[11.5px] text-subtle">
-      {t("Demo role")}
+      {t("Acting as")}
       <select
-        aria-label={t("Demo role")}
+        aria-label={t("Acting as")}
         value={role}
         onChange={(e) => {
           const r = e.target.value as Role;
@@ -335,6 +336,11 @@ export function AppShell() {
           >
             <BookOpen className="h-4 w-4" /> {t("Library")}
           </NavLink>
+          {allowedRoleList().includes("admin") && (
+            <NavLink to="/admin" className={navCls}>
+              <UserCog className="h-4 w-4" /> {t("Team & access")}
+            </NavLink>
+          )}
         </nav>
         <div className="mt-6 space-y-2 md:mt-auto">
           <div className="flex items-center gap-1.5 px-2.5 text-[11.5px] text-teal-700">

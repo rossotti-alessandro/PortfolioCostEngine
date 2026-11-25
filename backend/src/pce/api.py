@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import re
 import time
 import zipfile
@@ -24,7 +25,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import __version__, scan_upload, security
+from . import __version__, permissions, scan_upload, security
+from .admin import router as admin_router
 from .analysis import analyse, listed_assets
 from .crm.router import router as crm_router
 from .db import (
@@ -66,6 +68,7 @@ app.add_middleware(
 )
 app.include_router(security.router)
 app.include_router(crm_router)
+app.include_router(admin_router)
 SessionFactory = make_session_factory()
 
 
@@ -87,8 +90,8 @@ def ctx(request: Request, x_role: Annotated[str | None, Header()] = None) -> Ctx
     acc = getattr(request.state, "account", None)
     if acc is None:  # the middleware sets it on every gated route; refuse if a route slipped past
         raise HTTPException(401, "sign in required")
-    role = x_role or ("analyst" if "analyst" in acc.roles else acc.roles[0])
-    if role not in acc.roles:
+    role = permissions.active_role(acc.roles, x_role)
+    if role is None:
         raise HTTPException(403, "role not allowed for this account")
     return Ctx(tenant=acc.tenant, user=acc.username, role=role)
 
@@ -853,7 +856,7 @@ def analysis(pid: int, db: DB, c: C) -> dict:
 
 def _sees_internal(role: str) -> bool:
     """Firm servicing cost, onboarding cost and minimum margin."""
-    return role in ("senior", "relationship_manager")
+    return permissions.can(role, "internal.read")
 
 
 def client_safe(r: dict) -> dict:
@@ -972,15 +975,37 @@ def patch_request(pid: int, key: str, body: RequestPatch, db: DB, c: C) -> dict:
     return {"ok": True}
 
 
+# Four-eyes: whoever prepared a review does not approve it. PCE_FOUR_EYES=0 only for a one-person demo.
+FOUR_EYES = os.environ.get("PCE_FOUR_EYES", "1") != "0"
+
+
+def preparers(db: Session, c: Ctx, p: Prospect) -> set[str]:
+    """People who uploaded a document or reviewed a value of this prospect."""
+    up = db.scalars(
+        select(Document.uploaded_by).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)
+    ).all()
+    rev = db.scalars(
+        select(Review.user)
+        .join(FactRow, FactRow.id == Review.fact_id)
+        .join(Document, Document.id == FactRow.document_id)
+        .where(Document.prospect_id == p.id, Review.tenant_id == c.tenant)
+    ).all()
+    return {u for u in (*up, *rev) if u}
+
+
 class ApprovalIn(BaseModel):
     note: str = ""
 
 
 @app.post("/api/prospects/{pid}/approve")
 def approve(pid: int, body: ApprovalIn, db: DB, c: C) -> dict:
-    if c.role != "senior":
+    if not permissions.can(c.role, "report.approve"):
         raise HTTPException(403, "only a senior reviewer can approve a client report")
     p = get_prospect(db, c, pid)
+    if FOUR_EYES and c.user in preparers(db, c, p):
+        raise HTTPException(
+            403, "a second person must approve: you uploaded documents or corrected values in this review"
+        )
     r = compute(db, c, p)
     db.add(
         Approval(

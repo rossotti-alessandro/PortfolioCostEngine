@@ -16,13 +16,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from . import auth
+from . import auth, permissions
 
 COOKIE_SECURE = os.environ.get("PCE_COOKIE_SECURE", "1") != "0"
 # __Host- pins the cookie to this exact host over HTTPS, Path=/ and no Domain: subdomains cannot set it.
 SESSION_COOKIE = "__Host-feelens_session" if COOKIE_SECURE else "feelens_session"
 CSRF_HEADER = "X-CSRF-Token"
 PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/me", "/api/auth/logout"}
+# Signed in but still on a one-time password: only these, so the first thing done is choosing a password.
+FIRST_SIGN_IN_API = {"/api/auth/password"}
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 # Uploads: 20 files of at most 25 MB each (pce.api.MAX_UPLOAD_BYTES), plus multipart overhead.
 MAX_BODY_BYTES = int(os.environ.get("PCE_MAX_REQUEST_MB", "100")) * 1024 * 1024
@@ -105,6 +107,15 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             return _deny(401, "sign in required")
         if unsafe and not auth.check_csrf(token, request.headers.get(CSRF_HEADER)):
             return _deny(403, "missing or invalid CSRF token")
+        if acc.must_change_password and path not in FIRST_SIGN_IN_API:
+            return _deny(403, "choose a new password first")
+        if path not in FIRST_SIGN_IN_API:
+            role = permissions.active_role(acc.roles, request.headers.get("x-role"))
+            if role is None:
+                return _deny(403, "role not allowed for this account")
+            need = permissions.required(request.method, path)
+            if not permissions.can(role, need):
+                return _deny(403, f"your role ({role}) does not allow this ({need})")
         request.state.account = acc
         return await call_next(request)
 
@@ -121,9 +132,11 @@ class LoginIn(BaseModel):
 def _me(acc: auth.Account, token: str) -> dict:
     return {
         "username": acc.username,
+        "display_name": acc.display_name,
         "tenant": acc.tenant,
         "roles": list(acc.roles),
         "admin": acc.admin,
+        "must_change_password": acc.must_change_password,
         "csrf_token": auth.csrf_token(token),
     }
 
@@ -164,6 +177,43 @@ def me(session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None) -> d
 
 
 @router.post("/logout")
-def logout(response: Response) -> dict:
+def logout(response: Response, session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None) -> dict:
+    if session:
+        auth.revoke(session)  # the session ends on the server, not only in this browser
     response.delete_cookie(SESSION_COOKIE, path="/", secure=COOKIE_SECURE, httponly=True, samesite="strict")
     return {"ok": True}
+
+
+class PasswordIn(BaseModel):
+    current: str = Field(min_length=1, max_length=200)
+    new: str = Field(min_length=auth.MIN_PASSWORD_LEN, max_length=200)
+
+
+@router.post("/password")
+def change_password(
+    body: PasswordIn,
+    request: Request,
+    response: Response,
+) -> dict:
+    """A named person changes their own password. Every other session of theirs ends; this one is renewed."""
+    acc: auth.Account = request.state.account
+    if acc.admin or acc.username in auth._accounts:
+        raise HTTPException(400, "this account's password is set in the server environment")
+    if not auth.verify_password(body.current, acc.password_hash):
+        raise HTTPException(403, "current password is wrong")
+    if body.new == body.current:
+        raise HTTPException(400, "choose a different password")
+    auth.set_password(acc.username, body.new)
+    fresh = auth.get_account(acc.username)
+    assert fresh is not None
+    token = auth.issue_session(fresh)
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=auth.SESSION_TTL_S,
+        path="/",
+        secure=COOKIE_SECURE,
+        httponly=True,
+        samesite="strict",
+    )
+    return _me(fresh, token)

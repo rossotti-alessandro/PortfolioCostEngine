@@ -1,12 +1,13 @@
-"""Accounts, password hashing, signed session cookies, CSRF tokens and login throttling.
+"""Accounts, password hashing, server-side sessions, CSRF tokens and login throttling.
 
 Why this shape (docs/app/SECURITY.md):
-- Accounts come from the environment, not the database: the Render free plan has an ephemeral disk,
-  so an account stored in SQLite would vanish on every restart. The admin is seeded from
-  ``PCE_ADMIN_USERNAME`` plus ``PCE_ADMIN_PASSWORD`` (hashed in memory at start) or
-  ``PCE_ADMIN_PASSWORD_HASH`` (made with ``python -m pce.auth hash``).
-- Sessions are stateless HMAC-signed cookies, so they survive restarts and the free plan's sleep
-  as long as ``PCE_SECRET_KEY`` is stable. Rotating the key or the password signs everyone out.
+- Two kinds of account. The break-glass admin comes from the environment (``PCE_ADMIN_USERNAME`` plus
+  ``PCE_ADMIN_PASSWORD`` or ``PCE_ADMIN_PASSWORD_HASH``) and holds every role, so a lost database never
+  locks the firm out. Named people live in the ``user_account`` table and are managed by an admin
+  (SC-11.12).
+- The cookie is HMAC-signed and names a server-side session (``auth_session``). Sign-out, an idle timeout
+  (``PCE_IDLE_TIMEOUT_MIN``, default 30), deactivating a person or "sign out everywhere" take effect on the
+  next request. Changing a password also ends that account's sessions.
 - Passwords use stdlib scrypt: no new dependency, memory-hard, constant-time comparison.
 """
 
@@ -25,10 +26,16 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from sqlalchemy import select, update
+
+from .db import AuthSession, UserAccount, make_session_factory
+from .permissions import ROLES
+
 log = logging.getLogger("pce.auth")
 
-ROLES = ("analyst", "senior", "relationship_manager")
 SESSION_TTL_S = 12 * 3600
+IDLE_TIMEOUT_S = int(os.environ.get("PCE_IDLE_TIMEOUT_MIN", "30")) * 60
+LAST_SEEN_EVERY_S = 60  # write the activity time at most once a minute per session
 MIN_PASSWORD_LEN = 12
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**15, 8, 1
 
@@ -74,31 +81,81 @@ class Account:
     password_hash: str
     tenant: str
     roles: tuple[str, ...]
-    admin: bool = False
+    admin: bool = False  # the env break-glass account
+    must_change_password: bool = False
+    display_name: str = ""
 
 
-_accounts: dict[str, Account] = {}
+_accounts: dict[str, Account] = {}  # env break-glass admin (and test accounts)
+_db = None
+
+
+def db():
+    """Session factory, made on first use so tests can point PCE_DATABASE_URL elsewhere first."""
+    global _db
+    if _db is None:
+        _db = make_session_factory()
+    return _db
+
+
+def check_roles(roles: tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    if not roles or not set(roles) <= set(ROLES):
+        raise ValueError("unknown role")
+    return tuple(r for r in ROLES if r in roles)
+
+
+def check_password(password: str) -> None:
+    if len(password) < MIN_PASSWORD_LEN:
+        raise ValueError(f"password must be at least {MIN_PASSWORD_LEN} characters")
 
 
 def add_account(
     username: str, password: str, tenant: str, roles: tuple[str, ...] = ROLES, admin: bool = False
 ) -> Account:
-    """Register an account in memory (env seeding and tests). Enforces a minimum password length."""
-    if len(password) < MIN_PASSWORD_LEN:
-        raise ValueError(f"password must be at least {MIN_PASSWORD_LEN} characters")
+    """Register an in-memory account (env seeding and tests). Enforces a minimum password length."""
+    check_password(password)
     return _register(username, hash_password(password), tenant, roles, admin)
 
 
 def _register(username: str, pw_hash: str, tenant: str, roles: tuple[str, ...], admin: bool) -> Account:
-    if not set(roles) <= set(ROLES) or not roles:
-        raise ValueError("unknown role")
-    acc = Account(username.strip().lower(), pw_hash, tenant, tuple(roles), admin)
+    acc = Account(username.strip().lower(), pw_hash, tenant, check_roles(roles), admin)
     _accounts[acc.username] = acc
     return acc
 
 
+def _from_row(u: UserAccount) -> Account:
+    return Account(
+        u.username,
+        u.password_hash,
+        u.tenant_id,
+        tuple(u.roles),
+        False,
+        u.must_change_password,
+        u.display_name,
+    )
+
+
 def get_account(username: str) -> Account | None:
-    return _accounts.get(username.strip().lower())
+    """The env/in-memory account wins; otherwise an active named person from the database."""
+    name = username.strip().lower()
+    if name in _accounts:
+        return _accounts[name]
+    with db()() as s:
+        u = s.scalar(select(UserAccount).where(UserAccount.username == name, UserAccount.active.is_(True)))
+        return _from_row(u) if u else None
+
+
+def set_password(username: str, password: str, must_change: bool = False) -> None:
+    """Change a named person's password. Ends every session of that person."""
+    check_password(password)
+    with db()() as s:
+        u = s.scalar(select(UserAccount).where(UserAccount.username == username))
+        if u is None:
+            raise ValueError("unknown user")
+        u.password_hash = hash_password(password)
+        u.must_change_password = must_change
+        s.commit()
+    revoke_all(username)
 
 
 def load_env_accounts() -> None:
@@ -154,17 +211,30 @@ def _pw_version(acc: Account) -> str:
 
 def issue_session(acc: Account, now: float | None = None) -> str:
     now = time.time() if now is None else now
+    sid = secrets.token_urlsafe(24)
+    with db()() as s:
+        s.add(
+            AuthSession(
+                sid=sid, username=acc.username, created_at=now, last_seen=now, expires_at=now + SESSION_TTL_S
+            )
+        )
+        s.commit()
     body = json.dumps(
-        {
-            "u": acc.username,
-            "iat": int(now),
-            "exp": int(now) + SESSION_TTL_S,
-            "pv": _pw_version(acc),
-            "n": secrets.token_urlsafe(8),  # unique per sign-in, so is its CSRF token
-        },
+        {"u": acc.username, "sid": sid, "exp": int(now) + SESSION_TTL_S, "pv": _pw_version(acc)},
         separators=(",", ":"),
     ).encode()
     return f"{_b64(body)}.{_b64(_sign(b'session:' + body))}"
+
+
+def _session_alive(sid: str, now: float) -> bool:
+    with db()() as s:
+        row = s.get(AuthSession, sid)
+        if row is None or row.revoked or row.expires_at <= now or now - row.last_seen > IDLE_TIMEOUT_S:
+            return False
+        if now - row.last_seen >= LAST_SEEN_EVERY_S:
+            row.last_seen = now
+            s.commit()
+        return True
 
 
 def read_session(token: str | None, now: float | None = None) -> Account | None:
@@ -183,7 +253,37 @@ def read_session(token: str | None, now: float | None = None) -> Account | None:
     acc = get_account(str(data.get("u", "")))
     if not acc or int(data.get("exp", 0)) <= now or data.get("pv") != _pw_version(acc):
         return None
+    if not _session_alive(str(data.get("sid", "")), now):
+        return None
     return acc
+
+
+def session_id(token: str) -> str | None:
+    try:
+        return json.loads(_unb64(token.split(".")[0])).get("sid")
+    except (ValueError, TypeError, IndexError):
+        return None
+
+
+def revoke(token: str) -> None:
+    """Sign-out: this session ends now, wherever the cookie was copied to."""
+    sid = session_id(token)
+    if sid:
+        with db()() as s:
+            s.execute(update(AuthSession).where(AuthSession.sid == sid).values(revoked=True))
+            s.commit()
+
+
+def revoke_all(username: str) -> int:
+    """Sign a person out everywhere. Returns how many live sessions ended."""
+    with db()() as s:
+        n = s.execute(
+            update(AuthSession)
+            .where(AuthSession.username == username, AuthSession.revoked.is_(False))
+            .values(revoked=True)
+        ).rowcount
+        s.commit()
+        return n or 0
 
 
 def csrf_token(session_token: str) -> str:
