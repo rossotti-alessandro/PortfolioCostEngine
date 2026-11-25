@@ -1,15 +1,15 @@
 ---
 id: SC-5.23
 title: Join skewed OCR rows so scan and photo fee lines keep their amount
-status: In Progress
+status: "In Progress"
 assignee: []
 owner: "Prove and raise accuracy on realistic portfolios"
 model: "claude-opus-5-5"
-progress: 30
+progress: 5
 branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 21:40"
-updated_date: "2026-11-25 21:40"
+updated_date: "2026-11-25 22:07"
 labels:
   - extraction
   - ocr
