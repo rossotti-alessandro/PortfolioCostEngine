@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import __version__, security
+from . import __version__, scan_upload, security
 from .analysis import analyse, listed_assets
 from .crm.router import router as crm_router
 from .db import (
@@ -309,7 +309,7 @@ def ingest(db: Session, c: Ctx, p: Prospect, filename: str, data: bytes) -> tupl
     filename = safe_filename(filename)
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED:
-        raise HTTPException(415, f"{filename}: only PDF and XLSX are accepted")
+        raise HTTPException(415, f"{filename}: only PDF, XLSX, JPEG or PNG are accepted")
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"{filename}: larger than {MAX_UPLOAD_BYTES // 1024 // 1024} MB")
     if suffix == ".pdf" and (not data.startswith(b"%PDF") or sniffed_type(data) != "application/pdf"):
@@ -575,32 +575,73 @@ def get_one(pid: int, db: DB, c: C) -> dict:
     return {"id": p.id, "code": p.code, "label": p.label, "domicile": p.domicile, "synthetic": p.synthetic}
 
 
+def photos_as_pdfs(
+    files: list[tuple[str, bytes]], combine: bool, scan_name: str | None
+) -> tuple[list[tuple[str, bytes]], list[dict]]:
+    """Turn JPEG/PNG photos into PDFs (SC-8.28): one PDF per photo, or one for all when ``combine``.
+
+    Returns the files to ingest (PDFs and the untouched non-photos) and the refusals.
+    """
+    keep: list[tuple[str, bytes]] = []
+    photos: list[tuple[str, bytes]] = []
+    refused: list[dict] = []
+    for name, data in files:
+        if Path(safe_filename(name)).suffix.lower() not in scan_upload.IMAGE_SUFFIXES:
+            keep.append((name, data))
+        elif len(data) > MAX_UPLOAD_BYTES or sniffed_type(data) not in scan_upload.IMAGE_TYPES:
+            refused.append(
+                {"filename": name, "status": "rejected", "error": f"{name}: not a JPEG or PNG photo"}
+            )
+        else:
+            photos.append((name, data))
+    groups = [photos] if combine and photos else [[ph] for ph in photos]
+    for group in groups:
+        stem = Path(safe_filename(group[0][0])).stem
+        if combine and scan_name and scan_name.strip():
+            stem = re.sub(r"(?i)\.pdf$", "", safe_filename(scan_name))
+        name = f"{stem}.pdf"
+        try:
+            keep.append((name, scan_upload.photos_to_pdf([d for _, d in group])))
+        except scan_upload.PhotoError as exc:
+            refused.extend({"filename": n, "status": "rejected", "error": f"{n}: {exc}"} for n, _ in group)
+    return keep, refused
+
+
 @app.post("/api/prospects/{pid}/documents")
-def upload(pid: int, db: DB, c: C, files: Annotated[list[UploadFile], File()]) -> dict:
+def upload(
+    pid: int,
+    db: DB,
+    c: C,
+    files: Annotated[list[UploadFile], File()],
+    combine: Annotated[bool, Form()] = False,
+    scan_name: Annotated[str | None, Form(max_length=120)] = None,
+) -> dict:
+    """PDF, XLSX, or JPEG/PNG photos. ``combine`` stores all photos of the request as one PDF (phone scan)."""
     # plain def: FastAPI runs it in its thread pool, so a long OCR does not block other requests (SC-5.11)
     p = get_prospect(db, c, pid)
-    if len(files) > MAX_FILES_PER_UPLOAD:
-        raise HTTPException(413, f"at most {MAX_FILES_PER_UPLOAD} files per upload")
-    out = []
-    for uf in files:
-        data = uf.file.read(MAX_UPLOAD_BYTES + 1)
+    limit = scan_upload.MAX_PAGES if combine else MAX_FILES_PER_UPLOAD
+    if len(files) > limit:
+        raise HTTPException(413, f"at most {limit} files per upload")
+    raw = [(uf.filename or "upload", uf.file.read(MAX_UPLOAD_BYTES + 1)) for uf in files]
+    todo, out = photos_as_pdfs(raw, combine, scan_name)
+    for filename, data in todo:
         try:
             try:
-                d, new = ingest(db, c, p, uf.filename or "upload", data)
+                d, new = ingest(db, c, p, filename, data)
                 db.commit()  # per file: a lost race below rolls back this file only
             except IntegrityError:  # the same file uploaded twice at once (SC-5.20): the other copy won
                 db.rollback()
-                d, new = ingest(db, c, p, uf.filename or "upload", data)
+                d, new = ingest(db, c, p, filename, data)
             out.append(
                 {
-                    "filename": uf.filename,
+                    "filename": filename,
                     "status": "duplicate" if not new else d.status,
                     "document_id": d.id,
                     "doc_type": d.doc_type,
                 }
             )
         except HTTPException as exc:
-            out.append({"filename": uf.filename, "status": "rejected", "error": exc.detail})
+            out.append({"filename": filename, "status": "rejected", "error": exc.detail})
     db.commit()
     return {"results": out}
 
