@@ -59,6 +59,7 @@ None.
 ## Acceptance Criteria
 
 - [x] #1 Ale's decision to keep the flag is recorded with the commit that introduced it
+- [x] #2 With unvalued current books the API returns `saving: null` and the report shows no saving (tests from 3825346 in `test_extraction_correctness.py`)
 
 ## Implementation Notes
 
