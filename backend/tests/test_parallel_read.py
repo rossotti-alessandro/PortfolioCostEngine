@@ -78,9 +78,7 @@ def test_ocr_workers(
     if cpu_max is not None:
         quota.write_text(cpu_max + "\n")
     monkeypatch.setattr(layout, "CGROUP_CPU_MAX", quota)
-    monkeypatch.setattr(
-        layout.os, "sched_getaffinity", lambda _pid: set(range(affinity)), raising=False
-    )
+    monkeypatch.setattr(layout.os, "sched_getaffinity", lambda _pid: set(range(affinity)), raising=False)
     assert layout.ocr_workers() == expected
 
 

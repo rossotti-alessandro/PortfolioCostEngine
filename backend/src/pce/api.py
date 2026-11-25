@@ -458,9 +458,7 @@ def list_prospects(db: DB, c: C) -> list[dict]:
                 "current_bps": r["current"]["total_bps"],
                 "complete": r["current"]["is_complete"],
                 "open_requests": sum(1 for q in r["requests"] if q["status"] == "open"),
-                "saving": (
-                    cmp["annual_saving"] if cmp.get("saving_claimed", True) else None
-                ),
+                "saving": (cmp["annual_saving"] if cmp.get("saving_claimed", True) else None),
                 "bound": cmp["bound"],
                 "approved": bool(r["approval"] and r["approval"]["valid"]),
             }

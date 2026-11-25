@@ -12,11 +12,11 @@ from decimal import Decimal as Dec
 
 from pce.analysis import analyse, infer_asset_class, listed_assets
 from pce.demo.spec import PROPOSAL_DEFAULTS
-from pce.finance.isin import make_synthetic_isin
 from pce.extraction.layout import Cell, Line, PageInfo
 from pce.extraction.models import DocType, DocumentProfile
 from pce.extraction.parsers import parse_cash_statement, parse_cost_report, parse_tariff
 from pce.extraction.vocab import AMOUNT
+from pce.finance.isin import make_synthetic_isin
 
 
 def _page(rows: list[list[str]]) -> list[PageInfo]:
@@ -259,7 +259,12 @@ def _statement(institution: str = "Synthetic Bank") -> dict:
         "id": 1,
         "filename": "assets.pdf",
         "doc_type": "portfolio_statement",
-        "profile": {"institution": institution, "jurisdiction": "CH", "as_of": "2026-09-30", "currency": "CHF"},
+        "profile": {
+            "institution": institution,
+            "jurisdiction": "CH",
+            "as_of": "2026-09-30",
+            "currency": "CHF",
+        },
     }
 
 

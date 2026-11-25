@@ -115,24 +115,24 @@ export default function ReportPage() {
                 {claimed && <Fig label={t(sv.label)} prefix={t(sv.prefix)} value={chf(sv.value)} accent={sv.saves} />}
               </StatGrid>
               {claimed && (
-              <table className="w-full text-[13px]">
-                <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
-                  <tr className="border-b border-line">
-                    <th className="py-1.5 font-medium">{t("Cost layer")}</th>
-                    <th className="py-1.5 text-right font-medium">{t("Today")}</th>
-                    <th className="py-1.5 text-right font-medium">{firm}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {layers.map((k) => (
-                    <tr key={k}>
-                      <td className="py-1.5">{t(LAYER[k].name)}</td>
-                      <td className="num py-1.5 text-right">{chf(cur.by_layer[k] ?? "0")}</td>
-                      <td className="num py-1.5 text-right">{chf(s.ledger.by_layer[k] ?? "0")}</td>
+                <table className="w-full text-[13px]">
+                  <thead className="text-left text-[11.5px] uppercase tracking-wide text-subtle">
+                    <tr className="border-b border-line">
+                      <th className="py-1.5 font-medium">{t("Cost layer")}</th>
+                      <th className="py-1.5 text-right font-medium">{t("Today")}</th>
+                      <th className="py-1.5 text-right font-medium">{firm}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {layers.map((k) => (
+                      <tr key={k}>
+                        <td className="py-1.5">{t(LAYER[k].name)}</td>
+                        <td className="num py-1.5 text-right">{chf(cur.by_layer[k] ?? "0")}</td>
+                        <td className="num py-1.5 text-right">{chf(s.ledger.by_layer[k] ?? "0")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
               <div>
                 <div className="text-[13px] font-semibold text-navy-900">{t("Not yet verified")}</div>
@@ -148,19 +148,19 @@ export default function ReportPage() {
                 </ul>
               </div>
               {claimed && (
-              <ul className="space-y-0.5 text-[12.5px] text-subtle">
-                {s.comparison.caveats.map((c) => (
-                  <li key={c}>{tm(c)}</li>
-                ))}
-                <li>
-                  {s.comparison.payback_months
-                    ? t("Switching costs {amount}, paid back in {months} months.", {
-                        amount: chf(s.comparison.migration_one_off),
-                        months: s.comparison.payback_months,
-                      })
-                    : t("Switching costs {amount}.", { amount: chf(s.comparison.migration_one_off) })}
-                </li>
-              </ul>
+                <ul className="space-y-0.5 text-[12.5px] text-subtle">
+                  {s.comparison.caveats.map((c) => (
+                    <li key={c}>{tm(c)}</li>
+                  ))}
+                  <li>
+                    {s.comparison.payback_months
+                      ? t("Switching costs {amount}, paid back in {months} months.", {
+                          amount: chf(s.comparison.migration_one_off),
+                          months: s.comparison.payback_months,
+                        })
+                      : t("Switching costs {amount}.", { amount: chf(s.comparison.migration_one_off) })}
+                  </li>
+                </ul>
               )}
             </div>
           </Card>

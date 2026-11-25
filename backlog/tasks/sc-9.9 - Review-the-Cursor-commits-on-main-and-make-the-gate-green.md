@@ -1,15 +1,15 @@
 ---
 id: SC-9.9
 title: Review the Cursor commits on main and make the gate green
-status: To Do
+status: "In Progress"
 assignee: []
 owner: "Rebuild CRM for mobile and browser"
 model: "claude-opus-5-5"
-progress: 50
+progress: 5
 branch: "claude/project-thread-m6dkdk"
 pr: ""
 created_date: "2026-11-25 19:45"
-updated_date: "2026-11-25 19:45"
+updated_date: "2026-11-25 19:37"
 labels:
   - quality
 dependencies: []
