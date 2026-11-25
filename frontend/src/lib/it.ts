@@ -1149,6 +1149,15 @@ export const IT: Record<string, string> = {
   "Save as one document ({n} pages)": "Salva come un documento ({n} pagine)",
   "A photo could not be read. Use the camera, JPEG or PNG.":
     "Una foto non è leggibile. Usate la fotocamera, JPEG o PNG.",
+  "Needs you today": "Da fare oggi",
+  "Nothing due. Every next action is on time.": "Niente in scadenza. Tutte le prossime azioni sono in tempo.",
+  today: "oggi",
+  "Show all {n}": "Mostra tutte ({n})",
+  "All open": "Tutti aperti",
+  Stages: "Fasi",
+  "No contacts in this stage.": "Nessun contatto in questa fase.",
+  Call: "Chiamata",
+  Meeting: "Incontro",
 };
 
 /**

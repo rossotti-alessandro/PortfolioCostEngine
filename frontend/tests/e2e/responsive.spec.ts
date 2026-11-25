@@ -95,3 +95,24 @@ test.describe("tablet", () => {
     await expect(page.getByRole("tooltip")).toBeVisible();
   });
 });
+
+test.describe("phone CRM", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  test("home shows what is due today and a stage list, no sideways page; a tap opens the contact", async ({ page }) => {
+    const me = await (await page.request.get("/api/auth/me")).json();
+    await page.request.post("/api/crm/demo/seed", { headers: { "X-CSRF-Token": me.csrf_token } });
+    await page.goto("/crm");
+    await expect(page.getByRole("heading", { name: "Needs you today" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Lead" })).toHaveCount(0); // no kanban on a phone
+    await noSideScroll(page);
+    await page.getByRole("tablist", { name: "Stages" }).getByRole("tab", { name: /^Lead/ }).tap();
+    const rows = page.getByRole("list", { name: "Contacts" }).getByRole("listitem");
+    await expect(rows.first()).toBeVisible();
+    await expect(rows.first().getByLabel(/^Move .* to$/)).toBeAttached();
+    await page.screenshot({ path: "../artifacts/e2e/crm-phone.png", fullPage: true });
+    await rows.first().getByRole("link").tap();
+    await expect(page).toHaveURL(/\/crm\/c\/\d+$/);
+    await noSideScroll(page);
+  });
+});

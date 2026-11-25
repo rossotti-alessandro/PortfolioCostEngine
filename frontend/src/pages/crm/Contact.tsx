@@ -316,7 +316,7 @@ function Timeline({ c }: { c: ContactDetail }) {
           <select className={cn(inputCls, "w-28")} value={kind} onChange={(e) => setKind(e.target.value)}>
             {meta?.activity_kinds.map((k) => (
               <option key={k} value={k}>
-                {t(k)}
+                {t(k.charAt(0).toUpperCase() + k.slice(1))}
               </option>
             ))}
           </select>
