@@ -1,14 +1,17 @@
+import { ScanDialog } from "@/components/ScanDialog";
 import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, Empty, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DOC_TYPES, assets, cn } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { isPhoto, shrinkPhoto } from "@/lib/photos";
 import { isOcrEngine } from "@/lib/trail";
 import type { Analysis, DocumentRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowRight,
+  Camera,
   CheckCircle2,
   ChevronRight,
   CircleDashed,
@@ -56,7 +59,9 @@ export default function DocumentsPage() {
           setRows((r) => r.map((row, j) => (j === at ? { ...row, ...patch } : row)));
         set({ state: "reading" });
         try {
-          const res = (await api.upload(pid, [files[i]])).results[0];
+          // A photo is shrunk on the device first: much faster on mobile data, same OCR quality.
+          const f = isPhoto(files[i]) ? await shrinkPhoto(files[i]).catch(() => files[i]) : files[i];
+          const res = (await api.upload(pid, [f])).results[0];
           set({ state: "done", ...res });
         } catch (e) {
           set({ state: "done", status: "rejected", error: e instanceof Error ? e.message : String(e) });
@@ -68,6 +73,21 @@ export default function DocumentsPage() {
     qc.invalidateQueries();
   };
   const dragging = useFileDrag(uploadAll);
+  const [scanning, setScanning] = useState(false);
+  // A phone scan: all pages in one request, stored as one PDF. Shown as one row in the upload list.
+  const saveScan = async (pages: File[], name: string) => {
+    const at = rows.length;
+    setRows((r) => [...r, { filename: `${name}.pdf`, state: "reading" }]);
+    try {
+      const res = (await api.upload(pid, pages, name)).results;
+      const bad = res.find((x) => x.status === "rejected");
+      setRows((r) => r.map((row, j) => (j === at ? { ...row, state: "done", ...(bad ?? res[0]) } : row)));
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      setRows((r) => r.map((row, j) => (j === at ? { ...row, state: "done", status: "rejected", error } : row)));
+    }
+    qc.invalidateQueries();
+  };
   const setType = useMutation({
     mutationFn: ({ id, t }: { id: number; t: string }) => api.setDocType(id, t),
     onSuccess: () => qc.invalidateQueries(),
@@ -88,9 +108,16 @@ export default function DocumentsPage() {
           ) : undefined
         }
       />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-4">
-          <Dropzone onFiles={uploadAll} busy={busy} compact={!!docs.data?.length} over={dragging !== null} />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-4">
+          <Dropzone
+            onFiles={uploadAll}
+            onScan={() => setScanning(true)}
+            busy={busy}
+            compact={!!docs.data?.length}
+            over={dragging !== null}
+          />
+          <ScanDialog open={scanning} onOpenChange={setScanning} onSave={saveScan} />
           {rows.length > 0 && <UploadProgress rows={rows} docs={docs.data ?? []} pid={pid} busy={busy} />}
           <Card>
             <CardHeader
@@ -103,7 +130,7 @@ export default function DocumentsPage() {
               <Spinner />
             ) : !docs.data?.length ? (
               <Empty icon={<FileText className="h-8 w-8" />} title={t("No documents yet")}>
-                {t("Drop PDF or Excel files above.")}
+                {t("Drop PDF, Excel or photo files above, or scan paper with the camera.")}
               </Empty>
             ) : (
               <DocTable docs={docs.data} pid={pid} onType={(id, t) => setType.mutate({ id, t })} />
@@ -216,10 +243,11 @@ function UploadProgress({
  * dropped anywhere on the page (useFileDrag); this box shows where they go and offers the keyboard path. */
 function Dropzone({
   onFiles,
+  onScan,
   busy,
   compact,
   over,
-}: { onFiles: (f: File[]) => void; busy: boolean; compact: boolean; over: boolean }) {
+}: { onFiles: (f: File[]) => void; onScan: () => void; busy: boolean; compact: boolean; over: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div
@@ -230,19 +258,19 @@ function Dropzone({
       )}
     >
       <UploadCloud className={cn("shrink-0 text-teal-700", compact ? "h-5 w-5" : "h-8 w-8")} />
-      <div className={cn("min-w-0", compact && "flex-1")}>
+      <div className={cn("min-w-0", compact && "min-w-[12rem] flex-1")}>
         <div className={cn("font-semibold text-navy-900", compact ? "text-[13.5px]" : "text-[15px]")}>
           {t(compact ? "Add more documents" : "Drop documents anywhere on this page")}
         </div>
         <div className="text-[12.5px] text-muted">
-          {t("PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected")}
+          {t("PDF (digital or scanned), photos (JPEG, PNG) or XLSX · OCR in EN/DE/FR/IT · max 25 MB each")}
         </div>
       </div>
       <input
         ref={ref}
         type="file"
         multiple
-        accept=".pdf,.xlsx"
+        accept=".pdf,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*"
         className="sr-only"
         aria-label={t("Choose files to upload")}
         onChange={(e) => {
@@ -251,25 +279,26 @@ function Dropzone({
           e.target.value = "";
         }}
       />
-      <Button
-        className={compact ? undefined : "mt-2"}
-        variant={compact ? "outline" : "primary"}
-        onClick={() => ref.current?.click()}
-        loading={busy}
-      >
-        {t("Choose files")}
-      </Button>
+      <div className={cn("flex max-w-full flex-wrap justify-center gap-2", compact ? "max-sm:w-full" : "mt-2")}>
+        <Button variant={compact ? "outline" : "primary"} onClick={() => ref.current?.click()} loading={busy}>
+          {t("Choose files")}
+        </Button>
+        <Button variant="outline" onClick={onScan}>
+          <Camera className="h-4 w-4" /> {t("Scan with camera")}
+        </Button>
+      </div>
     </div>
   );
 }
 
-const ACCEPTED = [".pdf", ".xlsx"];
+const ACCEPTED = [".pdf", ".xlsx", ".jpg", ".jpeg", ".png", ".heic", ".heif"];
 const MAX_MB = 25;
 
 /** Why the server would refuse this file, or null. Same limits as the API (pce.api.ALLOWED, MAX_UPLOAD_BYTES). */
 function refusal(f: File): string | null {
-  if (!ACCEPTED.some((ext) => f.name.toLowerCase().endsWith(ext))) return t("Only PDF or XLSX files can be read");
-  if (f.size > MAX_MB * 1024 * 1024) return t("Larger than {n} MB", { n: MAX_MB });
+  if (!ACCEPTED.some((ext) => f.name.toLowerCase().endsWith(ext)))
+    return t("Only PDF, XLSX or photos (JPEG, PNG) can be read");
+  if (!isPhoto(f) && f.size > MAX_MB * 1024 * 1024) return t("Larger than {n} MB", { n: MAX_MB });
   return null;
 }
 

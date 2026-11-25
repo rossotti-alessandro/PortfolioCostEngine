@@ -115,99 +115,105 @@ export default function ComparePage() {
       )}
       {claimed && (
         <>
-      <StatGrid>
-        <Kpi
-          label={t("Today (comparable)")}
-          value={chf(cmp.current_known)}
-          onClick={() => setTrace(today)}
-          sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
-        />
-        <Kpi
-          label={t("With {firm}", { firm })}
-          value={chf(cmp.proposal_known)}
-          onClick={() => setTrace(withFirm)}
-          sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
-        />
-        <Kpi
-          label={t(sv.label)}
-          tone={sv.saves ? "teal" : undefined}
-          onClick={() =>
-            setTrace({
-              kind: "diff",
-              title: t("Annual saving"),
-              amount: cmp.annual_saving,
-              prefix: t(BOUND_TEXT[cmp.bound]),
-              left: today,
-              right: withFirm,
-            })
-          }
-          value={
-            <>
-              <span className="mr-1 text-[14px] font-medium">{t(sv.prefix)}</span>
-              {chf(sv.value)}
-            </>
-          }
-          sub={
-            cmp.annual_saving_bps
-              ? t("{bps} bps of assets", { bps: Number(cmp.annual_saving_bps).toFixed(1) })
-              : undefined
-          }
-        />
-        <Kpi
-          label={t("Switching cost")}
-          value={chf(cmp.migration_one_off)}
-          sub={
-            cmp.payback_months
-              ? t("Paid back in {months} months · first year {amount}", {
-                  months: cmp.payback_months,
-                  amount: chf(cmp.first_year_net),
+          <StatGrid>
+            <Kpi
+              label={t("Today (comparable)")}
+              value={chf(cmp.current_known)}
+              onClick={() => setTrace(today)}
+              sub={a.scenarios.current_comparable.is_complete ? t("complete") : t("known costs only, at least")}
+            />
+            <Kpi
+              label={t("With {firm}", { firm })}
+              value={chf(cmp.proposal_known)}
+              onClick={() => setTrace(withFirm)}
+              sub={sc.ledger.total_bps ? `${Number(sc.ledger.total_bps).toFixed(1)} bps` : undefined}
+            />
+            <Kpi
+              label={t(sv.label)}
+              tone={sv.saves ? "teal" : undefined}
+              onClick={() =>
+                setTrace({
+                  kind: "diff",
+                  title: t("Annual saving"),
+                  amount: cmp.annual_saving,
+                  prefix: t(BOUND_TEXT[cmp.bound]),
+                  left: today,
+                  right: withFirm,
                 })
-              : t("Not paid back by the saving")
-          }
-        />
-      </StatGrid>
+              }
+              value={
+                <>
+                  <span className="mr-1 text-[14px] font-medium">{t(sv.prefix)}</span>
+                  {chf(sv.value)}
+                </>
+              }
+              sub={
+                cmp.annual_saving_bps
+                  ? t("{bps} bps of assets", { bps: Number(cmp.annual_saving_bps).toFixed(1) })
+                  : undefined
+              }
+            />
+            <Kpi
+              label={t("Switching cost")}
+              value={chf(cmp.migration_one_off)}
+              sub={
+                cmp.payback_months
+                  ? t("Paid back in {months} months · first year {amount}", {
+                      months: cmp.payback_months,
+                      amount: chf(cmp.first_year_net),
+                    })
+                  : t("Not paid back by the saving")
+              }
+            />
+          </StatGrid>
 
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-        <LayerCompare cur={a.scenarios.current_comparable} prop={sc.ledger} cmp={cmp} firm={firm} />
-        <Card>
-          <CardHeader title={t("Why the saving is a bound")} />
-          <ul className="space-y-2 p-5 text-[13px] text-ink">
-            {cmp.caveats.map((c) => (
-              <li key={c} className="flex gap-2">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-700" />
-                {tm(c)}
-              </li>
-            ))}
-            {a.comparison_exclusions.map((e) => (
-              <li key={e.fee_code} className="flex gap-2">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
-                {t("{label} ({amount}) is left out of both sides: {reason}", {
-                  label: tm(e.label),
-                  amount: chf(e.amount),
-                  reason: tm(e.reason),
-                })}
-              </li>
-            ))}
-            <li className="flex gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
-              {a.client_domicile === "CH"
-                ? t("Client domicile {code}: Swiss VAT {pct}% applies to management and custody fees on both sides.", {
-                    code: a.client_domicile,
-                    pct: a.proposal_inputs.vat_pct,
-                  })
-                : t("Client domicile {code}: Swiss VAT does not apply to management and custody fees on both sides.", {
-                    code: a.client_domicile,
-                  })}
-            </li>
-            {Object.entries(a.scenarios.same_holdings.migration_items).map(([k, v]) => (
-              <li key={k} className="flex gap-2 text-muted">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong" />
-                {t("Switching: {item} {amount}", { item: k.replaceAll("_", " "), amount: chf(v) })}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+            <LayerCompare cur={a.scenarios.current_comparable} prop={sc.ledger} cmp={cmp} firm={firm} />
+            <Card>
+              <CardHeader title={t("Why the saving is a bound")} />
+              <ul className="space-y-2 p-5 text-[13px] text-ink">
+                {cmp.caveats.map((c) => (
+                  <li key={c} className="flex gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-700" />
+                    {tm(c)}
+                  </li>
+                ))}
+                {a.comparison_exclusions.map((e) => (
+                  <li key={e.fee_code} className="flex gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
+                    {t("{label} ({amount}) is left out of both sides: {reason}", {
+                      label: tm(e.label),
+                      amount: chf(e.amount),
+                      reason: tm(e.reason),
+                    })}
+                  </li>
+                ))}
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy-700" />
+                  {a.client_domicile === "CH"
+                    ? t(
+                        "Client domicile {code}: Swiss VAT {pct}% applies to management and custody fees on both sides.",
+                        {
+                          code: a.client_domicile,
+                          pct: a.proposal_inputs.vat_pct,
+                        },
+                      )
+                    : t(
+                        "Client domicile {code}: Swiss VAT does not apply to management and custody fees on both sides.",
+                        {
+                          code: a.client_domicile,
+                        },
+                      )}
+                </li>
+                {Object.entries(a.scenarios.same_holdings.migration_items).map(([k, v]) => (
+                  <li key={k} className="flex gap-2 text-muted">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong" />
+                    {t("Switching: {item} {amount}", { item: k.replaceAll("_", " "), amount: chf(v) })}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
         </>
       )}
       {!claimed && (

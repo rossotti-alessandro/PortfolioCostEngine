@@ -126,9 +126,14 @@ export const api = {
     req(`/api/prospects/${id}`, json(b, "PATCH")),
   seed: () => req<{ id: number; documents_added: number }>("/api/demo/seed", { method: "POST" }),
   documents: (id: number) => req<DocumentRow[]>(`/api/prospects/${id}/documents`),
-  upload: (id: number, files: File[]) => {
+  /** PDF, XLSX or photos. `scanName` stores all photos of this call as one PDF (a phone scan, SC-8.28). */
+  upload: (id: number, files: File[], scanName?: string) => {
     const fd = new FormData();
     for (const f of files) fd.append("files", f);
+    if (scanName !== undefined) {
+      fd.append("combine", "true");
+      fd.append("scan_name", scanName);
+    }
     return req<{ results: { filename: string; status: string; error?: string; doc_type?: string }[] }>(
       `/api/prospects/${id}/documents`,
       { method: "POST", body: fd },

@@ -306,10 +306,11 @@ export const IT: Record<string, string> = {
   "Type, bank, jurisdiction and dates are detected automatically. Correct the type if it is wrong; the document is re-read.":
     "Tipo, banca, giurisdizione e date sono rilevati automaticamente. Correggete il tipo se è errato; il documento viene riletto.",
   "No documents yet": "Nessun documento",
-  "Drop PDF or Excel files above.": "Trascinate qui sopra file PDF o Excel.",
+  "Drop PDF, Excel or photo files above, or scan paper with the camera.":
+    "Trascinate qui sopra file PDF, Excel o foto, oppure scansionate la carta con la fotocamera.",
   "Drop documents here": "Trascinate qui i documenti",
-  "PDF (digital or scanned, OCR in EN/DE/FR/IT) or XLSX · max 25 MB each · duplicates are detected":
-    "PDF (digitali o scansionati, OCR in EN/DE/FR/IT) o XLSX · max 25 MB ciascuno · i duplicati vengono rilevati",
+  "PDF (digital or scanned), photos (JPEG, PNG) or XLSX · OCR in EN/DE/FR/IT · max 25 MB each":
+    "PDF (digitali o scansionati), foto (JPEG, PNG) o XLSX · OCR in IT/DE/FR/EN · max 25 MB ciascuno",
   "Choose files to upload": "Scegli i file da caricare",
   "Choose files": "Scegli file",
   File: "File",
@@ -1124,7 +1125,7 @@ export const IT: Record<string, string> = {
   "Open menu": "Apri menu",
   "Close menu": "Chiudi menu",
   "{name} moved to {stage}": "{name} spostato in {stage}",
-  "Only PDF or XLSX files can be read": "Si possono leggere solo file PDF o XLSX",
+  "Only PDF, XLSX or photos (JPEG, PNG) can be read": "Si possono leggere solo PDF, XLSX o foto (JPEG, PNG)",
   "Larger than {n} MB": "Più grande di {n} MB",
   "Drop documents anywhere on this page": "Trascina i documenti in un punto qualsiasi della pagina",
   "Drop to add {n} files to this cost review": "Rilascia per aggiungere {n} file a questa analisi",
@@ -1132,6 +1133,22 @@ export const IT: Record<string, string> = {
   "PDF or XLSX, up to 25 MB each. Read on this machine only.":
     "PDF o XLSX, fino a 25 MB ciascuno. Letti solo su questo computer.",
   "Drop to add 1 file to this cost review": "Rilascia per aggiungere 1 file a questa analisi",
+  "Scan with camera": "Scansiona con la fotocamera",
+  "Take one photo per page, flat and in good light. The pages are saved as one PDF and read here.":
+    "Una foto per pagina, in piano e con buona luce. Le pagine sono salvate come un unico PDF e lette qui.",
+  "Take a photo of a page": "Fotografa una pagina",
+  "Add photos from the gallery": "Aggiungi foto dalla galleria",
+  "Scanned pages": "Pagine scansionate",
+  "Move page {n} earlier": "Sposta la pagina {n} prima",
+  "Move page {n} later": "Sposta la pagina {n} dopo",
+  "Remove page {n}": "Rimuovi la pagina {n}",
+  "Add a page": "Aggiungi una pagina",
+  "From gallery": "Dalla galleria",
+  "Document name (optional)": "Nome del documento (facoltativo)",
+  "Scan {date}": "Scansione {date}",
+  "Save as one document ({n} pages)": "Salva come un documento ({n} pagine)",
+  "A photo could not be read. Use the camera, JPEG or PNG.":
+    "Una foto non è leggibile. Usate la fotocamera, JPEG o PNG.",
 };
 
 /**

@@ -119,7 +119,8 @@ IT = {
     "What cannot be claimed": "Cosa non si può affermare",
     "No CHF total: no exchange rate into CHF is printed on the documents. "
     "Assets are not shown as zero, and no saving is claimed.": "Nessun totale in CHF: nei documenti non è "
-    "stampato un cambio verso il CHF. Il patrimonio non è mostrato come zero e non si afferma alcun risparmio.",
+    "stampato un cambio verso il CHF. Il patrimonio non è mostrato come zero "
+    "e non si afferma alcun risparmio.",
     "No saving is claimed: no current cost is known. Unknown costs are not treated as zero.": "Nessun "
     "risparmio è affermato: nessun costo attuale è noto. I costi sconosciuti non sono trattati come zero.",
     "{n} positions were read. Their market values stay in the statement currency; none is published as "

@@ -171,7 +171,9 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
           {valued && unvalued > 0 && (
             <>
               {" "}
-              {t("{n} positions are not valued in CHF: no exchange rate is printed for their currency.", { n: unvalued })}
+              {t("{n} positions are not valued in CHF: no exchange rate is printed for their currency.", {
+                n: unvalued,
+              })}
             </>
           )}{" "}
           {n > 0 ? (
@@ -416,7 +418,8 @@ function CoverageMatrix({ a }: { a: Analysis }) {
                 <td className="py-2 pr-2">
                   <div className="font-medium text-ink">{r.institution}</div>
                   <div className="num text-[11.5px] text-subtle">
-                    {r.valued === false ? t("Not valued in CHF") : chf(r.assets)} · {r.jurisdiction ?? t("jurisdiction ?")}
+                    {r.valued === false ? t("Not valued in CHF") : chf(r.assets)} ·{" "}
+                    {r.jurisdiction ?? t("jurisdiction ?")}
                   </div>
                 </td>
                 {layers.map((l) => {
