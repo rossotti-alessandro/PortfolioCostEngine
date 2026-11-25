@@ -31,6 +31,7 @@ from .vocab import (
     QUARTER_WORDS,
     find_dates,
     map_fee_label,
+    ocr_clean,
 )
 
 EXTRACTOR_VERSION = "pce-rules-0.1"
@@ -299,7 +300,7 @@ def parse_positions_pdf(pages: list[PageInfo], prof: DocumentProfile) -> list[Fa
     for page in pages:
         for li, ln in enumerate(page.lines):
             low = ln.text.lower()
-            if FEE_SECTION.search(ln.text) and len(ln.cells) == 1:
+            if FEE_SECTION.search(ocr_clean(ln.text)) and len(ln.cells) == 1:
                 in_fees, in_table = True, False  # activity statements also list the fees charged
                 continue
             if in_fees:

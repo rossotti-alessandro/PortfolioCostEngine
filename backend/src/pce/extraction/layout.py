@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -147,7 +148,34 @@ def _digital_lines(page: pdfplumber.page.Page, number: int) -> list[Line]:
     return _group(cells, number, "pdfplumber-text", 1.0)
 
 
-def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float = 3.0) -> list[Line]:
+_BARE_AMOUNT = re.compile(r"[-+(]?\s*(?:CHF|EUR|USD|GBP)?\s*[\d'’., ]*\d[\d'’., ]*\)?\s*%?")
+
+
+def _figure(text: str) -> bool:
+    """An amount, a rate, an ISIN or an OCR-garbled number: the kind of run that skew pushes off its row."""
+    return bool(_BARE_AMOUNT.fullmatch(text)) or (
+        " " not in text.strip() and any(ch.isdigit() for ch in text)
+    )
+
+
+def _same_row(c: Cell, row: list[Cell]) -> bool:
+    """A slightly skewed scan or photo drops the right-hand amount a few points below its label, past the
+    centre tolerance. Join a figure (amount, rate, ISIN) to the row, or a label to a row holding only a
+    figure, when it overlaps the row by most of its height and sits beside, not under, its cells
+    (SC-5.23). Text next to text is left alone: two-column prose must not be glued into one row."""
+    amount_joins = _figure(c.text) or (len(row) == 1 and _figure(row[0].text))
+    if not amount_joins:
+        return False
+    top, bottom = min(x.bbox[1] for x in row), max(x.bbox[3] for x in row)
+    overlap = min(bottom, c.bbox[3]) - max(top, c.bbox[1])
+    height = min(c.bbox[3] - c.bbox[1], bottom - top)
+    beside = all(c.bbox[0] >= x.bbox[2] or c.bbox[2] <= x.bbox[0] for x in row)
+    return height > 0 and overlap >= 0.6 * height and beside
+
+
+def _group(
+    cells: list[Cell], number: int, engine: str, conf: float, tol: float = 3.0, skew: bool = False
+) -> list[Line]:
     cells.sort(key=lambda c: ((c.bbox[1] + c.bbox[3]) / 2, c.bbox[0]))
     lines: list[list[Cell]] = []
     for c in cells:
@@ -155,7 +183,7 @@ def _group(cells: list[Cell], number: int, engine: str, conf: float, tol: float 
         if lines:
             last = lines[-1]
             lyc = sum((x.bbox[1] + x.bbox[3]) / 2 for x in last) / len(last)
-            if abs(yc - lyc) <= tol:
+            if abs(yc - lyc) <= tol or (skew and _same_row(c, last)):
                 last.append(c)
                 continue
         lines.append([c])
@@ -192,7 +220,9 @@ def _rapid_lines(pdf: pypdfium2.PdfDocument, index: int, number: int) -> list[Li
             cells.append(Cell(text.strip(), bbox))
             confs.append(float(score))
     # RapidOCR boxes one text run each and does not group them into lines; group by vertical centre.
-    return _group(cells, number, "rapidocr", round(sum(confs) / len(confs), 3) if confs else 0.0, tol=4.0)
+    return _group(
+        cells, number, "rapidocr", round(sum(confs) / len(confs), 3) if confs else 0.0, tol=4.0, skew=True
+    )
 
 
 def _ocr_lines(pdf: pypdfium2.PdfDocument, index: int, number: int, lang: str) -> list[Line]:
