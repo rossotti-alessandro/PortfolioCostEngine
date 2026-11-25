@@ -1,15 +1,15 @@
 ---
 id: SC-9.12
 title: Sideways phone photos: benchmark variant and orientation fix
-status: In Progress
+status: "In Progress"
 assignee: []
 owner: "Prove and raise accuracy on realistic portfolios"
 model: "claude-opus-5-5"
-progress: 50
+progress: 5
 branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 22:45"
-updated_date: "2026-11-25 22:45"
+updated_date: "2026-11-25 23:24"
 labels:
   - evaluation
   - extraction
