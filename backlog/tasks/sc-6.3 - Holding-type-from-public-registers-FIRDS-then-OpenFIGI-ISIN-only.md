@@ -1,0 +1,74 @@
+---
+id: SC-6.3
+title: Holding type from public registers (FIRDS then OpenFIGI, ISIN only)
+status: To Do
+assignee: []
+owner: ""
+model: ""
+progress: 0
+branch: ""
+pr: ""
+created_date: "2026-11-25 22:25"
+updated_date: "2026-11-25 22:25"
+labels:
+  - instruments
+  - privacy
+dependencies: []
+parent_task_id: SC-6
+priority: P0
+paths_owned:
+  - "backend/src/pce/instruments/**"
+  - "backend/src/pce/api.py"
+  - "backend/tests/test_isin_registry.py"
+  - "backend/tests/conftest.py"
+spec_ref: docs/research/INSTRUMENT_DATA_SOURCES.md
+rule_refs: [".claude/rules/privacy.md", ".claude/rules/extraction.md"]
+---
+
+> **One-liner**: Take each holding's type (share, fund, ETF, bond, structured) from ESMA FIRDS or OpenFIGI by ISIN, so a fund named like a company is no longer read as a share whose missing cost counts as none.
+
+## Description
+
+### Context
+`analysis.infer_asset_class` guesses the type from the name. A fund named like a company ("Comgest Monde C")
+without an uploaded KID is read as a share, and shares get no product-cost gap, so the report looks complete
+while the fund's ongoing charge is missing (missing became zero). Swiss bonds without a bond word are read as
+shares too. Ale approved on 2026-11-25 sending ISINs only to public registers. SC-6.1 (full catalog, share
+class identity) stays open; this story only sets the type.
+
+### User Flow Impact
+Funds and bonds are recognised whatever their name; a fund without a KID shows "ongoing charge unknown,
+upload the KID" instead of nothing.
+
+### Performance / Efficiency Impact
+One FIRDS request per new ISIN and one OpenFIGI request per 10 ISINs FIRDS lacks, at upload; answers cached
+on disk (`instrument_types.json` in the data dir), so each ISIN is asked once. 137 ISINs: about 40 s cold.
+
+### Proposed Approach
+1. `pce/instruments/registry.py`: `resolve(isins)` → FIRDS CFI code, else OpenFIGI security type; cache;
+   any network error returns nothing (name rule applies) and is retried next time.
+2. `api.ingest`: positions without a stated class get `extra.asset_class` and `asset_class_source`.
+3. `PCE_PUBLIC_ISIN_LOOKUP=0` switches it off; tests run with it off.
+
+### Risks & Follow-ups
+External call: ISIN only, two hosts, no client data (tested). An egress guard (SC-11.5) should wrap it later.
+Share class identity and KID retrieval stay in SC-6.1 / SC-6.2.
+
+## Acceptance Criteria
+
+- [ ] #1 Tests: FIRDS then OpenFIGI mapping, only ISINs sent to the two hosts, cached, offline falls back, switch off sends nothing
+- [ ] #2 A fund named like a company with no KID gets an unknown ongoing-charge atom (not nothing)
+- [ ] #3 Live check on the 137 public benchmark ISINs: types match
+
+## Implementation Notes
+
+## Outcome
+
+- **Status**: partial
+
+## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
