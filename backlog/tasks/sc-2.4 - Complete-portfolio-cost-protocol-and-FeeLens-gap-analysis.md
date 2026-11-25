@@ -1,15 +1,15 @@
 ---
 id: SC-2.4
 title: Complete portfolio cost protocol and FeeLens gap analysis
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Design complete portfolio cost protocol"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-7crdzy"
 pr: ""
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:51"
+updated_date: "2026-11-25 20:53"
 labels:
   - research
 dependencies: []
@@ -18,6 +18,7 @@ priority: P1
 paths_owned:
   - "docs/research/COST_PROTOCOL.md"
   - "backlog/tasks/**"
+  - "docs/SOURCES_OF_TRUTH.md"
 spec_ref: docs/research/COST_PROTOCOL.md
 rule_refs:
   - ".claude/rules/finance.md"
@@ -51,11 +52,26 @@ Tax rates and practitioner durations are indicative and marked to verify; they m
 
 ## Acceptance Criteria
 
-- [ ] #1 COST_PROTOCOL.md exists with an executive summary and ranked gaps citing file:line on main
-- [ ] #2 Each gap that needs code has a To Do story with paths_owned and acceptance criteria
+- [x] #1 COST_PROTOCOL.md exists with an executive summary and ranked gaps citing file:line on main
+- [x] #2 Each gap that needs code has a To Do story with paths_owned and acceptance criteria
 
 ## Implementation Notes
 
+Docs and backlog only; no code. Owned paths as listed, plus a row in docs/SOURCES_OF_TRUTH.md.
+
 ## Outcome
 
+- **Status**: completed
+- `docs/research/COST_PROTOCOL.md`: document set, taxonomy by asset class, source tiers T1-T8, confidence
+  score and conflict rules, 13-step protocol, implicit-cost methods, 12 ranked gaps with file:line on main 91181df.
+- Gap 3 reproduced with a synthetic cash statement: 4 quarterly custody debits of CHF 500 give CHF 500 observed.
+- New To Do stories: SC-2.5, SC-7.7, SC-7.8, SC-7.9, SC-7.10, SC-7.11, SC-7.12, SC-7.13, SC-7.14.
+
 ## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-7crdzy | 4140c5f | 2026-11-25 | Claim |
+| claude/project-thread-7crdzy | 1de2ef6 | 2026-11-25 | COST_PROTOCOL.md and gap stories |
