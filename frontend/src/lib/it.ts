@@ -1278,7 +1278,6 @@ export const IT: Record<string, string> = {
   "Erase {code}": "Cancella {code}",
   "Deletes the cost review, every document and extracted figure, reviews, proposals and reports. Only a note that a deletion happened is kept. This cannot be undone. Backups expire on their own schedule.":
     "Elimina l'analisi dei costi, ogni documento e valore estratto, verifiche, proposte e report. Resta solo una nota che la cancellazione è avvenuta. L'operazione non si può annullare. I backup scadono secondo il loro calendario.",
-  Reason: "Motivo",
   "The prospect asked for deletion": "Il potenziale cliente ha chiesto la cancellazione",
   "No mandate followed": "Nessun mandato",
   "Retention period ended": "Periodo di conservazione scaduto",
