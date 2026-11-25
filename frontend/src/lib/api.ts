@@ -36,8 +36,13 @@ export interface Me {
   roles: Role[];
   admin: boolean;
   must_change_password?: boolean;
+  mfa?: boolean;
+  mfa_setup_needed?: boolean;
   csrf_token: string;
 }
+
+/** Must match pce.security.MFA_REQUIRED: the password was right and the account has an authenticator. */
+export const MFA_REQUIRED = "authenticator code required";
 
 export interface TeamMember {
   username: string;
@@ -140,9 +145,12 @@ const json = (body: unknown, method = "POST"): RequestInit => ({
 
 export const auth = {
   me: () => req<Me>("/api/auth/me"),
-  login: (username: string, password: string) => req<Me>("/api/auth/login", json({ username, password })),
+  login: (username: string, password: string, code?: string) =>
+    req<Me>("/api/auth/login", json({ username, password, code: code || null })),
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   changePassword: (current: string, next: string) => req<Me>("/api/auth/password", json({ current, new: next })),
+  mfaStart: () => req<{ secret: string; uri: string; proof: string }>("/api/auth/mfa"),
+  mfaFinish: (b: { secret: string; proof: string; code: string }) => req<Me>("/api/auth/mfa", json(b)),
 };
 
 /** Act in a given role for one call (pages that need a role other than the one picked in "Acting as"). */

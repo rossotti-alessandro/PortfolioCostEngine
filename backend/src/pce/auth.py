@@ -9,6 +9,10 @@ Why this shape (docs/app/SECURITY.md):
   (``PCE_IDLE_TIMEOUT_MIN``, default 30), deactivating a person or "sign out everywhere" take effect on the
   next request. Changing a password also ends that account's sessions.
 - Passwords use stdlib scrypt: no new dependency, memory-hard, constant-time comparison.
+- Second factor (SC-11.7): a TOTP code from an authenticator app (RFC 6238, stdlib only). A person adds
+  it after sign-in; ``PCE_REQUIRE_MFA=1`` (pilot and production) keeps an account without one in setup.
+  The env admin's key is ``PCE_ADMIN_TOTP_SECRET``. An admin's password reset also removes the key
+  (lost phone).
 """
 
 from __future__ import annotations
@@ -24,11 +28,11 @@ import sys
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from sqlalchemy import select, update
 
-from .db import AuthSession, UserAccount, make_session_factory
+from .db import AuthSession, UserAccount, UserMfa, make_session_factory
 from .permissions import ROLES
 
 log = logging.getLogger("pce.auth")
@@ -84,6 +88,7 @@ class Account:
     admin: bool = False  # the env break-glass account
     must_change_password: bool = False
     display_name: str = ""
+    totp_secret: str | None = None
 
 
 _accounts: dict[str, Account] = {}  # env break-glass admin (and test accounts)
@@ -123,7 +128,7 @@ def _register(username: str, pw_hash: str, tenant: str, roles: tuple[str, ...], 
     return acc
 
 
-def _from_row(u: UserAccount) -> Account:
+def _from_row(u: UserAccount, totp_secret: str | None) -> Account:
     return Account(
         u.username,
         u.password_hash,
@@ -132,6 +137,7 @@ def _from_row(u: UserAccount) -> Account:
         False,
         u.must_change_password,
         u.display_name,
+        totp_secret,
     )
 
 
@@ -142,7 +148,10 @@ def get_account(username: str) -> Account | None:
         return _accounts[name]
     with db()() as s:
         u = s.scalar(select(UserAccount).where(UserAccount.username == name, UserAccount.active.is_(True)))
-        return _from_row(u) if u else None
+        if u is None:
+            return None
+        mfa = s.get(UserMfa, name)
+        return _from_row(u, mfa.secret if mfa else None)
 
 
 def set_password(username: str, password: str, must_change: bool = False) -> None:
@@ -158,6 +167,29 @@ def set_password(username: str, password: str, must_change: bool = False) -> Non
     revoke_all(username)
 
 
+def set_mfa(username: str, secret: str | None) -> None:
+    """Store (or with None remove) a named person's authenticator key. Ends every session of that person."""
+    with db()() as s:
+        row = s.get(UserMfa, username)
+        if secret is None:
+            if row is not None:
+                s.delete(row)
+        elif row is None:
+            s.add(UserMfa(username=username, secret=secret))
+        else:
+            row.secret = secret
+        s.commit()
+    revoke_all(username)
+
+
+def require_mfa() -> bool:
+    return os.environ.get("PCE_REQUIRE_MFA", "0") == "1"
+
+
+def mfa_setup_needed(acc: Account) -> bool:
+    return require_mfa() and not acc.totp_secret
+
+
 def load_env_accounts() -> None:
     """Seed the admin from the environment. Fails closed: no admin configured means nobody can log in."""
     user = os.environ.get("PCE_ADMIN_USERNAME", "").strip()
@@ -168,13 +200,16 @@ def load_env_accounts() -> None:
         log.warning("auth: no admin account configured (PCE_ADMIN_USERNAME/PASSWORD); login is disabled")
         return
     if pw_hash:
-        _register(user, pw_hash, tenant, ROLES, admin=True)
+        acc = _register(user, pw_hash, tenant, ROLES, admin=True)
     else:
         try:
-            add_account(user, pw, tenant, ROLES, admin=True)
+            acc = add_account(user, pw, tenant, ROLES, admin=True)
         except ValueError as exc:
             log.error("auth: admin account not created: %s", exc)
             return
+    totp = os.environ.get("PCE_ADMIN_TOTP_SECRET", "").strip().upper().replace(" ", "")
+    if totp:
+        _accounts[acc.username] = replace(acc, totp_secret=totp)
     log.info("auth: admin account loaded")  # never log the username's password or hash
 
 
@@ -206,7 +241,8 @@ def _sign(msg: bytes) -> bytes:
 
 def _pw_version(acc: Account) -> str:
     # Changing the password invalidates every session issued before the change.
-    return _b64(_sign(b"pv:" + acc.password_hash.encode()))[:16]
+    # Adding or removing the authenticator does too.
+    return _b64(_sign(f"pv:{acc.password_hash}|{acc.totp_secret or ''}".encode()))[:16]
 
 
 def issue_session(acc: Account, now: float | None = None) -> str:
@@ -293,6 +329,40 @@ def csrf_token(session_token: str) -> str:
 
 def check_csrf(session_token: str, sent: str | None) -> bool:
     return bool(sent) and hmac.compare_digest(csrf_token(session_token), sent or "")
+
+
+# ------------------------------------------------------------------ second factor (TOTP, RFC 6238)
+TOTP_STEP_S = 30
+_last_step: dict[str, int] = {}  # per account: each code is accepted once (no replay within its window)
+
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode()
+
+
+def totp_code(secret: str, step: int) -> str:
+    key = base64.b32decode(secret.upper() + "=" * (-len(secret) % 8))
+    mac = hmac.new(key, step.to_bytes(8, "big"), hashlib.sha1).digest()
+    off = mac[-1] & 0x0F
+    return f"{(int.from_bytes(mac[off : off + 4], 'big') & 0x7FFFFFFF) % 1_000_000:06d}"
+
+
+def totp_uri(secret: str, username: str) -> str:
+    """What authenticator apps open (a link on the phone); the key can also be typed in."""
+    return f"otpauth://totp/FeeLens:{username}?secret={secret}&issuer=FeeLens&digits=6&period=30"
+
+
+def verify_totp(secret: str, code: str, key: str, now: float | None = None) -> bool:
+    """Accept the current code or one step either side (clock drift), each code only once per key."""
+    code = "".join(c for c in code if c.isdigit())
+    if len(code) != 6:
+        return False
+    step = int((time.time() if now is None else now) // TOTP_STEP_S)
+    for s in (step - 1, step, step + 1):
+        if s > _last_step.get(key, -1) and hmac.compare_digest(totp_code(secret, s), code):
+            _last_step[key] = s
+            return True
+    return False
 
 
 # ------------------------------------------------------------------ throttling

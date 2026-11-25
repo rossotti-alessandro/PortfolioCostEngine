@@ -163,6 +163,15 @@ class UserAccount(Base):
     created_by: Mapped[str] = mapped_column(String(100), default="")
 
 
+class UserMfa(Base):
+    """A named person's authenticator-app key (TOTP, SC-11.7). Own table: user_account needs no migration."""
+
+    __tablename__ = "user_mfa"
+    username: Mapped[str] = mapped_column(String(100), primary_key=True)
+    secret: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[str] = mapped_column(String(32), default=now)
+
+
 class AuthSession(Base):
     """Server-side record of a sign-in, so sign-out, idle timeout and revocation take effect at once."""
 
