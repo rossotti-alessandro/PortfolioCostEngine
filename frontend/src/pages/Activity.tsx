@@ -11,6 +11,8 @@ const ACTION: Record<string, string> = {
   "auth.login_failed": "Failed sign-in",
   "auth.logout": "Signed out",
   "auth.password_changed": "Changed their password",
+  "auth.mfa_enabled": "Turned on two-step sign-in",
+  "auth.mfa_failed": "Wrong authenticator code",
   "document.viewed": "Opened a document",
   "report.downloaded": "Downloaded a client report",
   "report.approved": "Approved a client report",

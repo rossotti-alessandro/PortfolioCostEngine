@@ -83,6 +83,17 @@ leave the server (ADR 0004).
 - Frontend dev only (`vitest` 2, `vite` pulled in by vitest): critical and high advisories in the test runner,
   not shipped in the image. Fix: a dedicated `deps:` PR bumping vitest.
 
+### Two-step sign-in (TOTP, SC-11.7)
+
+A named person turns it on from the account menu ("Turn on two-step sign-in"): the server proposes a key
+(bound to the person by an HMAC proof), and stores it in `user_mfa` only after a valid code. From then on
+sign-in needs password and code (RFC 6238, SHA-1, 30 s, one step of clock drift, each code accepted once).
+A missing or wrong code counts as a failed sign-in for the throttle, so "code required" does not confirm a
+password for free. `PCE_REQUIRE_MFA=1` (pilot and production) keeps an account without a key on the setup
+page. The env admin's key is `PCE_ADMIN_TOTP_SECRET` (`python -c "import pce.auth as a;
+print(a.new_totp_secret())"`). An admin's password reset also removes the person's key (lost phone).
+Turning it on ends the person's other sessions. Logged: `auth.mfa_enabled`, `auth.mfa_failed`.
+
 ### Activity log (`pce/audit.py`, SC-11.8)
 
 Every `audit_event` row gets an HMAC seal in `audit_seal`, written by a mapper hook in the same
@@ -98,7 +109,9 @@ write-once storage (SC-11.9 backups) closes both.
 
 ## Known limits
 
-- No SSO and no MFA yet: Microsoft 365 sign-in with MFA is SC-11.7.
+- No single sign-on (Microsoft 365) yet: accounts are local, with optional or required TOTP.
+- No QR code on the setup page: on a phone the "add FeeLens to the app" link opens the authenticator; on a
+  computer the key is typed in.
 - The viewer role is enforced by the server; the interface still shows some buttons that then answer 403.
 - `--forwarded-allow-ips '*'` trusts `X-Forwarded-For`; a client can spoof its address to dodge the
   per-client limit, which is why the per-username limit exists.

@@ -21,6 +21,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   FolderOpen,
+  KeyRound,
   Lock,
   LogOut,
   Menu,
@@ -134,6 +135,14 @@ function AccountMenu() {
       <div className="pce-in absolute left-0 top-full z-30 mt-1 w-full md:bottom-full md:top-auto md:mb-1 md:mt-0 space-y-3 rounded-[var(--radius-card)] border border-line bg-surface p-3 shadow-lg">
         <LangSwitch />
         <RoleSwitch />
+        {me && !me.mfa && !me.admin && (
+          <Link
+            to="/account/two-step"
+            className="flex min-h-9 w-full items-center gap-1.5 rounded-[var(--radius-control)] px-1.5 text-[12.5px] font-medium text-muted hover:bg-paper hover:text-ink"
+          >
+            <KeyRound className="h-3.5 w-3.5" /> {t("Turn on two-step sign-in")}
+          </Link>
+        )}
         <button
           type="button"
           onClick={async () => {

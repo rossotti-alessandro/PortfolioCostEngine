@@ -1256,6 +1256,25 @@ export const IT: Record<string, string> = {
   "Linked a cost review to a contact": "Ha collegato un'analisi a un contatto",
   "Value checks": "Verifiche dei valori",
   "Reset a value check": "Ha annullato la verifica di un valore",
+  "Wrong username, password or code.": "Nome utente, password o codice errati.",
+  "Code from your authenticator app": "Codice dell'app di autenticazione",
+  "The code does not match. Check that the phone's clock is right and try the next code.":
+    "Il codice non corrisponde. Controlla l'ora del telefono e prova con il codice successivo.",
+  "Two-step sign-in": "Accesso in due passaggi",
+  "Your firm asks for a code from your phone at every sign-in. Set it up once.":
+    "La tua società chiede un codice dal telefono a ogni accesso. Configuralo una volta.",
+  "Ask for a code from your phone at every sign-in, so a stolen password is not enough.":
+    "Chiedi un codice dal telefono a ogni accesso, così una password rubata non basta.",
+  "Setup is not available right now.": "La configurazione non è disponibile al momento.",
+  "Install an authenticator app (Microsoft Authenticator, Google Authenticator or similar).":
+    "Installa un'app di autenticazione (Microsoft Authenticator, Google Authenticator o simile).",
+  "On this phone:": "Su questo telefono:",
+  "add FeeLens to the app": "aggiungi FeeLens all'app",
+  "On a computer, add this key in the app:": "Da un computer, inserisci questa chiave nell'app:",
+  "Type the 6-digit code the app shows.": "Digita il codice a 6 cifre mostrato dall'app.",
+  "Turn on two-step sign-in": "Attiva l'accesso in due passaggi",
+  "Turned on two-step sign-in": "Ha attivato l'accesso in due passaggi",
+  "Wrong authenticator code": "Codice di autenticazione errato",
 };
 
 /**
