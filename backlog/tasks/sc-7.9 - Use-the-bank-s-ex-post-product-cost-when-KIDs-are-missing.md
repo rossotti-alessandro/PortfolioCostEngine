@@ -1,15 +1,15 @@
 ---
 id: SC-7.9
 title: Use the bank's ex-post product cost when KIDs are missing
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Design complete portfolio cost protocol"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-7crdzy"
 pr: ""
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:50"
+updated_date: "2026-11-26 00:09"
 labels:
   - finance
 dependencies:
