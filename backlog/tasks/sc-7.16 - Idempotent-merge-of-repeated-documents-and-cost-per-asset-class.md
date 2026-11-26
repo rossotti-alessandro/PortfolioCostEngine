@@ -1,15 +1,15 @@
 ---
 id: SC-7.16
 title: Idempotent merge of repeated documents and cost per asset class
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Cover costs for every asset type"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-xhgbxu"
 pr: ""
 created_date: "2026-11-26 00:15"
-updated_date: "2026-11-26 00:15"
+updated_date: "2026-11-26 00:09"
 labels:
   - finance
 dependencies: []
