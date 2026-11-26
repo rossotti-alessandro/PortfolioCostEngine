@@ -1,11 +1,11 @@
 ---
 id: SC-7.19
 title: Show one-off costs as their own total
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Audit cost categories for consistency"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-6oi8gs"
 pr: ""
 created_date: "2026-11-26 01:05"
@@ -56,13 +56,16 @@ No formula change.
 
 ## Acceptance Criteria
 
-- [ ] #1 A structured product with a 2% entry margin gives one_off_known 2,000 and no annual cost
-- [ ] #2 The client PDF prints "Paid once, not in the annual total" when one_off_known > 0
-- [ ] #3 Existing report tests stay green
+- [x] #1 A structured product with a 2% entry margin gives one_off_known 2,000 and no annual cost
+- [x] #2 The client PDF prints "Paid once, not in the annual total" when one_off_known > 0
+- [x] #3 Existing report tests stay green
 
 ## Implementation Notes
 
 ## Outcome
+
+- **Status**: completed
+- Costs answer card row and PDF line, EN and IT. Two tests in `backend/tests/test_one_off_total.py` (the PDF one fails on main).
 
 ## Issues Encountered
 
@@ -70,3 +73,4 @@ No formula change.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-6oi8gs | d9cc22e | 2026-11-26 | One-off total on Costs page and client PDF |
