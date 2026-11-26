@@ -184,6 +184,50 @@ class AuthSession(Base):
     revoked: Mapped[bool] = mapped_column(default=False)
 
 
+# Book of record (SC-7.12): the family's accounts and dated positions as rows, so costs can attach to real
+# objects. Rebuilt from the analysis on every compute, so it is derived data: deleting it loses nothing.
+class Account(Base):
+    """One booking relationship: a prospect's holdings at one institution."""
+
+    __tablename__ = "account"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    prospect_id: Mapped[int] = mapped_column(ForeignKey("prospect.id"), index=True)
+    institution: Mapped[str] = mapped_column(String(200))
+    jurisdiction: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    __table_args__ = (UniqueConstraint("tenant_id", "prospect_id", "institution"),)
+
+
+class Instrument(Base):
+    """Public reference data, keyed by ISIN and shared across tenants. Never holds client data: no
+    quantity, value or account, only what a public register would say about the security."""
+
+    __tablename__ = "instrument"
+    isin: Mapped[str] = mapped_column(String(12), primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    asset_class: Mapped[str] = mapped_column(String(20))
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+
+
+class Position(Base):
+    """One line of a statement of assets, at the statement date."""
+
+    __tablename__ = "position"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    prospect_id: Mapped[int] = mapped_column(ForeignKey("prospect.id"), index=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), index=True)
+    isin: Mapped[str | None] = mapped_column(ForeignKey("instrument.isin"), nullable=True)
+    name: Mapped[str] = mapped_column(Text)
+    asset_class: Mapped[str] = mapped_column(String(20))
+    as_of: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3))
+    value_ccy: Mapped[str] = mapped_column(String(40))  # Decimal as string, in the position's currency
+    value_base: Mapped[str | None] = mapped_column(String(40), nullable=True)  # None: no printed FX rate
+    fact_id: Mapped[int] = mapped_column(Integer)  # no FK: re-parsing replaces facts, then this row
+    __table_args__ = (UniqueConstraint("tenant_id", "fact_id"),)
+
+
 def data_dir() -> Path:
     d = Path(os.environ.get("PCE_DATA_DIR", Path(__file__).resolve().parents[3] / "var"))
     d.mkdir(parents=True, exist_ok=True)
