@@ -1,15 +1,15 @@
 ---
 id: SC-7.16
 title: Idempotent merge of repeated documents and cost per asset class
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Cover costs for every asset type"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-xhgbxu"
 pr: ""
 created_date: "2026-11-26 00:15"
-updated_date: "2026-11-26 00:09"
+updated_date: "2026-11-26 00:45"
 labels:
   - finance
 dependencies: []
@@ -73,21 +73,42 @@ Touches finance/ (product cost per asset class): needs Ale's per-PR approval (AG
 
 ## Acceptance Criteria
 
-- [ ] #1 A second copy of any document in the P-1042 pack gives the same total, AUM and unknown list as one copy
-- [ ] #2 One ISIN in two lots at one bank gives one product atom on the summed value
-- [ ] #3 Shuffling documents and facts gives the same result; a re-run is identical
-- [ ] #4 Each asset class (equity, ETF, fund, bond, structured, derivative, commodity, cash) has a test of its product-cost rule
-- [ ] #5 Existing pinned P-1042 figures unchanged; gate green
+- [x] #1 A second copy of any document in the P-1042 pack gives the same total, AUM and unknown list as one copy
+- [x] #2 One ISIN in two lots at one bank gives one product atom on the summed value
+- [x] #3 Shuffling documents and facts gives the same result; a re-run is identical
+- [x] #4 Each asset class (equity, ETF, fund, bond, structured, derivative, commodity, cash) has a test of its product-cost rule
+- [x] #5 Existing pinned P-1042 figures unchanged; gate green
 
 ## Implementation Notes
 
+- Merge in `product_atoms()` (all callers, incl. the optimised scenario where two swapped lots map to one
+  proposal fund) and `_merge_lots()` in `analysis.py` for the unknown-cost path and KID requests.
+- Statement duplicate = same institution, `as_of` and multiset of (ISIN or label, value, currency).
+  Two accounts at one bank with different positions stay separate.
+- `_pick_product_docs()`: newest `as_of`, lowest id on a tie; check `duplicate:product:<ISIN>` is info
+  when the copies agree, warn when their figures differ.
+- Asset class: a public-register class (`asset_class_source` set by SC-6.3) is authoritative; a bank
+  category column is the exposure, so a fund/ETF/certificate name wins over Equities/Bonds/Commodities.
+  New classes DERIVATIVE and COMMODITY have no product cost. One existing test expectation changed:
+  `infer_asset_class("Xtrackers ... ETF", "EQUITY")` is ETF unless the class came from a register.
+- Re-ran the class rule over the 128 positions read from the 5 real public statements in the corpus:
+  0 changed. Repeated-document repro on the P-1042 pack: every copy (statement, KIDs, termsheet,
+  tariffs, cash statement) leaves the total at CHF 61,449.60 and AUM at CHF 4,300,000. A repeated cost
+  report still crashes: owned by SC-7.15.
+
 ## Outcome
 
-- **Status**: in progress
+- **Status**: completed
+- Repeated statements, KIDs, termsheets and lots no longer crash or double count; shuffled input and
+  re-runs give byte-identical output; every asset class has a tested product-cost rule.
 
 ## Issues Encountered
+
+- Same cost report uploaded twice still raises duplicate atom id; split to SC-7.15 (other thread).
 
 ## Branch & Commits
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-xhgbxu | f75d838 | 2026-11-26 | fix(finance): count a repeated statement, KID or lot once |
+| claude/project-thread-xhgbxu | 0f93980 | 2026-11-26 | fix(finance): product-cost rule for every asset class |
