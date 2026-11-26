@@ -199,8 +199,10 @@ def rapid(img, **kw):
     """Run the process's one RapidOCR engine (models load once, about a second; calls are serialised).
 
     RapidOCR keeps a call's ``use_*`` switches for the next calls, so every call states all three.
+    The line classifier is off by default: on dark or noisy photos it turned upright lines upside down
+    (hard photos: holdings 78 vs 64%, fees 88 vs 51%); pages are turned upright before OCR instead.
     """
-    kw = {"use_det": True, "use_cls": True, "use_rec": True, **kw}
+    kw = {"use_det": True, "use_cls": False, "use_rec": True, **kw}
     from rapidocr import RapidOCR
 
     global _RAPID

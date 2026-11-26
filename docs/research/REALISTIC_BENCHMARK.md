@@ -59,6 +59,27 @@ fix (main after #64 -> SC-5.23): fees on office scans 87.5 -> **100%**, phone ph
 fax-quality scans 18.8 -> 45.8%; holdings on fax-quality scans 77.5 -> 80.0%. Pen-marked scans (88.5% fees)
 and dark photos (51.0%) unchanged; wrong-unflagged unchanged.
 
+### Update 2026-11-26, SC-9.12 (sideways photos, dark photos)
+
+New condition `photo_sideways`: the phone held in landscape and the picture stored without the EXIF
+rotation flag (pages alternately 90 and 270 degrees). Before: 0 of 15 holdings on such a page. Pages are now
+turned so text runs across (RapidOCR text boxes, else the ink profile) and the right way up (OCR confidence
+both ways). RapidOCR's line classifier is now off: on dark photos it turned upright lines upside down.
+`parse_amount` rejects digit groups that are not thousands ("7.815.22", a misread decimal comma), which
+the app had accepted as 781,522 on dark photos.
+
+| Condition | Holdings | Fees | Wrong, not flagged |
+|---|---|---|---|
+| Phone photo | 100 | 100 (was 99.0) | 0 |
+| Sideways photo (new) | 100 (was 0 per sideways page) | 98.96 | 0 |
+| Dark, steep, blurred photo | 78.3 (was 63.8) | 87.5 (was 51.0) | 0 |
+| Office scan | 100 | 100 | 0 |
+| Fax-quality scan | 80.0 | 46.9 | 0 |
+| Pen marks | 98.3 | 89.6 | 0 |
+
+Wrong values shown without a review flag: 0 in every condition. Upside-down scans (not photos) are not
+turned yet; they are rare from a scanner feeder.
+
 ## Gates (proposed, in `pce/evaluation/realistic/__main__.py`)
 
 | Condition | words | figures | holdings | fees | wrong unflagged |
@@ -102,6 +123,6 @@ funds/ETFs, through the app's `extract()`, `analyse()` and the client report (EN
 
 ## Not covered yet
 
-Dividend yield (not a cost); FX margin and bid/ask spreads (L6) are listed but not estimated; ISIN type
-lookup (FIRDS/OpenFIGI) and automatic KID/EMT retrieval are planned (see `INSTRUMENT_DATA_SOURCES.md`);
+Dividend yield (not a cost); FX margin and bid/ask spreads (L6) are listed but not estimated; automatic KID/EMT
+retrieval is planned (ISIN type lookup done in SC-6.3) (see `INSTRUMENT_DATA_SOURCES.md`);
 fee lines on pen-marked scans still miss about 1 in 9; the app should ask for a retake when a picture is too poor.
