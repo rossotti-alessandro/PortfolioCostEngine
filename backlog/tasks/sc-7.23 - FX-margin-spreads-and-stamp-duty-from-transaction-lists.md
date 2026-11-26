@@ -1,15 +1,15 @@
 ---
 id: SC-7.23
 title: FX margin, spreads and stamp duty from transaction lists
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Compute every portfolio cost end to end"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-p3z1fq"
 pr: ""
 created_date: "2026-11-26 10:45"
-updated_date: "2026-11-26 10:45"
+updated_date: "2026-11-26 14:32"
 labels:
   - finance
 dependencies:
