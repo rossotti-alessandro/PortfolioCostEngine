@@ -33,13 +33,20 @@ PAPER = HexColor("#F7F5F0")
 PRODUCT_NAME = "FeeLens"
 W, H = A4
 M = 40  # page margin
+# Every ledger layer (finance.ledger.Layer), so the rows always add up to the total (SC-7.15).
+# A row is printed only when it holds money or an unknown.
 LAYER_NAMES = {
     "L1": "Management / advisory",
     "L2": "Custody & account",
     "L3": "Trading & FX",
     "L4": "Funds & ETFs (embedded)",
     "L5": "Structured products (embedded)",
-    "L9": "Taxes on fees",
+    "L6": "Implicit execution",
+    "L7": "Insurance wrapper",
+    "L8": "Financing",
+    "L9": "Taxes on fees & trades",
+    "L10": "One-off & switching",
+    "other": "Other",
 }
 BOUND_WORDS = {"point": "", "at_least": "at least", "at_most": "at most", "indeterminate": "known costs only"}
 STATUS = {
@@ -141,7 +148,12 @@ IT = {
     "Trading & FX": "Negoziazione e cambi",
     "Funds & ETFs (embedded)": "Fondi ed ETF (nel NAV)",
     "Structured products (embedded)": "Prodotti strutturati (nel prezzo)",
-    "Taxes on fees": "Imposte sulle commissioni",
+    "Implicit execution": "Esecuzione implicita",
+    "Insurance wrapper": "Involucro assicurativo",
+    "Financing": "Finanziamento",
+    "Taxes on fees & trades": "Imposte su commissioni e operazioni",
+    "One-off & switching": "Costi una tantum e di trasferimento",
+    "Other": "Altro",
     "Observed": "Osservato",
     "Contract": "Contratto",
     "Public list price": "Tariffa pubblica",

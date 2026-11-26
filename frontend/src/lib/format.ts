@@ -60,6 +60,9 @@ export const LAYER: Record<string, { name: string; short: string; color: string 
   other: { name: "Other", short: "Other", color: "var(--chart-taxes)" },
 };
 
+/** Display order of every layer. Group rows iterate all of them so they add up to the total (SC-7.15). */
+export const LAYER_ORDER = Object.keys(LAYER);
+
 /** Evidence status: DESIGN_SYSTEM.md §1 fixed mapping (label + icon + tone, never colour alone). */
 export const MEASUREMENT: Record<string, { label: string; it: string; tone: string; icon: string; help: string }> = {
   observed: {

@@ -5,7 +5,7 @@ import { TraceDialog, type TraceTarget, sumOf } from "@/components/Trace";
 import { ViewMenu, useHidden } from "@/components/ViewMenu";
 import { Badge, Button, Card, CardHeader, ErrorBox, Fold, Money, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { LAYER, MEASUREMENT, bps, chf, cn, knownCost, num, pct } from "@/lib/format";
+import { LAYER, LAYER_ORDER, MEASUREMENT, bps, chf, cn, knownCost, num, pct } from "@/lib/format";
 import { t, tm } from "@/lib/i18n";
 import type { Analysis, Atom, Check, MissingRequest } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,8 +23,6 @@ const COST_SECTIONS = [
   { key: "coverage", label: "Evidence coverage by bank" },
   { key: "positions", label: "Positions" },
 ];
-
-const LAYER_ORDER = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "other"];
 
 /** A layer with no counted amount is not CHF 0 when something in it is still unknown. */
 function layerFigure(known: string | undefined, unknown: boolean) {

@@ -40,7 +40,9 @@ FONTS = {
     "ReenieBeanie.ttf": ("ofl/reeniebeanie/ReenieBeanie.ttf",
                          "0ea608aa325bf9e11c9590cc0b63dcf7cd215e270784f1ebbe6fad4927b31ff8"),
 }  # fmt: skip
-VARIANTS = ("digital", "scan", "scan_poor", "photo", "photo_hard", "annotated", "handwritten")
+VARIANTS = (
+    "digital", "scan", "scan_poor", "photo", "photo_sideways", "photo_hard", "annotated", "handwritten"
+)  # fmt: skip
 INK = (20, 40, 140)
 
 
@@ -127,13 +129,23 @@ def _photo_one(page: Image.Image, rnd: random.Random, rng: np.random.Generator, 
     return buf.getvalue()
 
 
-def photos(pdf: bytes, seed: int, hard: bool = False) -> list[bytes]:
+def photos(pdf: bytes, seed: int, hard: bool = False, sideways: bool = False) -> list[bytes]:
+    """Phone photos of each page. ``sideways``: the phone held in landscape and the picture stored without
+    an EXIF rotation flag, so the text runs top to bottom (alternately 90 and 270 degrees)."""
     rnd, rng = random.Random(seed), np.random.default_rng(seed)
-    return [_photo_one(p, rnd, rng, hard) for p in render_pages(pdf, 170)]
+    shots = [_photo_one(p, rnd, rng, hard) for p in render_pages(pdf, 170)]
+    if not sideways:
+        return shots
+    out = []
+    for i, b in enumerate(shots):
+        buf = io.BytesIO()
+        Image.open(io.BytesIO(b)).rotate(90 if i % 2 == 0 else 270, expand=True).save(buf, "JPEG", quality=72)
+        out.append(buf.getvalue())
+    return out
 
 
-def photo(pdf: bytes, seed: int, hard: bool = False) -> bytes:
-    return images_to_pdf(photos(pdf, seed, hard))
+def photo(pdf: bytes, seed: int, hard: bool = False, sideways: bool = False) -> bytes:
+    return images_to_pdf(photos(pdf, seed, hard, sideways))
 
 
 def _font(rnd: random.Random, size: int) -> ImageFont.FreeTypeFont:

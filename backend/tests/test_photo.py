@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import importlib.util
 import io
 
 import numpy as np
 import pypdf
-from PIL import Image, ImageDraw
+import pytest
+from PIL import Image, ImageDraw, ImageFont
 
 from pce.extraction.photo import clean_photo, image_to_pdf, images_to_pdf, page_corners, perspective_coeffs
+
+NO_RAPIDOCR = importlib.util.find_spec("rapidocr") is None
+needs_rapidocr = pytest.mark.skipif(NO_RAPIDOCR, reason="rapidocr extra not installed")
 
 
 def _photo(angle: float = 0.0, exif_rotate: bool = False) -> bytes:
@@ -60,3 +65,46 @@ def test_several_photos_make_one_pdf_with_a_page_each() -> None:
     w, h = (float(x) for x in reader.pages[0].mediabox.upper_right)
     assert abs(w - 595) < 3 and abs(h - 842) < 4  # A4 in points
     assert pypdf.PdfReader(io.BytesIO(image_to_pdf(_photo()))).pages
+
+
+def test_photo_taken_sideways_without_exif_flag_is_turned_so_text_runs_across() -> None:
+    """SC-9.12: a landscape phone picture stored without a rotation flag read 0 of 15 holdings."""
+    page = Image.new("L", (600, 850), 255)
+    draw = ImageDraw.Draw(page)
+    for y in range(60, 800, 22):
+        draw.rectangle((40, y, 40 + (y * 7) % 400 + 120, y + 9), fill=0)  # text lines of varying length
+    for turn in (90, 270):
+        buf = io.BytesIO()
+        page.rotate(turn, expand=True).save(buf, "PNG")
+        out = clean_photo(buf.getvalue())
+        assert out.size[1] > out.size[0], turn
+
+
+@needs_rapidocr
+def test_upside_down_photo_is_turned_back() -> None:
+    """SC-9.12: the OCR reader rights each upside-down line but reverses the row order and the cells in a
+    row, so an upside-down statement gave every holding a wrong value."""
+    page = Image.new("L", (1000, 1400), 255)
+    draw = ImageDraw.Draw(page)
+    font = ImageFont.load_default(28)
+    for i, y in enumerate(range(80, 1300, 60)):
+        draw.text(
+            (60, y), f"Synthetic Fund {i} Accumulation  CH00{i:02d}1234567  1'234.{i:02d}", font=font, fill=0
+        )
+    buf = io.BytesIO()
+    page.rotate(180).save(buf, "PNG")
+    out = np.asarray(clean_photo(buf.getvalue()).resize((100, 140)), dtype=float)
+    ref = np.asarray(page.resize((100, 140)), dtype=float)
+    assert np.abs(out - ref).mean() < np.abs(out[::-1, ::-1] - ref).mean()
+
+
+@needs_rapidocr
+def test_a_detection_only_call_does_not_switch_off_reading_for_later_calls() -> None:
+    """SC-9.12: RapidOCR keeps the last call's switches; the orientation checks must not leak them."""
+    from pce.extraction import layout
+
+    page = Image.new("RGB", (600, 120), "white")
+    ImageDraw.Draw(page).text((20, 40), "Custody fee 1'234.50", font=ImageFont.load_default(28), fill="black")
+    a = np.asarray(page)
+    layout.rapid(a, use_cls=False, use_rec=False)
+    assert layout.rapid(a).txts
