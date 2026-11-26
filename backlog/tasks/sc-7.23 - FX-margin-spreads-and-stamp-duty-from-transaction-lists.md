@@ -7,9 +7,9 @@ owner: "Compute every portfolio cost end to end"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-p3z1fq"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/89"
 created_date: "2026-11-26 10:45"
-updated_date: "2026-11-26 14:40"
+updated_date: "2026-11-26 14:45"
 labels:
   - finance
 dependencies:
