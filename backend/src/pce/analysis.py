@@ -31,6 +31,7 @@ from .finance.tariff import FeeRule, Tariff, TierMethod
 
 ENGINE_VERSION = "pce-engine-0.2"
 BASE_CCY = "CHF"
+FX_REVIEW_GAP = Decimal("0.01")  # printed vs reference rate further apart than 1%: a review point
 TAX_CODES = {"VAT_ON_FEES", "STAMP_DUTY_CH"}
 EXCLUDED_FROM_COMPARISON = {
     "STAMP_DUTY_CH": "Swiss stamp duty is a tax that applies at any Swiss bank; "
@@ -399,18 +400,50 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 fx[ik][m.group(1)] = (D(f["value"]), f["id"])
     missing_fx: dict[tuple[str, str], Decimal] = defaultdict(lambda: ZERO)
     used_fx: set[tuple[str, str]] = set()
+    # SC-7.11: where no rate is printed, the ECB reference rate on the valuation date (looked up by the caller
+    # with currency codes and dates only): {date: {ccy: {rate, rate_date, source, url}}}.
+    reference_fx: dict[str, dict[str, dict]] = prospect.get("reference_fx") or {}
+    used_ref: dict[tuple[str, str], dict] = {}
+    val_dates = sorted(
+        (d.get("profile") or {}).get("as_of") or ""
+        for d in documents
+        if d["doc_type"] == "portfolio_statement"
+    )
+
+    def valuation_date(ik: str) -> str | None:
+        """The bank's statement date, else the latest statement date of the prospect."""
+        own = [
+            (d.get("profile") or {}).get("as_of")
+            for d in documents
+            if d["doc_type"] == "portfolio_statement"
+            and inst_key((d.get("profile") or {}).get("institution")) == ik
+        ]
+        return max((x for x in own if x), default=None) or (
+            val_dates[-1] if val_dates and val_dates[-1] else None
+        )
 
     def to_base(amount: Decimal, ccy: str | None, ik: str) -> tuple[Decimal | None, str, tuple[str, ...]]:
-        """Amount in CHF, the conversion note and the rate's fact id; None if no rate was printed."""
+        """Amount in CHF, the conversion note and the rate's fact id; None if no rate is known.
+
+        A rate printed on the client's documents wins. Without one, the ECB reference rate on the valuation
+        date (SC-7.11). Without either, the amount stays unconverted and is never counted as zero.
+        """
         if not ccy or ccy == BASE_CCY:
             return amount, "", ()
         hit = fx.get(ik, {}).get(ccy)
-        if hit is None:
+        if hit is not None:
+            rate, fid = hit
+            used_fx.add((ik, ccy))
+            return money(amount * rate), f"{ccy} {amount:,.2f} × {rate} {ccy}/{BASE_CCY}", (str(fid),)
+        day = valuation_date(ik)
+        ref = reference_fx.get(day or "", {}).get(ccy)
+        if ref is None:
             missing_fx[(ik, ccy)] += amount
             return None, "", ()
-        rate, fid = hit
-        used_fx.add((ik, ccy))
-        return money(amount * rate), f"{ccy} {amount:,.2f} × {rate} {ccy}/{BASE_CCY}", (str(fid),)
+        used_ref[(ik, ccy)] = ref
+        rate = D(ref["rate"])
+        note = f"{ccy} {amount:,.2f} × {rate} {ccy}/{BASE_CCY} ({ref['source']}, {ref['rate_date']})"
+        return money(amount * rate), note, ()
 
     # ------------------------------------------------------------ institutions & positions
     holdings: list[dict] = []
@@ -1455,6 +1488,29 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     [fid],
                 )
             )
+            ref = reference_fx.get(valuation_date(ik) or "", {}).get(ccy)
+            if ref and abs(rate - D(ref["rate"])) > D(ref["rate"]) * FX_REVIEW_GAP:
+                checks.append(
+                    Check(
+                        f"fx_gap:{ik}:{ccy}",
+                        f"{ik}: printed {ccy}/{BASE_CCY} rate differs from the reference rate",
+                        "warn",
+                        f"Printed {rate} vs {ref['source']} {ref['rate']} on {ref['rate_date']}: more than "
+                        f"{FX_REVIEW_GAP * 100}% apart. The printed rate is used; check it was read right.",
+                        [fid],
+                    )
+                )
+    for (ik, ccy), ref in sorted(used_ref.items()):
+        checks.append(
+            Check(
+                f"fx_ref:{ik}:{ccy}",
+                f"{ik}: {ccy} amounts converted at the reference rate",
+                "info",
+                f"No {ccy}/{BASE_CCY} rate is printed on the documents, so {ccy} amounts are converted at "
+                f"{ref['rate']} ({ref['source']}, {ref['rate_date']}, {ref['url']}). Upload a page with the "
+                "bank's own rate to replace it.",
+            )
+        )
     for (ik, ccy), amt in missing_fx.items():
         checks.append(
             Check(
@@ -1462,7 +1518,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 f"{ik}: no {ccy}/{BASE_CCY} rate on the documents",
                 "fail",
                 f"{ccy} {amt:,.2f} could not be converted and is left out of every total. "
-                "No external rate is fetched.",
+                "No rate is printed and no reference rate is available.",
             )
         )
         requests.append(

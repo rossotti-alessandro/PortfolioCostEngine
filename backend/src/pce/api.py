@@ -14,6 +14,7 @@ import os
 import re
 import time
 import zipfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -27,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from . import __version__, book_of_record, erasure, permissions, scan_upload, security
 from .admin import router as admin_router
-from .analysis import analyse, listed_assets
+from .analysis import BASE_CCY, analyse, listed_assets
 from .audit import router as audit_router
 from .crm.router import router as crm_router
 from .db import (
@@ -47,6 +48,7 @@ from .extraction import documents
 from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
+from .finance import fx
 from .finance.money import D
 from .instruments import registry
 from .pipeline_view import document_pipeline
@@ -161,6 +163,22 @@ def refresh_book(db: Session, c: Ctx, p: Prospect) -> None:
     book_of_record.sync(db, c.tenant, p.id, compute(db, c, p))
 
 
+def _reference_fx(docs: Sequence[Document], facts: Sequence[FactRow]) -> dict[str, dict[str, dict]]:
+    """ECB reference rates for every foreign currency on every statement date (SC-7.11).
+
+    Only currency codes and dates are sent (ADR 0004). Rates are cached on disk, so a read asks nothing new.
+    """
+    dates = {
+        (d.profile or {}).get("as_of")
+        for d in docs
+        if (d.doc_type_override or d.doc_type) == "portfolio_statement"
+    }
+    ccys = {f.currency for f in facts if f.currency and f.currency != BASE_CCY}
+    if not ccys:
+        return {}
+    return fx.reference_rates({day: ccys for day in dates if day}, BASE_CCY)
+
+
 def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     docs = db.scalars(
         select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)
@@ -175,7 +193,11 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
         else []
     )
     result = analyse(
-        {"domicile": p.domicile, "base_ccy": p.base_ccy},
+        {
+            "domicile": p.domicile,
+            "base_ccy": p.base_ccy,
+            "reference_fx": _reference_fx(docs, facts),
+        },
         [
             {
                 "id": d.id,
