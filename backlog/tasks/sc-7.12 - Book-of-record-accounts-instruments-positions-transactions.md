@@ -81,3 +81,9 @@ Shared contract (db/**): one story at a time; migration path from current facts 
 - Rebuilds happen only when documents or facts change, never on a read.
 
 ## Issues Encountered
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-7crdzy | 9a347d2 | 2026-11-26 | Account, Instrument, Position tables, builder, tests |
