@@ -1,15 +1,15 @@
 ---
 id: SC-7.11
 title: Prospect base currency and reference FX fallback
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Compute every portfolio cost end to end"
+model: "claude-opus-5-5"
+progress: 5
+branch: "wip-sc-7.11"
 pr: ""
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:50"
+updated_date: "2026-11-26 09:57"
 labels:
   - finance
 dependencies: []
