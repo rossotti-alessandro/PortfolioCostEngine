@@ -64,50 +64,96 @@ def inst_key(name: str | None) -> str:
 
 # ETF before the structured-product words. "Xtrackers" contains "tracker", and a UCITS ETF is not
 # a certificate: those names are funds, so a missing KID is an ongoing charge, not an issuer margin.
-_ETF_NAME = re.compile(r"\betf\b|xtrackers|\bspdr\b")
+# An exchange-traded commodity (ETC) carries a running fee like an ETF, so it is classed with them.
+_ETF_NAME = re.compile(r"\bet[fc]\b|xtrackers|\bspdr\b")
+# Words that only a structured product uses. The weak ones (note, tracker, convertible) lose to fund and
+# bond words: "US Treasury Note" is a bond and "Global Convertible Bond Fund" is a fund.
 _STRUCTURED_NAME = re.compile(
-    r"certificate|certificato|zertifikat|barrier|mini-?future|convertible|\bnote\b|\btracker\b"
+    r"certificate|certificato|zertifikat|barrier|mini-?future|reverse convertible|\bwarrants?\b"
 )
+_WEAK_STRUCTURED_NAME = re.compile(r"convertible|\bnotes?\b|\btracker\b")
+_FUND_NAME = re.compile(r"fund|fonds|fondo|sicav|\bfds?\b")
+_BOND_NAME = re.compile(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b")
+# Listed options and futures: their costs are trading costs, there is no ongoing product charge.
+_DERIVATIVE_NAME = re.compile(r"\boptions?\b|\bopzion[ei]\b|\bcall\b|\bput\b|\bfutures?\b")
+# Physical precious metal (bars, coins, metal accounts): custody, not an embedded product cost.
+_METAL_NAME = re.compile(r"gold|silver|platin|palladi|\boro\b|argento|edelmetall")
+_PHYSICAL_NAME = re.compile(r"\bbars?\b|barren|lingott|\bkg\b|\boz\b|unze|\bcoins?\b|münze|account|konto")
+# A bank's own category column, in the languages of the corpus. Order matters: first match wins.
+_CATEGORY = [
+    ("STRUCTURED", re.compile(r"struct|certif|zertif|strutt")),
+    ("ETF", re.compile(r"\bet[fpc]s?\b")),
+    ("FUND", re.compile(r"fund|fond|sicav|ucits|hedge|private equity")),
+    ("DERIVATIVE", re.compile(r"deriv|option|future|opzion")),
+    ("COMMODITY", re.compile(r"commodit|precious|metal|metall|materie prime|rohstoff")),
+    ("BOND", re.compile(r"bond|fixed income|obblig|anleih|oblig|reddito fisso|renten")),
+    ("EQUITY", re.compile(r"equit|stock|share|azion|aktie|action")),
+    ("CASH", re.compile(r"cash|liquid|account|conto|konto|compte|deposit")),
+]
+_PACKAGED = ("ETF", "FUND", "STRUCTURED")
 
 
-def infer_asset_class(name: str, given: str | None) -> tuple[str, bool]:
-    """Guess a holding's class from its name.
-
-    An explicit class on the fact is kept. Otherwise an ETF (the word, a UCITS ETF, or the Xtrackers
-    range) is a fund/ETF even when the name also contains a structured-product syllable. Certificate,
-    barrier reverse and mini-future stay structured when the name is not an ETF.
-    """
-    if given:
-        g = given.upper()
-        return ("STRUCTURED" if g.startswith("STRUCT") else g), False
+def _class_from_name(name: str) -> str:
     n = name.lower()
     if _ETF_NAME.search(n):
-        return "ETF", True
+        return "ETF"
     if _STRUCTURED_NAME.search(n):
-        return "STRUCTURED", True
+        return "STRUCTURED"
     # "FD" / "FDS" is how US statements abbreviate a fund, including a bond fund. Checked before the
     # bond words so "Total Return Bond FD" is a fund, not a plain bond.
-    if re.search(r"fund|fonds|fondo|sicav|\bfds?\b", n):
-        return "FUND", True
-    if re.search(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b", n):
-        return "BOND", True
+    if _FUND_NAME.search(n):
+        return "FUND"
+    if _BOND_NAME.search(n):
+        return "BOND"
+    if _DERIVATIVE_NAME.search(n):
+        return "DERIVATIVE"
+    if _WEAK_STRUCTURED_NAME.search(n):
+        return "STRUCTURED"
     if re.search(r"\bucits\b", n):
-        return "ETF", True
+        return "ETF"
+    if _METAL_NAME.search(n) and _PHYSICAL_NAME.search(n):
+        return "COMMODITY"
     if re.search(r"account|cash|liquid|conto|konto|compte", n):
-        return "CASH", True
-    return "EQUITY", True
+        return "CASH"
+    return "EQUITY"
+
+
+def _class_from_category(given: str) -> str | None:
+    g = given.lower()
+    return next((cls for cls, rx in _CATEGORY if rx.search(g)), None)
+
+
+def infer_asset_class(name: str, given: str | None, authoritative: bool = False) -> tuple[str, bool]:
+    """A holding's class, and whether it was inferred rather than stated.
+
+    ``authoritative`` is a public-register class (FIRDS CFI, OpenFIGI): kept as is. Otherwise ``given``
+    is the bank's own category column, which is often the exposure, not the instrument: an ETF listed
+    under "Equities" is still an ETF with an ongoing charge, so a fund, ETF or certificate name wins over
+    an equity, bond or commodity category. An unrecognised category falls back to the name.
+    """
+    if given and authoritative:
+        g = given.upper()
+        return ("STRUCTURED" if g.startswith("STRUCT") else g), False
+    by_name = _class_from_name(name)
+    cat = _class_from_category(given) if given else None
+    if cat is None:
+        return by_name, True
+    if cat in ("EQUITY", "BOND", "COMMODITY") and by_name in _PACKAGED:
+        return by_name, True
+    return cat, False
 
 
 def _product_gap(holding: dict) -> bool:
     """True when a missing KID must be an unknown product-cost atom, never a silent zero.
 
-    Equity, cash and plain bonds have no ongoing charge, so they get no made-up TER (a bond fund is
-    classed FUND by its name, and a KID for the bond's ISIN makes it a FUND before this check; SC-9.10).
-    A fund or ETF does, with or without an ISIN. Any other holding does only when its ISIN is
-    checksum-valid, so a joined KID can be asked for by share class.
+    Equity, cash, plain bonds, listed options and futures and physical metal have no ongoing charge, so
+    they get no made-up TER (a bond fund is classed FUND by its name, and a KID for the bond's ISIN
+    makes it a FUND before this check; SC-9.10). A fund or ETF does, with or without an ISIN. Any
+    other holding does only when its ISIN is checksum-valid, so a joined KID can be asked for by
+    share class.
     """
     kind = holding["asset_class"]
-    if kind in ("CASH", "EQUITY", "BOND"):
+    if kind in ("CASH", "EQUITY", "BOND", "DERIVATIVE", "COMMODITY"):
         return False
     if kind in ("FUND", "ETF"):
         return True
@@ -410,7 +456,10 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             if orig == 0:
                 continue  # a printed 0 is not a CHF market value; showing it as CHF 0 pretends it was valued
             val, fx_note, _ = to_base(orig, f.get("currency"), ik)
-            ac, inferred = infer_asset_class(f["label"], (f.get("extra") or {}).get("asset_class"))
+            ex = f.get("extra") or {}
+            ac, inferred = infer_asset_class(
+                f["label"], ex.get("asset_class"), authoritative=bool(ex.get("asset_class_source"))
+            )
             # No printed rate: keep the position so the pipeline can show it, but do not invent CHF.
             holdings.append(
                 {

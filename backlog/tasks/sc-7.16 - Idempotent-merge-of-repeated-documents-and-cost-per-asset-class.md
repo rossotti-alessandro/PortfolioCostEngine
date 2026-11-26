@@ -21,6 +21,7 @@ paths_owned:
   - "backend/src/pce/instruments/registry.py"
   - "backend/tests/test_merge_idempotency.py"
   - "backend/tests/test_asset_classes.py"
+  - "backend/tests/test_extraction_correctness.py"
 spec_ref: docs/research/FEE_TAXONOMY.md
 rule_refs:
   - ".claude/rules/finance.md"
