@@ -238,7 +238,8 @@ def make_session_factory(url: str | None = None):
     url = url or os.environ.get("PCE_DATABASE_URL") or f"sqlite:///{data_dir() / 'pce.sqlite'}"
     engine = create_engine(
         url,
-        connect_args={"check_same_thread": False} if url.startswith("sqlite") else {},
+        # timeout: a writer waits up to 30 s for SQLite's single write lock instead of failing after 5 s.
+        connect_args={"check_same_thread": False, "timeout": 30} if url.startswith("sqlite") else {},
         json_serializer=lambda o: json.dumps(o, default=str),
     )
     Base.metadata.create_all(engine)
