@@ -292,6 +292,46 @@ class MissingRequest:
     document_type: str
 
 
+def _transactions(documents: list[dict], by_doc: dict[int, list[dict]]) -> list[dict]:
+    """Trades from transaction lists (SC-7.18), one per trade. A second list covering the same trades adds
+    none: per bank, each identical trade counts as often as the list printing it most often (two equal
+    fills on one day in one list stay two)."""
+    kept: dict[tuple, list[dict]] = {}
+    for d in documents:
+        ik = inst_key((d.get("profile") or {}).get("institution"))
+        here: dict[tuple, list[dict]] = defaultdict(list)
+        for f in by_doc[d["id"]]:
+            if f["kind"] == "transaction" and f["value"] is not None:
+                x = f.get("extra") or {}
+                key = (
+                    ik,
+                    x.get("booking_date"),
+                    x.get("side"),
+                    f.get("isin"),
+                    f.get("currency"),
+                    str(D(f["value"])),
+                )
+                here[key].append(f)
+        for key, fs in here.items():
+            if len(fs) > len(kept.get(key, [])):
+                kept[key] = fs
+    rows = [
+        {
+            "institution": key[0],
+            "booking_date": key[1],
+            "side": key[2],
+            "isin": key[3],
+            "currency": key[4] or BASE_CCY,
+            "gross": f["value"],
+            "quantity": (f.get("extra") or {}).get("quantity"),
+            "fact_id": f["id"],
+        }
+        for key, fs in kept.items()
+        for f in fs
+    ]
+    return sorted(rows, key=lambda r: (r["booking_date"] or "", r["fact_id"]))
+
+
 def _d(v: Any) -> Decimal | None:
     return None if v in (None, "") else D(v)
 
@@ -1787,6 +1827,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             "coverage": coverage,
             "hidden_costs": [asdict(h) for h in hidden],
             "hidden_range": hidden_range,
+            "transactions": _transactions(documents, by_doc),
             "checks": [asdict(c) for c in checks],
             "requests": [asdict(r) for r in requests],
             "comparison_exclusions": excluded,

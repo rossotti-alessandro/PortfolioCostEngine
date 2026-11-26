@@ -30,6 +30,7 @@ from .db import (
     Prospect,
     RequestState,
     Review,
+    Transaction,
 )
 
 # A fixed list, not free text: the reason is kept after the deletion and must not carry personal data.
@@ -48,7 +49,7 @@ def erase_prospect(
     fact_ids = list(db.scalars(select(FactRow.id).where(FactRow.document_id.in_(doc_ids)))) if doc_ids else []
     counts: dict[str, int] = {"documents": len(doc_ids), "facts": len(fact_ids)}
     # derived book of record first: its rows point at facts and the prospect
-    for model in (Position, Account):
+    for model in (Transaction, Position, Account):
         db.execute(delete(model).where(model.prospect_id == pid, model.tenant_id == tenant))
     if fact_ids:
         counts["reviews"] = db.execute(delete(Review).where(Review.fact_id.in_(fact_ids))).rowcount or 0

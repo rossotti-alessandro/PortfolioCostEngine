@@ -10,6 +10,7 @@ export const KIND_LABEL: Record<string, string> = {
   doc_total: "Totals",
   fee_observed: "Fees charged",
   cash_debit: "Fee debits",
+  transaction: "Trades",
   fee_rule: "Contract terms",
   product_cost: "Product costs",
   reported: "Reported by bank",
