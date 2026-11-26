@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import io
 
 import numpy as np
@@ -10,6 +11,9 @@ import pytest
 from PIL import Image, ImageDraw, ImageFont
 
 from pce.extraction.photo import clean_photo, image_to_pdf, images_to_pdf, page_corners, perspective_coeffs
+
+NO_RAPIDOCR = importlib.util.find_spec("rapidocr") is None
+needs_rapidocr = pytest.mark.skipif(NO_RAPIDOCR, reason="rapidocr extra not installed")
 
 
 def _photo(angle: float = 0.0, exif_rotate: bool = False) -> bytes:
@@ -76,7 +80,7 @@ def test_photo_taken_sideways_without_exif_flag_is_turned_so_text_runs_across() 
         assert out.size[1] > out.size[0], turn
 
 
-@pytest.mark.ocr
+@needs_rapidocr
 def test_upside_down_photo_is_turned_back() -> None:
     """SC-9.12: the OCR reader rights each upside-down line but reverses the row order and the cells in a
     row, so an upside-down statement gave every holding a wrong value."""
@@ -94,7 +98,7 @@ def test_upside_down_photo_is_turned_back() -> None:
     assert np.abs(out - ref).mean() < np.abs(out[::-1, ::-1] - ref).mean()
 
 
-@pytest.mark.ocr
+@needs_rapidocr
 def test_a_detection_only_call_does_not_switch_off_reading_for_later_calls() -> None:
     """SC-9.12: RapidOCR keeps the last call's switches; the orientation checks must not leak them."""
     from pce.extraction import layout
