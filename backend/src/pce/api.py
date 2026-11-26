@@ -581,11 +581,15 @@ def seed_demo(db: DB, c: C) -> dict:
             db.add(p)
             db.flush()
             audit(db, c, p.id, "prospect.created", code=p.code, synthetic=True)
+            db.commit()
         files = [f for f in sorted(folder.iterdir()) if f.is_file()] + [f for f in extras if f.exists()]
         for f in files:
             if f.suffix in ALLOWED:
                 _d, new = ingest(db, c, p, f.name, f.read_bytes())
                 added += int(new)
+                # One commit per document: SQLite has one writer, and holding it for the whole seed
+                # (minutes of OCR on the demo host) made every sign-in fail with "database is locked".
+                db.commit()
         refresh_book(db, c, p)
         ids.append(p.id)
     db.commit()
