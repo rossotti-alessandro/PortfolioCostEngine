@@ -12,7 +12,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 
-from .implicit import cash_drag_range
+from .implicit import cash_drag_range, fx_margin, stamp_duty
 from .money import ZERO, D
 
 
@@ -36,12 +36,17 @@ def hidden_costs(
     base_ccy: str,
     observed: set[tuple[str, str]],
     cash_rates: dict[str, dict] | None = None,
+    trades: list[dict] | None = None,
+    trade_years: dict[str, Decimal | None] | None = None,
+    ref_fx: dict[str, dict[str, dict]] | None = None,
 ) -> list[HiddenCost]:
     """Expected implicit costs per institution.
 
     holdings: analysis holdings ({institution, asset_class, currency, value}); observed: (institution,
     fee_code) pairs already evidenced, which are not listed again; cash_rates: 12-month benchmark averages
-    per currency from ``implicit.benchmark_rates``.
+    per currency from ``implicit.benchmark_rates``; trades: analysis transactions (SC-7.18); trade_years:
+    years each bank's transaction lists cover, None when too short or unknown to annualise; ref_fx: ECB
+    reference rates by date (SC-7.11).
     """
     by_inst: dict[str, list[dict]] = defaultdict(list)
     for h in holdings:
@@ -51,9 +56,41 @@ def hidden_costs(
         vals = [h["value"] for h in rows if h["value"] is not None]
         return sum(vals, ZERO) if vals else None
 
+    by_trades: dict[str, list[dict]] = defaultdict(list)
+    for t in trades or []:
+        by_trades[t["institution"]].append(t)
+
+    def measured(
+        ik: str,
+        label: str,
+        code: str,
+        costs: list[Decimal | None],
+        what: str,
+        how: str,
+        note: str,
+        needs: str,
+        base_value: Decimal | None,
+    ) -> HiddenCost | None:
+        """A row estimated from the trades, annualised over the period the lists cover (SC-7.23)."""
+        known = [c for c in costs if c is not None]
+        if not known:
+            return None
+        total, years = sum(known, ZERO), (trade_years or {}).get(ik)
+        amount = (total / years if years else total).quantize(Decimal("0.01"))
+        span = (
+            "a year" if years else "over the listed trades only (period too short or unknown: a lower bound)"
+        )
+        skipped = len(costs) - len(known)
+        return HiddenCost(
+            f"hidden:{ik}:{code}", code, label, ik, base_value, needs,
+            note + (f" {skipped} {what} without data for an estimate are not counted." if skipped else ""),
+            "range", amount, amount, f"{len(known)} {what}: {how}, {span}",
+        )  # fmt: skip
+
     out: list[HiddenCost] = []
-    for ik in sorted(by_inst):
+    for ik in sorted(set(by_inst) | set(by_trades)):
         rows = by_inst[ik]
+        ik_trades = by_trades[ik]
         foreign = [h for h in rows if (h["currency"] or base_ccy) != base_ccy]
         invested = [h for h in rows if h["asset_class"] != "CASH"]
         cash_by_ccy: dict[str, list[dict]] = defaultdict(list)
@@ -97,7 +134,17 @@ def hidden_costs(
                     f"(average of {n} months {first} to {last}; {ref['source']})",
                 )
             )
-        if foreign and (ik, "FX_MARGIN") not in observed:
+        fx_trades = [t for t in ik_trades if t["side"] == "fx"]
+        fx_row = measured(
+            ik, "FX margin on currency exchanges", "FX_MARGIN",
+            [fx_margin(t, base_ccy, ref_fx or {}) for t in fx_trades], "conversions",
+            "|rate applied − ECB reference rate that day| × amount",
+            "The ECB fixes once a day: the gap also holds the market move between the fixing and the trade.",
+            "FX confirmations, or a transaction list showing the rate applied", basis(foreign),
+        )  # fmt: skip
+        if fx_row and (ik, "FX_MARGIN") not in observed:
+            out.append(fx_row)
+        elif (foreign or fx_trades) and (ik, "FX_MARGIN") not in observed:
             out.append(
                 HiddenCost(
                     f"hidden:{ik}:FX_MARGIN",
@@ -122,7 +169,17 @@ def hidden_costs(
                     "Only if the portfolio traded during the year. Market cost, not bank revenue.",
                 )
             )
-        if invested and (ik, "STAMP_DUTY_CH") not in observed:
+        stamp_row = measured(
+            ik, "Swiss stamp duty on trades", "STAMP_DUTY_CH",
+            [stamp_duty(t, base_ccy, ref_fx or {}) for t in ik_trades if t["side"] in ("buy", "sell")],
+            "trades", "trade value × 0.075% (Swiss securities) or 0.15% (foreign), the client's half of the "
+            "transfer tax (StG art. 16)",
+            "Exempt trades (money-market paper, new issues) would lower it.",
+            "Transaction list or trade confirmations", basis(invested),
+        )  # fmt: skip
+        if stamp_row and (ik, "STAMP_DUTY_CH") not in observed:
+            out.append(stamp_row)
+        elif (invested or ik_trades) and (ik, "STAMP_DUTY_CH") not in observed:
             out.append(
                 HiddenCost(
                     f"hidden:{ik}:STAMP_DUTY_CH",

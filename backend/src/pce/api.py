@@ -164,7 +164,7 @@ def refresh_book(db: Session, c: Ctx, p: Prospect) -> None:
 
 
 def _reference_fx(docs: Sequence[Document], facts: Sequence[FactRow]) -> dict[str, dict[str, dict]]:
-    """ECB reference rates for every foreign currency on every statement date (SC-7.11).
+    """ECB reference rates for every foreign currency on every statement (SC-7.11) and trade (SC-7.23) date.
 
     Only currency codes and dates are sent (ADR 0004). Rates are cached on disk, so a read asks nothing new.
     """
@@ -174,9 +174,15 @@ def _reference_fx(docs: Sequence[Document], facts: Sequence[FactRow]) -> dict[st
         if (d.doc_type_override or d.doc_type) == "portfolio_statement"
     }
     ccys = {f.currency for f in facts if f.currency and f.currency != BASE_CCY}
-    if not ccys:
-        return {}
-    return fx.reference_rates({day: ccys for day in dates if day}, BASE_CCY)
+    needs: dict[str, set[str]] = {day: set(ccys) for day in dates if day and ccys}
+    for f in facts:  # SC-7.23: each trade's currencies on its booking date, for FX margin and stamp duty
+        x = f.extra or {}
+        if f.kind == "transaction" and x.get("booking_date"):
+            needs.setdefault(x["booking_date"], set()).update(
+                {f.currency or BASE_CCY, *(x.get("pair") or [])}
+            )
+    needs = {day: c - {BASE_CCY} for day, c in needs.items() if c - {BASE_CCY}}
+    return fx.reference_rates(needs, BASE_CCY) if needs else {}
 
 
 def _cash_rates(docs: Sequence[Document]) -> dict[str, dict]:

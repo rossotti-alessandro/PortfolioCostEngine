@@ -732,13 +732,36 @@ def _trade_fact(ln: Line, page: PageInfo, day: str, ccy: str | None, n: int) -> 
                 continue
     if not nums:
         return None
-    gross, quantity = nums[-1], None
+    extra: dict = {"booking_date": day, "side": side, "quantity": None}
+    codes = [c.text.strip() for c in ln.cells[1:] if c.text.strip() in CURRENCIES]
+    pair = re.search(r"\b([A-Z]{3})\s*/\s*([A-Z]{3})\b", text)
+    if side == "fx" and pair:
+        # SC-7.23: the applied rate is the number printed with 4+ decimals; the amount is in the first
+        # currency of the pair unless the two amounts on the line say otherwise (amount × rate = other).
+        rates = [x for x in nums if -x.as_tuple().exponent >= 4]
+        amounts = [x for x in nums if x not in rates]
+        if len(rates) == 1 and amounts:
+            rate, amt = rates[0], amounts[-1]
+            if len(amounts) >= 2 and abs(amounts[-2] * rate - amounts[-1]) <= amounts[-1] * _QTY_TOLERANCE:
+                amt = amounts[-2]
+            extra |= {"pair": [pair.group(1), pair.group(2)], "rate": str(rate)}
+            return Fact(
+                key=f"trade:{n}",
+                kind="transaction",
+                field="gross_amount",
+                label=text,
+                value=str(amt),
+                currency=pair.group(1),
+                measurement="observed",
+                extra=extra,
+                evidence=_ev(ln, page),
+            )
+    gross = nums[-1]
     if len(nums) >= 3:
         qty, price = nums[-3], nums[-2]
         # shares: quantity × price; bonds: nominal × price in %. Anything else: quantity not trusted.
         if any(abs(qty * price / k - gross) <= gross * _QTY_TOLERANCE for k in (1, 100)):
-            quantity = str(qty)
-    codes = [c.text.strip() for c in ln.cells[1:] if c.text.strip() in CURRENCIES]
+            extra["quantity"] = str(qty)
     return Fact(
         key=f"trade:{n}",
         kind="transaction",
@@ -748,7 +771,7 @@ def _trade_fact(ln: Line, page: PageInfo, day: str, ccy: str | None, n: int) -> 
         currency=codes[0] if codes else ccy or "CHF",
         isin=hit[1] if hit else None,
         measurement="observed",
-        extra={"booking_date": day, "side": side, "quantity": quantity},
+        extra=extra,
         evidence=_ev(ln, page),
     )
 

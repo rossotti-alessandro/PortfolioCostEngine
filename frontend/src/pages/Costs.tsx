@@ -283,7 +283,8 @@ function HiddenRow({ a }: { a: Analysis }) {
               {": "}
               {h.status === "range" ? (
                 <>
-                  {chf(h.low ?? "0")} – {chf(h.high ?? "0")} <span className="block">{h.method}</span>
+                  {h.low === h.high ? chf(h.high ?? "0") : `${chf(h.low ?? "0")} – ${chf(h.high ?? "0")}`}{" "}
+                  <span className="block">{h.method}</span>
                 </>
               ) : (
                 t("not estimated; needs {doc}", { doc: t(h.needs) })
