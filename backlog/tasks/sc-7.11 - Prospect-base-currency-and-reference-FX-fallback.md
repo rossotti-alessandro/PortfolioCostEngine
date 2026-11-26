@@ -83,5 +83,6 @@ exists (extraction gap, not this story). Synthetic tests: `tests/test_fx_fallbac
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-p3z1fq | 2cb422a | 2026-11-26 | ECB reference FX fallback, review point on printed-vs-reference gap |
 
 ## Issues Encountered
