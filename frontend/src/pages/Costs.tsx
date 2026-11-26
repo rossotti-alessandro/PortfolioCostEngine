@@ -213,6 +213,22 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
             </button>
           </dd>
         </div>
+        {Number(L.one_off_known) > 0 && (
+          <div className="flex items-baseline justify-between gap-3 px-6 py-3.5">
+            <dt className="text-muted">{t("Paid once, not in the annual total")}</dt>
+            <dd>
+              <button
+                type="button"
+                className="text-[17px] font-semibold text-navy-900 hover:underline"
+                onClick={() =>
+                  sum(t("Paid once, not in the annual total"), L.one_off_known, (x) => x.role === "one_off")
+                }
+              >
+                <Money value={chf(L.one_off_known)} />
+              </button>
+            </dd>
+          </div>
+        )}
         <div className="px-6 py-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted">{t("Evidence coverage")}</dt>
