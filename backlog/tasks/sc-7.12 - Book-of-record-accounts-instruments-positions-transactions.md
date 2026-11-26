@@ -7,9 +7,9 @@ owner: "Design complete portfolio cost protocol"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-7crdzy"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/81"
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-26 00:46"
+updated_date: "2026-11-26 01:00"
 labels:
   - finance
   - db
