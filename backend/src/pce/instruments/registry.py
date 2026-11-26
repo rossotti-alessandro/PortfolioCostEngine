@@ -46,10 +46,12 @@ def class_from_cfi(cfi: str) -> str | None:
         return "ETF"
     if cfi.startswith("C"):
         return "FUND"
-    if cfi.startswith(("DS", "DE", "RW")):  # structured instruments, warrants
+    if cfi.startswith(("DS", "DE", "RW", "RF")):  # structured instruments, warrants, mini-futures
         return "STRUCTURED"
     if cfi.startswith("D"):
         return "BOND"
+    if cfi.startswith(("O", "F", "H", "J", "S")):  # options, futures, OTC derivatives, forwards, swaps
+        return "DERIVATIVE"
     return None
 
 
@@ -64,6 +66,8 @@ def class_from_figi(item: dict) -> str | None:
         return "ETF"
     if t2 in ("warrant",) or "structured" in t1 or "certificate" in t1:
         return "STRUCTURED"
+    if t2 in ("option", "future") or sector == "comdty":
+        return "DERIVATIVE"
     if t2 in ("common stock", "depositary receipt", "preference", "pfd") or (sector == "equity" and not t2):
         return "EQUITY"
     if sector in ("govt", "corp", "muni") or t2 in ("corp", "govt"):

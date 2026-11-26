@@ -65,50 +65,96 @@ def inst_key(name: str | None) -> str:
 
 # ETF before the structured-product words. "Xtrackers" contains "tracker", and a UCITS ETF is not
 # a certificate: those names are funds, so a missing KID is an ongoing charge, not an issuer margin.
-_ETF_NAME = re.compile(r"\betf\b|xtrackers|\bspdr\b")
+# An exchange-traded commodity (ETC) carries a running fee like an ETF, so it is classed with them.
+_ETF_NAME = re.compile(r"\bet[fc]\b|xtrackers|\bspdr\b")
+# Words that only a structured product uses. The weak ones (note, tracker, convertible) lose to fund and
+# bond words: "US Treasury Note" is a bond and "Global Convertible Bond Fund" is a fund.
 _STRUCTURED_NAME = re.compile(
-    r"certificate|certificato|zertifikat|barrier|mini-?future|convertible|\bnote\b|\btracker\b"
+    r"certificate|certificato|zertifikat|barrier|mini-?future|reverse convertible|\bwarrants?\b"
 )
+_WEAK_STRUCTURED_NAME = re.compile(r"convertible|\bnotes?\b|\btracker\b")
+_FUND_NAME = re.compile(r"fund|fonds|fondo|sicav|\bfds?\b")
+_BOND_NAME = re.compile(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b")
+# Listed options and futures: their costs are trading costs, there is no ongoing product charge.
+_DERIVATIVE_NAME = re.compile(r"\boptions?\b|\bopzion[ei]\b|\bcall\b|\bput\b|\bfutures?\b")
+# Physical precious metal (bars, coins, metal accounts): custody, not an embedded product cost.
+_METAL_NAME = re.compile(r"gold|silver|platin|palladi|\boro\b|argento|edelmetall")
+_PHYSICAL_NAME = re.compile(r"\bbars?\b|barren|lingott|\bkg\b|\boz\b|unze|\bcoins?\b|münze|account|konto")
+# A bank's own category column, in the languages of the corpus. Order matters: first match wins.
+_CATEGORY = [
+    ("STRUCTURED", re.compile(r"struct|certif|zertif|strutt")),
+    ("ETF", re.compile(r"\bet[fpc]s?\b")),
+    ("FUND", re.compile(r"fund|fond|sicav|ucits|hedge|private equity")),
+    ("DERIVATIVE", re.compile(r"deriv|option|future|opzion")),
+    ("COMMODITY", re.compile(r"commodit|precious|metal|metall|materie prime|rohstoff")),
+    ("BOND", re.compile(r"bond|fixed income|obblig|anleih|oblig|reddito fisso|renten")),
+    ("EQUITY", re.compile(r"equit|stock|share|azion|aktie|action")),
+    ("CASH", re.compile(r"cash|liquid|account|conto|konto|compte|deposit")),
+]
+_PACKAGED = ("ETF", "FUND", "STRUCTURED")
 
 
-def infer_asset_class(name: str, given: str | None) -> tuple[str, bool]:
-    """Guess a holding's class from its name.
-
-    An explicit class on the fact is kept. Otherwise an ETF (the word, a UCITS ETF, or the Xtrackers
-    range) is a fund/ETF even when the name also contains a structured-product syllable. Certificate,
-    barrier reverse and mini-future stay structured when the name is not an ETF.
-    """
-    if given:
-        g = given.upper()
-        return ("STRUCTURED" if g.startswith("STRUCT") else g), False
+def _class_from_name(name: str) -> str:
     n = name.lower()
     if _ETF_NAME.search(n):
-        return "ETF", True
+        return "ETF"
     if _STRUCTURED_NAME.search(n):
-        return "STRUCTURED", True
+        return "STRUCTURED"
     # "FD" / "FDS" is how US statements abbreviate a fund, including a bond fund. Checked before the
     # bond words so "Total Return Bond FD" is a fund, not a plain bond.
-    if re.search(r"fund|fonds|fondo|sicav|\bfds?\b", n):
-        return "FUND", True
-    if re.search(r"\bbond\b|obbligazion|anleihe|government|treasury|\bbtp\b", n):
-        return "BOND", True
+    if _FUND_NAME.search(n):
+        return "FUND"
+    if _BOND_NAME.search(n):
+        return "BOND"
+    if _DERIVATIVE_NAME.search(n):
+        return "DERIVATIVE"
+    if _WEAK_STRUCTURED_NAME.search(n):
+        return "STRUCTURED"
     if re.search(r"\bucits\b", n):
-        return "ETF", True
+        return "ETF"
+    if _METAL_NAME.search(n) and _PHYSICAL_NAME.search(n):
+        return "COMMODITY"
     if re.search(r"account|cash|liquid|conto|konto|compte", n):
-        return "CASH", True
-    return "EQUITY", True
+        return "CASH"
+    return "EQUITY"
+
+
+def _class_from_category(given: str) -> str | None:
+    g = given.lower()
+    return next((cls for cls, rx in _CATEGORY if rx.search(g)), None)
+
+
+def infer_asset_class(name: str, given: str | None, authoritative: bool = False) -> tuple[str, bool]:
+    """A holding's class, and whether it was inferred rather than stated.
+
+    ``authoritative`` is a public-register class (FIRDS CFI, OpenFIGI): kept as is. Otherwise ``given``
+    is the bank's own category column, which is often the exposure, not the instrument: an ETF listed
+    under "Equities" is still an ETF with an ongoing charge, so a fund, ETF or certificate name wins over
+    an equity, bond or commodity category. An unrecognised category falls back to the name.
+    """
+    if given and authoritative:
+        g = given.upper()
+        return ("STRUCTURED" if g.startswith("STRUCT") else g), False
+    by_name = _class_from_name(name)
+    cat = _class_from_category(given) if given else None
+    if cat is None:
+        return by_name, True
+    if cat in ("EQUITY", "BOND", "COMMODITY") and by_name in _PACKAGED:
+        return by_name, True
+    return cat, False
 
 
 def _product_gap(holding: dict) -> bool:
     """True when a missing KID must be an unknown product-cost atom, never a silent zero.
 
-    Equity, cash and plain bonds have no ongoing charge, so they get no made-up TER (a bond fund is
-    classed FUND by its name, and a KID for the bond's ISIN makes it a FUND before this check; SC-9.10).
-    A fund or ETF does, with or without an ISIN. Any other holding does only when its ISIN is
-    checksum-valid, so a joined KID can be asked for by share class.
+    Equity, cash, plain bonds, listed options and futures and physical metal have no ongoing charge, so
+    they get no made-up TER (a bond fund is classed FUND by its name, and a KID for the bond's ISIN
+    makes it a FUND before this check; SC-9.10). A fund or ETF does, with or without an ISIN. Any
+    other holding does only when its ISIN is checksum-valid, so a joined KID can be asked for by
+    share class.
     """
     kind = holding["asset_class"]
-    if kind in ("CASH", "EQUITY", "BOND"):
+    if kind in ("CASH", "EQUITY", "BOND", "DERIVATIVE", "COMMODITY"):
         return False
     if kind in ("FUND", "ETF"):
         return True
@@ -135,6 +181,74 @@ def _gap_fee(holding: dict) -> tuple[str, Layer, str]:
         Layer.PRODUCT,
         "No KID joined for this ISIN. Product cost is unknown, not zero.",
     )
+
+
+def _statement_signature(ik: str, as_of: str | None, facts: list[dict]) -> tuple | None:
+    """What makes two statements the same: bank, date and the multiset of (instrument, value, currency)."""
+    rows = sorted(
+        (f.get("isin") or f["label"], str(D(f["value"]).normalize()), f.get("currency") or "")
+        for f in facts
+        if f["kind"] == "position" and f["value"] is not None
+    )
+    return (ik, as_of, tuple(rows)) if rows else None
+
+
+def _merge_lots(holdings: list[dict]) -> list[dict]:
+    """One row per institution and instrument for the product-cost join; ``lots`` keeps the source rows.
+
+    Two lots of one ISIN would otherwise give two atoms with one id. A lot without a CHF value leaves the
+    merged value unknown, never a partial sum.
+    """
+    merged: dict[tuple[str, str], dict] = {}
+    for h in holdings:
+        k = (h["institution"], h["isin"] or h["name"])
+        if k not in merged:
+            merged[k] = {**h, "lots": [h]}
+            continue
+        m = merged[k]
+        m["lots"].append(h)
+        m["value"] = None if m["value"] is None or h["value"] is None else m["value"] + h["value"]
+    return list(merged.values())
+
+
+def _pick_product_docs(
+    documents: list[dict], by_doc: dict[int, list[dict]], checks: list[Check]
+) -> tuple[dict[str, list[dict]], dict[str, dict]]:
+    """One KID or termsheet per ISIN: the newest ``as_of``, the lowest document id on a tie.
+
+    Two versions of one KID (a re-download, another language, last year's) must not add their charges
+    twice. The others are named in a check, and a warning when their figures differ.
+    """
+    per_isin: dict[str, dict[int, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    doc_by_id = {d["id"]: d for d in documents}
+    for d in documents:
+        if d["doc_type"] in ("kid", "termsheet"):
+            for f in by_doc[d["id"]]:
+                if f.get("isin"):
+                    per_isin[f["isin"]][d["id"]].append(f)
+    facts_out: dict[str, list[dict]] = {}
+    meta_out: dict[str, dict] = {}
+    for isin, per_doc in per_isin.items():
+        order = sorted(per_doc, key=lambda i: ((doc_by_id[i].get("profile") or {}).get("as_of") or "", -i))
+        keep, others = order[-1], order[:-1]
+        facts_out[isin], meta_out[isin] = per_doc[keep], doc_by_id[keep]
+        if not others:
+            continue
+        figures = {(f["fee_code"], f.get("measurement"), f["value"]) for f in per_doc[keep]}
+        differ = any((f["fee_code"], f.get("measurement"), f["value"]) not in figures
+                     for i in others for f in per_doc[i])  # fmt: skip
+        names = ", ".join(doc_by_id[i]["filename"] for i in others)
+        checks.append(
+            Check(
+                f"duplicate:product:{isin}",
+                f"{isin}: more than one product document",
+                "warn" if differ else "info",
+                f"Costs taken from {doc_by_id[keep]['filename']} (the most recent). Not used: {names}."
+                + (" Their figures differ: check which version applies." if differ else ""),
+                [f["id"] for f in per_doc[keep]],
+            )
+        )
+    return facts_out, meta_out
 
 
 @dataclass
@@ -247,7 +361,9 @@ def _claim_saving(cmp: Comparison, *, valued: bool, known: Decimal) -> None:
 def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: dict) -> dict:
     """documents: {id, filename, doc_type, profile}; facts: {id, document_id, key, kind, field, label, value,
     currency, isin, fee_code, measurement, extra, status}; proposal: see demo.spec.PROPOSAL_DEFAULTS."""
-    live = [f for f in facts if f.get("status") != "rejected"]
+    # Fixed order (by id), so a shuffled input gives byte-identical output and the same snapshot hash.
+    documents = sorted(documents, key=lambda d: d["id"])
+    live = sorted((f for f in facts if f.get("status") != "rejected"), key=lambda f: f["id"])
     by_doc: dict[int, list[dict]] = defaultdict(list)
     for f in live:
         by_doc[f["document_id"]].append(f)
@@ -281,11 +397,29 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     # ------------------------------------------------------------ institutions & positions
     holdings: list[dict] = []
     institutions: dict[str, dict] = {}
+    statements_seen: dict[tuple, dict] = {}
     for d in documents:
         if d["doc_type"] != "portfolio_statement":
             continue
         prof = d.get("profile") or {}
         ik = inst_key(prof.get("institution"))
+        # A re-downloaded or re-exported statement has other bytes, so the upload's sha256 check misses it.
+        # Same bank, same date and the same positions is the same statement: count it once.
+        sig = _statement_signature(ik, prof.get("as_of"), by_doc[d["id"]])
+        if sig and sig in statements_seen:
+            first = statements_seen[sig]
+            checks.append(
+                Check(
+                    f"duplicate:statement:{d['id']}",
+                    f"{d['filename']} repeats {first['filename']}",
+                    "warn",
+                    f"Same institution, valuation date and positions as {first['filename']}. "
+                    "Counted once; this copy is ignored.",
+                )
+            )
+            continue
+        if sig:
+            statements_seen[sig] = d
         inst = institutions.setdefault(
             ik,
             {
@@ -323,7 +457,10 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             if orig == 0:
                 continue  # a printed 0 is not a CHF market value; showing it as CHF 0 pretends it was valued
             val, fx_note, _ = to_base(orig, f.get("currency"), ik)
-            ac, inferred = infer_asset_class(f["label"], (f.get("extra") or {}).get("asset_class"))
+            ex = f.get("extra") or {}
+            ac, inferred = infer_asset_class(
+                f["label"], ex.get("asset_class"), authoritative=bool(ex.get("asset_class_source"))
+            )
             # No printed rate: keep the position so the pipeline can show it, but do not invent CHF.
             holdings.append(
                 {
@@ -779,23 +916,19 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             )
 
     # ------------------------------------------------------------ product costs
-    product_docs: dict[str, list[dict]] = defaultdict(list)
-    product_doc_meta: dict[str, dict] = {}
-    for d in documents:
-        if d["doc_type"] in ("kid", "termsheet"):
-            for f in by_doc[d["id"]]:
-                if f.get("isin"):
-                    product_docs[f["isin"]].append(f)
-                    product_doc_meta[f["isin"]] = d
+    product_docs, product_doc_meta = _pick_product_docs(documents, by_doc, checks)
     rates: list[ProductRate] = []
     extra_product_atoms: list[FeeAtom] = []
-    for h in holdings:
+    merged_holdings = _merge_lots(holdings)
+    for h in merged_holdings:
         if h["asset_class"] != "CASH" and product_docs.get(h["isin"] or ""):
             # A KID for this exact ISIN proves a packaged product, even when its name reads like a share
             # ("Comgest Monde C"); ignoring it would report the cost complete without the fund's charges.
             if h["asset_class"] in ("EQUITY", "BOND"):
                 is_sp = product_doc_meta[h["isin"]]["doc_type"] == "termsheet"
                 h["asset_class"] = "STRUCTURED" if is_sp else "FUND"
+                for lot in h["lots"]:
+                    lot["asset_class"] = h["asset_class"]
         elif not _product_gap(h):
             continue  # equity and cash: no invented TER
         isin = h["isin"]
@@ -963,7 +1096,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     for a in cur_product:
         if a.fee_code == "SP_ENTRY_COST" and a.measurement == Measurement.UNKNOWN:
             a.note = "Issuer margin not disclosed in the termsheet."
-            h = next(x for x in holdings if x["isin"] == a.instrument_id)
+            h = next(x for x in merged_holdings if x["isin"] == a.instrument_id)
             requests.append(
                 MissingRequest(
                     f"sp:{a.instrument_id}",

@@ -232,8 +232,12 @@ def test_etf_names_are_funds_and_structured_words_stay_structured():
     assert infer_asset_class("Tracker Certificate on Gold", None) == ("STRUCTURED", True)
     assert infer_asset_class("APPLE INC", None) == ("EQUITY", True)
     assert infer_asset_class("Current account CHF", None) == ("CASH", True)
-    # An explicit class on the fact is not overwritten by the name.
-    assert infer_asset_class("Xtrackers MSCI World UCITS ETF", "EQUITY") == ("EQUITY", False)
+    # A public-register class is not overwritten by the name. A bank's "Equities" category is the
+    # exposure, so there the ETF name wins (SC-7.16, tests/test_asset_classes.py).
+    assert infer_asset_class("Xtrackers MSCI World UCITS ETF", "EQUITY", authoritative=True) == (
+        "EQUITY",
+        False,
+    )
 
 
 def _position(fid: int, name: str, value: str, ccy: str, isin: str | None, status: str = "extracted") -> dict:
