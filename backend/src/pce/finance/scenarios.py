@@ -18,19 +18,28 @@ from .ledger import FeeAtom, Incidence, Layer, LedgerSummary, Measurement
 from .money import ZERO, D, bps_of, money
 from .tariff import FeeRule
 
+# Billed codes the bank-fee paths can emit, with the layer of data/taxonomy/fee_taxonomy.csv.
+# A code missing here lands in Layer.OTHER, which the client report has no row for (SC-7.15).
 LAYER_BY_CODE = {
     "MGMT_DISCRETIONARY": Layer.SERVICE,
     "ADVISORY_FEE": Layer.SERVICE,
     "ALL_IN_FEE": Layer.SERVICE,
+    "PERFORMANCE_FEE_MANDATE": Layer.SERVICE,
     "EAM_FEE": Layer.SERVICE,
     "PLATFORM_FIXED": Layer.SERVICE,
     "CUSTODY_FEE": Layer.CUSTODY,
+    "CUSTODY_SURCHARGE": Layer.CUSTODY,
     "ACCOUNT_FEE": Layer.CUSTODY,
+    "PAYMENT_FEE": Layer.CUSTODY,
+    "REPORTING_FEE": Layer.CUSTODY,
     "BROKERAGE": Layer.TRADING,
     "TICKET_FEE": Layer.TRADING,
+    "THIRD_PARTY_TRADING": Layer.TRADING,
+    "FUND_SUBSCRIPTION_BANK": Layer.TRADING,
     "FX_COMMISSION": Layer.TRADING,
     "VAT_ON_FEES": Layer.TAX,
     "STAMP_DUTY_CH": Layer.TAX,
+    "FTT_FOREIGN": Layer.TAX,
 }
 
 

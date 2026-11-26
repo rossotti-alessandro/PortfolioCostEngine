@@ -2,7 +2,7 @@ import { NotStarted, ReadSummary } from "@/components/ReadSummary";
 import { PageTitle } from "@/components/Shell";
 import { Badge, Button, Card, CardHeader, ErrorBox, Money, Spinner, StatGrid, inputCls } from "@/components/ui";
 import { api, getRole } from "@/lib/api";
-import { LAYER, chf, knownCost, savingParts } from "@/lib/format";
+import { LAYER, LAYER_ORDER, chf, knownCost, savingParts } from "@/lib/format";
 import { getLang, t, tm } from "@/lib/i18n";
 import type { Analysis } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,9 +32,7 @@ export default function ReportPage() {
   const senior = getRole() === "senior";
   // One filled button: Approve while a senior still owes a decision; otherwise the PDF in the current language.
   const pdfIsPrimary = !senior || approved;
-  const layers = ["L1", "L2", "L3", "L4", "L5", "L9"].filter(
-    (k) => Number(cur.by_layer[k] ?? 0) || Number(s.ledger.by_layer[k] ?? 0),
-  );
+  const layers = LAYER_ORDER.filter((k) => Number(cur.by_layer[k] ?? 0) || Number(s.ledger.by_layer[k] ?? 0));
   return (
     <div className="space-y-4">
       <PageTitle
