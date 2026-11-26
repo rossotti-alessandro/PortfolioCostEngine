@@ -1,11 +1,11 @@
 ---
 id: SC-7.18
 title: Transaction table and transaction-list parser
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Compute every portfolio cost end to end"
 model: "claude-opus-5-5"
-progress: 90
+progress: 100
 branch: "claude/project-thread-p3z1fq"
 pr: ""
 created_date: "2026-11-26 01:10"
@@ -92,6 +92,7 @@ tickers, charges column) is SC-7.24.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-p3z1fq | 8f61a70 | 2026-11-26 | Transaction lists into a trade table |
 
 ## Issues Encountered
 
