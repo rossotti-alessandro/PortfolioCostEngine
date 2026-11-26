@@ -1,15 +1,15 @@
 ---
 id: SC-7.18
 title: Transaction table and transaction-list parser
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Compute every portfolio cost end to end"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-p3z1fq"
 pr: ""
 created_date: "2026-11-26 01:10"
-updated_date: "2026-11-26 01:10"
+updated_date: "2026-11-26 13:25"
 labels:
   - finance
   - extraction
