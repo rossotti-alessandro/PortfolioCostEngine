@@ -7,9 +7,9 @@ owner: "Audit cost categories for consistency"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-6oi8gs"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/82"
 created_date: "2026-11-26 01:05"
-updated_date: "2026-11-26 01:02"
+updated_date: "2026-11-26 01:07"
 labels:
   - report
   - ui
