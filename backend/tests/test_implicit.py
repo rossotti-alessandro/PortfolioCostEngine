@@ -148,3 +148,106 @@ def test_client_report_prints_the_hidden_range() -> None:
     pdf = render_client_report(r)
     text = " ".join(page.extract_text() or "" for page in pdfplumber.open(io.BytesIO(pdf)).pages)
     assert "Hidden costs, not in the total" in " ".join(text.split())
+
+
+# ---------------------------------------------------------------- trades (SC-7.23)
+
+NESTLE, ETF = "CH0038863350", "IE00B5BMR087"
+REF = {"2026-03-20": {"EUR": {"rate": "1.080000"}, "USD": {"rate": "0.800000"}}}
+
+
+def _trade(fid: int, side: str, gross: str, ccy: str, isin: str | None = None, **extra) -> dict:
+    return {"id": fid, "document_id": 3, "key": f"trade:{fid}", "kind": "transaction",
+            "field": "gross_amount",
+            "label": "SYNTHETIC trade", "value": gross, "currency": ccy, "isin": isin, "fee_code": None,
+            "measurement": "observed", "status": "extracted",
+            "extra": {"booking_date": "2026-03-20", "side": side, "quantity": None, **extra}}  # fmt: skip
+
+
+def _with_trades(trades: list[dict], start: str = "2025-10-01", ref: dict = REF) -> dict:
+    docs, facts = _pack()
+    docs.append({"id": 3, "filename": "transactions-SYNTHETIC.pdf", "doc_type": "cash_statement",
+                 "profile": {"institution": BANK, "jurisdiction": "CH", "period_start": start,
+                             "period_end": "2026-09-30"}})  # fmt: skip
+    return analyse({"domicile": "CH", "reference_fx": ref}, docs, facts + trades, PROPOSAL_DEFAULTS)
+
+
+def _hidden(r: dict, code: str) -> dict:
+    return next(h for h in r["hidden_costs"] if h["fee_code"] == code)
+
+
+def test_fx_conversion_above_the_reference_rate_is_the_margin() -> None:
+    r = _with_trades([_trade(50, "fx", "100000", "EUR", pair=["EUR", "CHF"], rate="1.0850")])
+    h = _hidden(r, "FX_MARGIN")
+    assert (h["status"], h["low"], h["high"]) == ("range", "500.00", "500.00")  # (1.0850 − 1.0800) × 100'000
+    assert "ECB reference" in h["method"] and "a year" in h["method"]
+
+
+def test_cross_pair_margin_is_converted_to_chf() -> None:
+    # EUR/USD at 1.36 vs reference 1.08 / 0.80 = 1.35: 0.01 USD × 10'000 = 100 USD = 80 CHF
+    r = _with_trades([_trade(50, "fx", "10000", "EUR", pair=["EUR", "USD"], rate="1.3600")])
+    assert _hidden(r, "FX_MARGIN")["high"] == "80.00"
+
+
+def test_swiss_stamp_duty_is_the_clients_half_of_the_transfer_tax() -> None:
+    r = _with_trades([_trade(50, "buy", "100000", "CHF", NESTLE), _trade(51, "sell", "100000", "USD", ETF)])
+    h = _hidden(r, "STAMP_DUTY_CH")
+    assert h["high"] == "195.00"  # 100'000 × 0.075% + 80'000 CHF × 0.15%
+    assert r["hidden_range"]["high"] == "195.00"  # beside the totals, never in them
+
+
+def test_half_a_year_of_trades_is_annualised_and_a_short_list_is_a_lower_bound() -> None:
+    half = _with_trades([_trade(50, "buy", "100000", "CHF", NESTLE)], start="2026-04-01")
+    assert _hidden(half, "STAMP_DUTY_CH")["high"] == str((Decimal(75) * 365 / 183).quantize(Decimal("0.01")))
+    short = _with_trades([_trade(50, "buy", "100000", "CHF", NESTLE)], start="2026-09-20")
+    assert _hidden(short, "STAMP_DUTY_CH")["high"] == "75.00"
+    assert "lower bound" in _hidden(short, "STAMP_DUTY_CH")["method"]
+
+
+def test_without_rate_or_reference_the_rows_stay_not_estimated_and_totals_never_move() -> None:
+    r = _with_trades([_trade(50, "fx", "100000", "EUR", pair=["EUR", "CHF"]), _trade(51, "buy", "5", "CHF")])
+    assert _hidden(r, "FX_MARGIN")["status"] == "not_estimated"
+    assert _hidden(r, "STAMP_DUTY_CH")["status"] == "not_estimated"  # a buy without ISIN: no estimate
+    none = _with_trades([_trade(50, "buy", "100000", "CHF", NESTLE)], ref={})
+    assert _hidden(none, "STAMP_DUTY_CH")["high"] == "75.00"  # CHF needs no rate
+    assert _hidden(_with_trades([_trade(50, "sell", "1", "USD", ETF)], ref={}), "STAMP_DUTY_CH")[
+        "status"
+    ] == ("not_estimated")
+    docs, facts = _pack()
+    assert (
+        r["current"]
+        == analyse({"domicile": "CH", "reference_fx": REF}, docs, facts, PROPOSAL_DEFAULTS)["current"]
+    )
+
+
+def test_a_stamp_duty_already_debited_is_not_estimated_again() -> None:
+    debit = {"id": 60, "document_id": 3, "key": "debit:x", "kind": "cash_debit", "field": "debit_amount",
+             "label": "Eidg. Umsatzabgabe", "value": "75.00", "currency": "CHF", "isin": None,
+             "fee_code": "STAMP_DUTY_CH", "measurement": "observed", "status": "extracted",
+             "extra": {"booking_date": "2026-03-20"}}  # fmt: skip
+    r = _with_trades([_trade(50, "buy", "100000", "CHF", NESTLE), debit])
+    assert not [h for h in r["hidden_costs"] if h["fee_code"] == "STAMP_DUTY_CH"]
+
+
+def test_fx_line_reads_amount_and_applied_rate_in_either_order() -> None:
+    from test_transactions import _page
+
+    from pce.extraction.models import DocType, DocumentProfile
+    from pce.extraction.parsers import parse_cash_statement
+
+    prof = DocumentProfile(doc_type=DocType.CASH_STATEMENT, type_score=3, currency="CHF")
+    for row in (["20.03.2026", "FX spot EUR/CHF", "100'000.00", "1.0850", "108'500.00"],
+                ["20.03.2026", "Cambio valuta EUR/CHF", "108'500.00", "1.0850", "100'000.00"]):  # fmt: skip
+        [f] = parse_cash_statement(_page([row]), prof)
+        assert (f.kind, f.value, f.currency, f.extra["rate"], f.extra["pair"]) == (
+            "transaction",
+            "100000.00",
+            "EUR",
+            "1.0850",
+            ["EUR", "CHF"],
+        )
+
+
+def test_a_eurobond_trade_pays_no_swiss_stamp_duty() -> None:
+    r = _with_trades([_trade(50, "buy", "100000", "CHF", "XS0000000009")])
+    assert _hidden(r, "STAMP_DUTY_CH")["high"] == "0.00"

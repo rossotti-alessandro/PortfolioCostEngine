@@ -296,10 +296,11 @@ def _transactions(documents: list[dict], by_doc: dict[int, list[dict]]) -> list[
     """Trades from transaction lists (SC-7.18), one per trade. A second list covering the same trades adds
     none: per bank, each identical trade counts as often as the list printing it most often (two equal
     fills on one day in one list stay two)."""
-    kept: dict[tuple, list[dict]] = {}
+    kept: dict[tuple, list[tuple[dict, dict]]] = {}
     for d in documents:
-        ik = inst_key((d.get("profile") or {}).get("institution"))
-        here: dict[tuple, list[dict]] = defaultdict(list)
+        prof = d.get("profile") or {}
+        ik = inst_key(prof.get("institution"))
+        here: dict[tuple, list[tuple[dict, dict]]] = defaultdict(list)
         for f in by_doc[d["id"]]:
             if f["kind"] == "transaction" and f["value"] is not None:
                 x = f.get("extra") or {}
@@ -311,7 +312,7 @@ def _transactions(documents: list[dict], by_doc: dict[int, list[dict]]) -> list[
                     f.get("currency"),
                     str(D(f["value"])),
                 )
-                here[key].append(f)
+                here[key].append((f, prof))
         for key, fs in here.items():
             if len(fs) > len(kept.get(key, [])):
                 kept[key] = fs
@@ -325,11 +326,32 @@ def _transactions(documents: list[dict], by_doc: dict[int, list[dict]]) -> list[
             "gross": f["value"],
             "quantity": (f.get("extra") or {}).get("quantity"),
             "fact_id": f["id"],
+            # SC-7.23: applied FX rate and the list's period, for the hidden-cost estimates
+            "pair": (f.get("extra") or {}).get("pair"),
+            "rate": (f.get("extra") or {}).get("rate"),
+            "jurisdiction": prof.get("jurisdiction"),
+            "period": [prof.get("period_start"), prof.get("period_end")],
         }
         for key, fs in kept.items()
-        for f in fs
+        for f, prof in fs
     ]
     return sorted(rows, key=lambda r: (r["booking_date"] or "", r["fact_id"]))
+
+
+def _trade_years(transactions: list[dict]) -> dict[str, Decimal | None]:
+    """Years each bank's transaction lists span (first start to last end), None when the span is unknown,
+    reversed or under MIN_ANNUALISE_DAYS: trade costs over it are then a lower bound, not annualised."""
+    spans: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for t in transactions:
+        ps, pe = t["period"]
+        known = spans[t["institution"]]  # a bank with trades but no dated list still gets a (None) entry
+        if ps and pe:
+            known.append((ps, pe))
+    out: dict[str, Decimal | None] = {}
+    for ik, ss in spans.items():
+        days, kind = _report_period(min(a for a, _ in ss), max(b for _, b in ss)) if ss else (None, "unknown")
+        out[ik] = Decimal(days) / Decimal(365) if days and kind in ("full", "partial") else None
+    return out
 
 
 def _d(v: Any) -> Decimal | None:
@@ -1439,11 +1461,15 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             )
         )
     current = aggregate(view_atoms, scope_aum=total_aum or None)
+    transactions = _transactions(documents, by_doc)
     hidden = hidden_costs(
         holdings,
         BASE_CCY,
         {(a.institution or "", a.fee_code) for a in current_atoms if a.measurement != Measurement.UNKNOWN},
         prospect.get("cash_rates"),  # SC-7.14: 12-month benchmark averages, looked up by the caller
+        transactions,
+        _trade_years(transactions),
+        reference_fx,
     )
     ranged = [h for h in hidden if h.status == "range"]
     open_rows = [h for h in hidden if h.status != "range"]
@@ -1827,7 +1853,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             "coverage": coverage,
             "hidden_costs": [asdict(h) for h in hidden],
             "hidden_range": hidden_range,
-            "transactions": _transactions(documents, by_doc),
+            "transactions": transactions,
             "checks": [asdict(c) for c in checks],
             "requests": [asdict(r) for r in requests],
             "comparison_exclusions": excluded,

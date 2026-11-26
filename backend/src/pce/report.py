@@ -155,9 +155,10 @@ IT = {
     "One-off & switching": "Costi una tantum e di trasferimento",
     "Other": "Altro",
     "Paid once, not in the annual total: {amount}": "Pagato una volta, escluso dal totale annuo: {amount}",
-    "Hidden costs, not in the total: {low} to {high} a year (cash earning less than the market rate; "
-    "{n} other hidden costs not estimated)": "Costi nascosti, esclusi dal totale: da {low} a {high} all'anno "
-    "(liquidità remunerata sotto il tasso di mercato; altri {n} costi nascosti non stimati)",
+    "Hidden costs, not in the total: {low} to {high} a year (cash drag, FX margin and stamp duty where "
+    "the documents allow; {n} other hidden costs not estimated)": "Costi nascosti, esclusi dal totale: da "
+    "{low} a {high} all'anno (liquidità sotto il tasso di mercato, margine sui cambi e tassa di bollo dove i "
+    "documenti lo permettono; altri {n} costi nascosti non stimati)",
     "Observed": "Osservato",
     "Contract": "Contratto",
     "Public list price": "Tariffa pubblica",
@@ -470,8 +471,8 @@ def render_client_report(r: dict, lang: str = "en") -> bytes:
             story.append(
                 p(
                     tr(
-                        "Hidden costs, not in the total: {low} to {high} a year (cash earning less than the "
-                        "market rate; {n} other hidden costs not estimated)",
+                        "Hidden costs, not in the total: {low} to {high} a year (cash drag, FX margin and "
+                        "stamp duty where the documents allow; {n} other hidden costs not estimated)",
                         low=chf(hr["low"]),
                         high=chf(hr["high"]),
                         n=str(hr["not_estimated"]),

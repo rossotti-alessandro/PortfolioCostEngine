@@ -110,3 +110,47 @@ def benchmark_rates(
 def cash_drag_range(cash: Decimal, benchmark_pct: Decimal) -> tuple[Decimal, Decimal]:
     """Yearly cost of holding ``cash``: 0 if the bank pays the benchmark, benchmark x cash if it pays 0."""
     return ZERO, max(ZERO, benchmark_pct) * cash / Decimal(100)
+
+
+# ---------------------------------------------------------------- trades (SC-7.23)
+# Swiss securities transfer tax (StG SR 641.10 art. 16; SOURCE_REGISTER SRC-CH-STG): 1.5‰ on Swiss and 3‰ on
+# foreign securities, half charged to each party, so the client of a Swiss dealer pays 0.75‰ or 1.5‰ of the
+# trade value. Eurobonds (XS ISINs) are exempt; other exemptions are not visible on a trade line.
+STAMP_CLIENT_SHARE = {"domestic": Decimal("0.00075"), "foreign": Decimal("0.0015")}
+DOMESTIC_PREFIXES = ("CH", "LI")
+
+
+def ref_rate(ccy: str, day: str | None, base: str, ref_fx: dict[str, dict[str, dict]]) -> Decimal | None:
+    """Units of ``base`` per one ``ccy`` on ``day`` from the ECB reference (SC-7.11 format)."""
+    if ccy == base:
+        return Decimal(1)
+    hit = ref_fx.get(day or "", {}).get(ccy)
+    return D(hit["rate"]) if hit else None
+
+
+def fx_margin(trade: dict, base: str, ref_fx: dict[str, dict[str, dict]]) -> Decimal | None:
+    """|applied rate − ECB reference| × amount, in ``base``. None without a printed rate or a reference.
+
+    The ECB fixes once a day (14:10 CET), so the gap also holds the market move between the fixing and
+    the trade: an estimate of the margin, not a measurement.
+    """
+    if not trade.get("pair") or not trade.get("rate"):
+        return None
+    b, q = trade["pair"]
+    rb, rq = (ref_rate(c, trade["booking_date"], base, ref_fx) for c in (b, q))
+    if rb is None or rq is None:
+        return None
+    return abs(D(trade["rate"]) - rb / rq) * D(trade["gross"]) * rq
+
+
+def stamp_duty(trade: dict, base: str, ref_fx: dict[str, dict[str, dict]]) -> Decimal | None:
+    """The client's half of the Swiss transfer tax on a buy or sell booked in Switzerland, in ``base``."""
+    if trade["side"] not in ("buy", "sell") or not trade.get("isin") or trade.get("jurisdiction") != "CH":
+        return None
+    if trade["isin"].startswith("XS"):
+        return ZERO
+    r = ref_rate(trade["currency"], trade["booking_date"], base, ref_fx)
+    if r is None:
+        return None
+    share = STAMP_CLIENT_SHARE["domestic" if trade["isin"][:2] in DOMESTIC_PREFIXES else "foreign"]
+    return D(trade["gross"]) * r * share

@@ -55,6 +55,7 @@ export const IT: Record<string, string> = {
   "Cash drag on USD cash": "Rendimento mancato sulla liquidità in USD",
   "Cash drag on GBP cash": "Rendimento mancato sulla liquidità in GBP",
   "FX margin on currency exchanges": "Margine sui cambi",
+  "Swiss stamp duty on trades": "Tassa di bollo svizzera sulle operazioni",
   "Spreads and dealer mark-ups on trades": "Spread e ricarichi sulle operazioni",
   "Transaction taxes (stamp duty, FTT)": "Imposte sulle transazioni (bollo, FTT)",
   "Cash account statements showing the interest credited": "Estratti del conto corrente con gli interessi accreditati",
