@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -1112,7 +1112,68 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 )
             )
     current_atoms = atoms + cur_product + extra_product_atoms
-    current = aggregate(current_atoms, scope_aum=total_aum or None)
+    # SC-7.9: where funds at a bank have no KID, the bank's own ex-post product-cost figure (tier T4) covers
+    # the gap. KID figures (tier T3) stay counted; only the part of the bank figure they do not explain is
+    # added, as one residual atom, so nothing is counted twice. If the KIDs already explain the whole bank
+    # figure, nothing is added and the gaps stay unknown. The comparison keeps per-holding product costs.
+    view_atoms = list(current_atoms)
+    for d in documents:
+        if d["doc_type"] != "cost_report":
+            continue
+        prof = d.get("profile") or {}
+        ik = inst_key(prof.get("institution"))
+        rep = next((f for f in by_doc[d["id"]] if f["field"] == "reported_product_costs"), None)
+        mine = [a for a in view_atoms if a.institution == ik and a.incidence == Incidence.EMBEDDED]
+        if not rep or not any(a.measurement == Measurement.UNKNOWN for a in mine):
+            continue
+        amt, fx_note, fx_ids = to_base(D(rep["value"]), rep.get("currency"), ik)
+        if amt is None:
+            continue
+        ps, pe = prof.get("period_start"), prof.get("period_end")
+        days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1 if ps and pe else None
+        basis = f"bank figure {amt:,.2f}" + (f" for {ps} – {pe}" if days else "")
+        if days and not 360 <= days <= 366:
+            amt = amt * Decimal(365) / Decimal(days)
+            basis += f", annualised × 365/{days}"
+        explained = sum(
+            (
+                a.amount
+                for a in mine
+                if a.amount is not None
+                and not a.included_in
+                and not a.corroborates
+                and a.measurement in (Measurement.ESTIMATED, Measurement.OBSERVED, Measurement.CONTRACTUAL)
+            ),
+            ZERO,
+        )
+        if amt <= explained:
+            continue
+        gaps = {a.atom_id for a in mine if a.measurement == Measurement.UNKNOWN}
+        view_atoms = [
+            replace(
+                a, materiality="minor", note=f"{a.note} Covered by the bank's reported product costs.".strip()
+            )
+            if a.atom_id in gaps
+            else a
+            for a in view_atoms
+        ]
+        view_atoms.append(
+            FeeAtom(
+                f"cur:{ik}:PRODUCT_REPORTED",
+                "FUND_ONGOING",
+                Layer.PRODUCT,
+                f"{ik} · product costs reported by the bank, not covered by a KID",
+                ik,
+                amt - explained,
+                Measurement.ESTIMATED,
+                Incidence.EMBEDDED,
+                evidence_ids=(str(rep["id"]), *fx_ids),
+                formula=f"{basis} − {explained:,.2f} from KIDs and termsheets"
+                + (f"; {fx_note}" if fx_note else ""),
+                note="The bank's own estimate in its cost report, for the products without a KID.",
+            )
+        )
+    current = aggregate(view_atoms, scope_aum=total_aum or None)
     hidden = hidden_costs(
         holdings,
         BASE_CCY,
@@ -1246,7 +1307,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         ):
             rel = [
                 a
-                for a in current_atoms
+                for a in view_atoms
                 if a.institution == ik
                 and a.layer == layer
                 and current.roles[a.atom_id] in (AtomRole.COUNTED, AtomRole.UNKNOWN)
@@ -1460,7 +1521,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 }
                 for h in holdings
             ],
-            "current": summary_dict(current, current_atoms),
+            "current": summary_dict(current, view_atoms),
             "coverage": coverage,
             "hidden_costs": [asdict(h) for h in hidden],
             "checks": [asdict(c) for c in checks],
