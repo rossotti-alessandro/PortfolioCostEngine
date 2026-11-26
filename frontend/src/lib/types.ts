@@ -48,6 +48,28 @@ export interface Fact {
   status: "extracted" | "accepted" | "corrected" | "rejected" | "manual";
 }
 
+/** What the expert agent proposes for a doubtful value or a possible miss (SC-5.24). Never applied by itself. */
+export interface ExpertProposal {
+  action: "confirm" | "correct" | "new" | "not_a_fee" | "abstain";
+  value: string | null;
+  unit: string;
+  currency: string | null;
+  page: number | null;
+  bbox: number[] | null;
+  quote: string;
+  reason: string;
+  dropped: string;
+  model: string;
+}
+
+export interface ExpertStatus {
+  status: "queued" | "running" | "done" | "failed";
+  done: number;
+  total: number;
+  model: string;
+  error: string | null;
+}
+
 export interface DocumentRow {
   id: number;
   filename: string;
@@ -58,6 +80,7 @@ export interface DocumentRow {
   doc_type_label: string;
   detected_type: string;
   profile: {
+    expert?: ExpertStatus;
     institution: string | null;
     jurisdiction: string | null;
     language: string | null;
