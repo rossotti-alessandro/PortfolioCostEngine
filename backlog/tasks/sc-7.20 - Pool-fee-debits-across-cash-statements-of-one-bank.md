@@ -1,11 +1,11 @@
 ---
 id: SC-7.20
 title: Pool fee debits across cash statements of one bank
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Audit cost categories for consistency"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-6oi8gs"
 pr: ""
 created_date: "2026-11-26 01:12"
@@ -62,14 +62,17 @@ check) rather than twice.
 
 ## Acceptance Criteria
 
-- [ ] #1 Four quarterly statements of CHF 500 give CHF 2,000 observed, one counted atom
-- [ ] #2 Two consecutive quarters are annualised over the 181 days both cover
-- [ ] #3 A statement repeating a period counts once, with an info check
-- [ ] #4 Existing SC-7.7 debit tests stay green
+- [x] #1 Four quarterly statements of CHF 500 give CHF 2,000 observed, one counted atom
+- [x] #2 Two consecutive quarters are annualised over the 181 days both cover
+- [x] #3 A statement repeating a period counts once, with an info check
+- [x] #4 Existing SC-7.7 debit tests stay green
 
 ## Implementation Notes
 
 ## Outcome
+
+- **Status**: completed
+- Debits pooled by (bank, fee code); union of days; repeated period skipped with `debit_repeat` info check. Three new tests in `test_analysis_debits.py`, each failing on main; the four SC-7.7 tests unchanged and green.
 
 ## Issues Encountered
 
@@ -77,3 +80,4 @@ check) rather than twice.
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-6oi8gs | 9d4c350 | 2026-11-26 | Pool debits across statements of one bank |
