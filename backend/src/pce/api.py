@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import __version__, erasure, permissions, scan_upload, security
+from . import __version__, book_of_record, erasure, permissions, scan_upload, security
 from .admin import router as admin_router
 from .analysis import analyse, listed_assets
 from .audit import router as audit_router
@@ -154,6 +154,11 @@ def doc_out(d: Document, n_facts: int = 0) -> dict:
         "extractor_version": d.extractor_version,
         "fact_count": n_facts,
     }
+
+
+def refresh_book(db: Session, c: Ctx, p: Prospect) -> None:
+    """Rebuild the prospect's accounts and positions after its documents or facts change (SC-7.12)."""
+    book_of_record.sync(db, c.tenant, p.id, compute(db, c, p))
 
 
 def compute(db: Session, c: Ctx, p: Prospect) -> dict:
@@ -581,6 +586,7 @@ def seed_demo(db: DB, c: C) -> dict:
             if f.suffix in ALLOWED:
                 _d, new = ingest(db, c, p, f.name, f.read_bytes())
                 added += int(new)
+        refresh_book(db, c, p)
         ids.append(p.id)
     db.commit()
     return {"id": ids[0], "ids": ids, "documents_added": added}
@@ -659,6 +665,7 @@ def upload(
             )
         except HTTPException as exc:
             out.append({"filename": filename, "status": "rejected", "error": exc.detail})
+    refresh_book(db, c, p)
     db.commit()
     return {"results": out}
 
@@ -786,6 +793,7 @@ def set_doc_type(did: int, body: DocPatch, db: DB, c: C) -> dict:
         before=before,
         after=body.doc_type.value,
     )
+    refresh_book(db, c, get_prospect(db, c, d.prospect_id))
     db.commit()
     return {"ok": True}
 
@@ -844,6 +852,7 @@ def review_fact(fid: int, body: ReviewIn, db: DB, c: C) -> dict:
         new=f.value_current,
         reason=body.reason,
     )
+    refresh_book(db, c, get_prospect(db, c, get_doc(db, c, f.document_id).prospect_id))
     db.commit()
     return fact_out(f)
 
