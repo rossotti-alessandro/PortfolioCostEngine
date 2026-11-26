@@ -1,11 +1,11 @@
 ---
 id: SC-7.23
 title: FX margin, spreads and stamp duty from transaction lists
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Compute every portfolio cost end to end"
 model: "claude-opus-5-5"
-progress: 90
+progress: 100
 branch: "claude/project-thread-p3z1fq"
 pr: ""
 created_date: "2026-11-26 10:45"
@@ -89,6 +89,7 @@ CHF 80; CH buy 100'000 + foreign sell 80'000 CHF = CHF 195 stamp duty; half-year
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-p3z1fq | 3c91718 | 2026-11-26 | FX margin and stamp duty from trades |
 
 ## Issues Encountered
 
