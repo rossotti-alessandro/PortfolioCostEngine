@@ -48,7 +48,7 @@ from .extraction import documents
 from .extraction.models import DOC_TYPE_LABELS, DocType
 from .extraction.parsers import PARSERS, classify
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
-from .finance import fx
+from .finance import fx, implicit
 from .finance.money import D
 from .instruments import registry
 from .pipeline_view import document_pipeline
@@ -179,6 +179,17 @@ def _reference_fx(docs: Sequence[Document], facts: Sequence[FactRow]) -> dict[st
     return fx.reference_rates({day: ccys for day in dates if day}, BASE_CCY)
 
 
+def _cash_rates(docs: Sequence[Document]) -> dict[str, dict]:
+    """12-month overnight benchmark averages for the cash drag range (SC-7.14); one cached request."""
+    dates = [
+        (d.profile or {}).get("as_of")
+        for d in docs
+        if (d.doc_type_override or d.doc_type) == "portfolio_statement"
+    ]
+    latest = max((x for x in dates if x), default=None)
+    return implicit.benchmark_rates(latest) if latest else {}
+
+
 def compute(db: Session, c: Ctx, p: Prospect) -> dict:
     docs = db.scalars(
         select(Document).where(Document.prospect_id == p.id, Document.tenant_id == c.tenant)
@@ -197,6 +208,7 @@ def compute(db: Session, c: Ctx, p: Prospect) -> dict:
             "domicile": p.domicile,
             "base_ccy": p.base_ccy,
             "reference_fx": _reference_fx(docs, facts),
+            "cash_rates": _cash_rates(docs),
         },
         [
             {

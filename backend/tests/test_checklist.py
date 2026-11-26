@@ -75,4 +75,5 @@ def test_an_evidenced_cost_is_not_listed_again_as_hidden() -> None:
     h = [{"institution": "B", "asset_class": "EQUITY", "currency": "CHF", "value": Decimal("1000")}]
     codes = {x.fee_code for x in hidden_costs(h, "CHF", {("B", "STAMP_DUTY_CH")})}
     assert codes == {"BID_ASK_SPREAD"}
-    assert hidden_costs([{**h[0], "asset_class": "CASH"}], "CHF", set()) == []
+    [cash] = hidden_costs([{**h[0], "asset_class": "CASH"}], "CHF", set())
+    assert cash.fee_code == "CASH_DRAG" and cash.status == "not_estimated"  # SC-7.14: listed, not invented

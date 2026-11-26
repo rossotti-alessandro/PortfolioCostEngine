@@ -1403,15 +1403,29 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         holdings,
         BASE_CCY,
         {(a.institution or "", a.fee_code) for a in current_atoms if a.measurement != Measurement.UNKNOWN},
+        prospect.get("cash_rates"),  # SC-7.14: 12-month benchmark averages, looked up by the caller
     )
-    if hidden:
+    ranged = [h for h in hidden if h.status == "range"]
+    open_rows = [h for h in hidden if h.status != "range"]
+    # The implicit range sits beside the totals and never enters them (Ale, 2026-11-25).
+    hidden_range = (
+        {
+            "low": str(sum((h.low or ZERO for h in ranged), ZERO)),
+            "high": str(sum((h.high or ZERO for h in ranged), ZERO)),
+            "estimated": len(ranged),
+            "not_estimated": len(open_rows),
+        }
+        if hidden
+        else None
+    )
+    if open_rows:
         checks.append(
             Check(
                 "hidden_costs",
                 "Hidden costs not yet estimated",
                 "info",
-                f"{len(hidden)} hidden cost(s) apply to these holdings but are not estimated: "
-                + ", ".join(sorted({h.label for h in hidden}))
+                f"{len(open_rows)} hidden cost(s) apply to these holdings but are not estimated: "
+                + ", ".join(sorted({h.label for h in open_rows}))
                 + ". Shown apart, never in the total.",
             )
         )
@@ -1772,6 +1786,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             "current": summary_dict(current, view_atoms),
             "coverage": coverage,
             "hidden_costs": [asdict(h) for h in hidden],
+            "hidden_range": hidden_range,
             "checks": [asdict(c) for c in checks],
             "requests": [asdict(r) for r in requests],
             "comparison_exclusions": excluded,

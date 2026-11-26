@@ -244,6 +244,20 @@ export interface ProposalConfig {
   optimized_swaps: { from: string; to: string; to_name: string; to_ongoing: string; to_transaction: string }[];
 }
 
+export interface HiddenCost {
+  key: string;
+  fee_code: string;
+  label: string;
+  institution: string;
+  basis: string | null;
+  needs: string;
+  note: string;
+  status: "range" | "not_estimated";
+  low: string | null;
+  high: string | null;
+  method: string;
+}
+
 export interface Analysis {
   engine_version: string;
   synthetic: boolean;
@@ -278,6 +292,9 @@ export interface Analysis {
   unused_mentions: EvidenceRef[];
   requests: MissingRequest[];
   comparison_exclusions: { fee_code: string; label: string; amount: string; reason: string }[];
+  /** Implicit costs (FX margin, spreads, cash drag): beside the totals, never in them (SC-7.14). */
+  hidden_costs: HiddenCost[];
+  hidden_range: { low: string; high: string; estimated: number; not_estimated: number } | null;
   scenarios: {
     current_comparable: Ledger;
     same_holdings: { ledger: Ledger; comparison: Comparison; migration_items: Record<string, string> };
