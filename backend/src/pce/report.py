@@ -154,6 +154,7 @@ IT = {
     "Taxes on fees & trades": "Imposte su commissioni e operazioni",
     "One-off & switching": "Costi una tantum e di trasferimento",
     "Other": "Altro",
+    "Paid once, not in the annual total: {amount}": "Pagato una volta, escluso dal totale annuo: {amount}",
     "Observed": "Osservato",
     "Contract": "Contratto",
     "Public list price": "Tariffa pubblica",
@@ -452,6 +453,14 @@ def render_client_report(r: dict, lang: str = "en") -> bytes:
                         AMBER,
                     )
                 )
+        if Decimal(cur.get("one_off_known", "0")) > 0:
+            # Paid once (e.g. a structured product's entry margin): shown, never in the annual total.
+            story.append(
+                p(
+                    tr("Paid once, not in the annual total: {amount}", amount=chf(cur["one_off_known"])),
+                    "small",
+                )
+            )
         for ex in r.get("comparison_exclusions", []):
             story.append(
                 p(

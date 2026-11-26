@@ -47,6 +47,7 @@ export const IT: Record<string, string> = {
   "One-off · not in the annual total": "Una tantum · escluso dal totale annuo",
   "paid once, not in the annual total": "pagato una volta, escluso dal totale annuo",
   "Paid once: not in the annual total": "Pagato una volta: escluso dal totale annuo",
+  "Paid once, not in the annual total": "Pagato una volta, escluso dal totale annuo",
   Calculation: "Calcolo",
   "Linked items (shown, not added)": "Voci collegate (mostrate, non sommate)",
   Sources: "Fonti",
