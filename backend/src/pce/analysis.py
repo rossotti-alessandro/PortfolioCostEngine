@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -663,16 +663,17 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         formula=formula,
                     )
                 )
-    # cash debits corroborate (or, absent a report, establish) the annual figure. Repeated debits of one
-    # fee on one statement are summed first (SC-7.7), then annualised: by the stated frequency, else by
-    # the days the statement covers, else kept as a flagged lower bound.
+    # cash debits corroborate (or, absent a report, establish) the annual figure. Debits of one fee at one
+    # bank are pooled across its statements (SC-7.20) and summed (SC-7.7), then annualised: by the stated
+    # frequency, else by the days the statements cover, else kept as a flagged lower bound. A statement
+    # repeating a period already pooled counts once.
+    pools: dict[tuple[str, str], dict] = {}
     for d in documents:
         if d["doc_type"] != "cash_statement":
             continue
         prof = d.get("profile") or {}
         ik = inst_key(prof.get("institution"))
-        ps, pe = prof.get("period_start"), prof.get("period_end")
-        days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1 if ps and pe else None
+        period = (prof.get("period_start"), prof.get("period_end"))
         groups: dict[str, list[tuple[dict, Decimal]]] = defaultdict(list)
         for f in by_doc[d["id"]]:
             if f["kind"] != "cash_debit" or f["value"] is None:
@@ -681,56 +682,81 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             if debit is not None:
                 groups[f["fee_code"]].append((f, debit))
         for code, items in groups.items():
-            total = sum((v for _f, v in items), ZERO)
-            k = len(items)
-            n = next((f["extra"]["periods_per_year"] for f, _v in items
-                      if (f.get("extra") or {}).get("periods_per_year")), None)  # fmt: skip
-            note = None
-            what = f"{total:,.2f} debited" + (f" in {k} debits" if k > 1 else "")
-            if n:
-                annual = total / k * n
-                measurement = Measurement.ESTIMATED
-                formula = what + (f" ÷ {k}" if k > 1 else "") + f" × {n} periods per year"
-            elif days and 360 <= days <= 366:
-                annual, measurement, formula = total, Measurement.OBSERVED, what + f" over {days} days"
-            elif days:
-                annual = total * Decimal(365) / Decimal(days)
-                measurement = Measurement.ESTIMATED
-                formula = what + f" over {days} days, annualised × 365/{days}"
-            else:
-                annual, measurement = total, Measurement.ESTIMATED
-                formula = what + " (period unknown, not annualised)"
-                note = "Statement period unknown: a lower bound, not the annual fee."
+            pool = pools.setdefault((ik, code), {"doc": d["id"], "periods": [], "items": []})
+            if all(period) and period in pool["periods"]:
                 checks.append(
                     Check(
-                        f"debit_period:{d['id']}:{code}",
-                        f"{ik}: period of {items[0][0]['label']} debits",
-                        "warn",
-                        "The statement period is unknown, so these debits are counted as a lower bound.",
+                        f"debit_repeat:{d['id']}:{code}",
+                        f"{ik}: {items[0][0]['label']} debits for {period[0]} – {period[1]} counted once",
+                        "info",
+                        "Another statement already covers this period, so its debits are not added again.",
                         [f["id"] for f, _v in items],
                     )
                 )
-            annual = annual.quantize(Decimal("0.01"))
-            target = f"cur:{ik}:{code}"
-            corroborates = any(a.atom_id == target for a in atoms)
-            atoms.append(
-                FeeAtom(
-                    f"debit:{d['id']}:{code}" if corroborates else target,
-                    code,
-                    LAYER_BY_CODE.get(code, Layer.OTHER),
-                    f"{ik} · {items[0][0]['label']}",
-                    ik,
-                    annual,
-                    measurement,
-                    Incidence.BILLED,
-                    corroborates=target if corroborates else None,
-                    evidence_ids=tuple(str(f["id"]) for f, _v in items),
-                    formula=formula,
-                    note=""
-                    if corroborates
-                    else (note or "Annualised from cash debits; confirm with the annual cost report."),
+                continue
+            pool["periods"].append(period)
+            pool["items"] += items
+    for (ik, code), pool in pools.items():
+        items, doc_id = pool["items"], pool["doc"]
+        periods = pool["periods"]
+        days = None
+        if all(a and b for a, b in periods):
+            covered: set[date] = set()  # union of the periods, so overlapping statements are not double-timed
+            for a, b in periods:
+                first, last = date.fromisoformat(a), date.fromisoformat(b)
+                covered |= {first + timedelta(i) for i in range((last - first).days + 1)}
+            days = len(covered)
+        total = sum((v for _f, v in items), ZERO)
+        k = len(items)
+        n = next((f["extra"]["periods_per_year"] for f, _v in items
+                  if (f.get("extra") or {}).get("periods_per_year")), None)  # fmt: skip
+        note = None
+        what = f"{total:,.2f} debited" + (f" in {k} debits" if k > 1 else "")
+        what += f" on {len(periods)} statements" if len(periods) > 1 else ""
+        if n:
+            annual = total / k * n
+            measurement = Measurement.ESTIMATED
+            formula = what + (f" ÷ {k}" if k > 1 else "") + f" × {n} periods per year"
+        elif days and 360 <= days <= 366:
+            annual, measurement, formula = total, Measurement.OBSERVED, what + f" over {days} days"
+        elif days:
+            annual = total * Decimal(365) / Decimal(days)
+            measurement = Measurement.ESTIMATED
+            formula = what + f" over {days} days, annualised × 365/{days}"
+        else:
+            annual, measurement = total, Measurement.ESTIMATED
+            formula = what + " (period unknown, not annualised)"
+            note = "Statement period unknown: a lower bound, not the annual fee."
+            checks.append(
+                Check(
+                    f"debit_period:{doc_id}:{code}",
+                    f"{ik}: period of {items[0][0]['label']} debits",
+                    "warn",
+                    "The statement period is unknown, so these debits are counted as a lower bound.",
+                    [f["id"] for f, _v in items],
                 )
             )
+        annual = annual.quantize(Decimal("0.01"))
+        target = f"cur:{ik}:{code}"
+        corroborates = any(a.atom_id == target for a in atoms)
+        atoms.append(
+            FeeAtom(
+                f"debit:{doc_id}:{code}" if corroborates else target,
+                code,
+                LAYER_BY_CODE.get(code, Layer.OTHER),
+                f"{ik} · {items[0][0]['label']}",
+                ik,
+                annual,
+                measurement,
+                Incidence.BILLED,
+                corroborates=target if corroborates else None,
+                evidence_ids=tuple(str(f["id"]) for f, _v in items),
+                formula=formula,
+                note=""
+                if corroborates
+                else (note or "Annualised from cash debits; confirm with the annual cost report."),
+            )
+        )
 
     # tariffs: applicability + contract-vs-observed checks (or contractual atoms if nothing observed)
     for d in documents:
