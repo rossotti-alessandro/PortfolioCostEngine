@@ -68,7 +68,7 @@ def test_parse_amount_locales(raw, expected):
     assert parse_amount(raw) == Dec(expected)
 
 
-@pytest.mark.parametrize("raw", ["1.200", "1,200"])
+@pytest.mark.parametrize("raw", ["1.200", "1,200", "7.815.22", "1,968,78", "12.34.567"])
 def test_parse_amount_ambiguous_rejected(raw):
     with pytest.raises(ValueError):
         parse_amount(raw)
