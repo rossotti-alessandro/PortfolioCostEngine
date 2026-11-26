@@ -440,7 +440,13 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
 
     # ------------------------------------------------------------ bank service costs
     atoms: list[FeeAtom] = []
-    for d in documents:
+    # Latest report first (SC-7.16): with two reports from one bank only the latest 12 months count, and a
+    # second copy of the same period corroborates the first instead of adding to it.
+    counted_period: dict[str, tuple[str | None, str | None]] = {}
+    latest_first = sorted(
+        documents, key=lambda d: (d.get("profile") or {}).get("period_end") or "", reverse=True
+    )
+    for d in latest_first:
         prof = d.get("profile") or {}
         ik = inst_key(prof.get("institution"))
         if d["doc_type"] == "cost_report" or any(f["kind"] == "fee_observed" for f in by_doc[d["id"]]):
@@ -469,29 +475,54 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         f"Report covers {days} days; amounts are annualised (× 365/{days}).",
                     )
                 )
+            # Lines of one report with the same code are separate charges (custody fee and custody
+            # surcharge): summed into one atom (SC-7.16).
+            lines: dict[str, list[tuple[dict, Decimal, str, tuple[str, ...]]]] = defaultdict(list)
             for f in by_doc[d["id"]]:
                 if f["kind"] != "fee_observed" or f["value"] is None:
                     continue
                 amt, fx_note, fx_ids = to_base(D(f["value"]), f.get("currency"), ik)
-                if amt is None:
-                    continue
-                formula = f"reported for {ps} – {pe}" + (f"; {fx_note}" if fx_note else "")
+                if amt is not None:
+                    lines[f["fee_code"]].append((f, amt, fx_note, fx_ids))
+            for code, items in lines.items():
+                amt = sum((a for _f, a, _n, _i in items), ZERO)
+                fx_notes = "; ".join(n for _f, _a, n, _i in items if n)
+                formula = f"reported for {ps} – {pe}"
+                if len(items) > 1:
+                    formula += f", {len(items)} lines: " + " + ".join(f"{a:,.2f}" for _f, a, _n, _i in items)
+                formula += f"; {fx_notes}" if fx_notes else ""
                 if days and not 360 <= days <= 366:
                     amt = amt * Decimal(365) / Decimal(days)
                     formula += f", annualised × 365/{days}"
-                code = f["fee_code"]
-                layer = LAYER_BY_CODE.get(code, Layer.OTHER)
+                ids = tuple(x for f, _a, _n, fx_ids in items for x in (str(f["id"]), *fx_ids))
+                target = f"cur:{ik}:{code}"
+                if target in counted_period and counted_period[target] != (ps, pe):
+                    seen_ps, seen_pe = counted_period[target]
+                    checks.append(
+                        Check(
+                            f"older_report:{d['id']}:{code}",
+                            f"{ik}: older {items[0][0]['label']} not counted",
+                            "info",
+                            f"This report covers {ps} – {pe}; the one for {seen_ps} – {seen_pe} is newer. "
+                            "Only the latest 12 months count.",
+                            [f["id"] for f, _a, _n, _i in items],
+                        )
+                    )
+                    continue
+                duplicate = target in counted_period
+                counted_period.setdefault(target, (ps, pe))
                 atoms.append(
                     FeeAtom(
-                        f"cur:{ik}:{code}",
+                        f"rep:{d['id']}:{code}" if duplicate else target,
                         code,
-                        layer,
-                        f"{ik} · {f['label']}",
+                        LAYER_BY_CODE.get(code, Layer.OTHER),
+                        f"{ik} · " + " + ".join(dict.fromkeys(f["label"] for f, _a, _n, _i in items)),
                         ik,
                         amt,
                         Measurement.OBSERVED,
                         Incidence.TAX if code in TAX_CODES else Incidence.BILLED,
-                        evidence_ids=(str(f["id"]), *fx_ids),
+                        corroborates=target if duplicate else None,
+                        evidence_ids=ids,
                         formula=formula,
                     )
                 )
