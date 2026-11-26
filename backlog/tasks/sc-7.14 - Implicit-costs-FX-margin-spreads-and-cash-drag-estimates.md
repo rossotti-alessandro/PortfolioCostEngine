@@ -1,11 +1,11 @@
 ---
 id: SC-7.14
 title: Cash drag range and hidden-cost box beside the totals
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Compute every portfolio cost end to end"
 model: "claude-opus-5-5"
-progress: 90
+progress: 100
 branch: "claude/project-thread-p3z1fq"
 pr: ""
 created_date: "2026-11-25 20:50"
@@ -82,5 +82,16 @@ Reference rates are external data (ISIN-free). Typical ranges need sources in SO
   byte-identical with and without the range (test).
 
 ## Outcome
+
+Cash drag is now a sourced range beside the totals, and the hidden-cost list is visible for the first time
+(Costs page folded row, client PDF line; before, `hidden_costs` reached no page). Example: USD 50'000 cash
+at USD/CHF 0.90 with SOFR 12-month average 3.7883% gives CHF 0 to 1'704.74 a year; CHF cash gives 0 (SARON
+below zero). Totals, completeness and scenarios unchanged (test). `tests/test_implicit.py` (8 tests).
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-p3z1fq | 2bc7943 | 2026-11-26 | Cash drag range, hidden_range, Costs row, PDF line |
 
 ## Issues Encountered
