@@ -1,14 +1,14 @@
 ---
 id: SC-7.21
 title: Cost edge-case matrix and fixes for bad periods and negative fees
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Compute every portfolio cost end to end"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-p3z1fq"
 pr: ""
-created_date: "2026-11-26 10:05"
+created_date: "2026-11-26 09:43"
 updated_date: "2026-11-26 09:43"
 labels:
   - finance
@@ -66,14 +66,34 @@ Changes finance semantics (rules 1-4): Ale's per-PR approval. The 28-day thresho
 
 ## Acceptance Criteria
 
-- [ ] #1 Reversed cost-report period gives no negative fee and a fail check
-- [ ] #2 A 1-day report is not annualised; counted as reported with a lower-bound warning
-- [ ] #3 A negative fee total is an unknown with a fail check, never a negative cost
-- [ ] #4 A structured product without ISIN is an unknown product cost
-- [ ] #5 Matrix covers equity, bond, ETF, fund share classes, structured, derivative, commodity, cash; CHF/EUR/USD with and without printed rates; partial periods; duplicates; missing KIDs; performance fees
+- [x] #1 Reversed cost-report period gives no negative fee and a fail check
+- [x] #2 A 1-day report is not annualised; counted as reported with a lower-bound warning
+- [x] #3 A negative fee total is an unknown with a fail check, never a negative cost
+- [x] #4 A structured product without ISIN is an unknown product cost
+- [x] #5 Matrix covers equity, bond, ETF, fund share classes, structured, derivative, commodity, cash; CHF/EUR/USD with and without printed rates; partial periods; duplicates; missing KIDs; performance fees
 
 ## Implementation Notes
 
+- `MIN_ANNUALISE_DAYS = 28` and `_report_period()` in `analysis.py` decide full / partial / short / reversed
+  for cost reports and the SC-7.9 residual; cash-debit pools use the same 28-day floor.
+- Unknown atoms get their own ids (`cur:<bank>:<code>:unconverted`, `:negative`) so a cash debit can still
+  establish `cur:<bank>:<code>`; a second copy of the same report adds no second unknown.
+- Annualised report amounts are rounded to the cent where they are annualised (debits already were), so the
+  rows shown add up to the total: the Hypothesis property found a 1-cent drift.
+
 ## Outcome
+
+Five inputs that gave an impossible total while the view said complete are now caught: reversed period
+(fail, not annualised), period under 28 days (lower bound, warn), negative fee total in a report or debit
+pool (unknown + fail), fee line in a currency without printed rate (unknown, view incomplete), structured
+product without ISIN (unknown product cost + KID request). `tests/test_cost_edge_cases.py`: 33 cases plus a
+Hypothesis property (60 random reports, periods -400..400 days). Full backend suite green; pinned demo and
+realistic-benchmark totals unchanged.
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-p3z1fq | 9d715b2 | 2026-11-26 | Fix bad periods, negative/unconverted fees, SP without ISIN; edge-case matrix |
 
 ## Issues Encountered
