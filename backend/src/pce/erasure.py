@@ -19,11 +19,13 @@ from sqlalchemy.orm import Session
 from . import audit
 from .crm.models import Activity, Contact, StageEvent
 from .db import (
+    Account,
     Approval,
     AuditEvent,
     AuditSeal,
     Document,
     FactRow,
+    Position,
     ProposalVersion,
     Prospect,
     RequestState,
@@ -45,6 +47,9 @@ def erase_prospect(
     doc_ids = [d.id for d in docs]
     fact_ids = list(db.scalars(select(FactRow.id).where(FactRow.document_id.in_(doc_ids)))) if doc_ids else []
     counts: dict[str, int] = {"documents": len(doc_ids), "facts": len(fact_ids)}
+    # derived book of record first: its rows point at facts and the prospect
+    for model in (Position, Account):
+        db.execute(delete(model).where(model.prospect_id == pid, model.tenant_id == tenant))
     if fact_ids:
         counts["reviews"] = db.execute(delete(Review).where(Review.fact_id.in_(fact_ids))).rowcount or 0
         db.execute(delete(FactRow).where(FactRow.id.in_(fact_ids)))
