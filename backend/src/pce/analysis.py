@@ -14,6 +14,7 @@ from decimal import Decimal
 from typing import Any
 
 from .extraction.vocab import FEE_LABEL_NAMES
+from .finance.checklist import hidden_costs
 from .finance.isin import is_synthetic, is_valid_isin
 from .finance.ledger import AtomRole, FeeAtom, Incidence, Layer, LedgerSummary, Measurement, aggregate
 from .finance.money import ZERO, D, bps_of, money
@@ -903,6 +904,17 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                         note="Hypothetical example from the KID; never a cost actually paid.",
                     )
                 )
+        if h["asset_class"] in ("FUND", "ETF") and not any(f["fee_code"] == "FUND_TRANSACTION" for f in fs):
+            # A UCITS KIID or FinSA BIB states ongoing charges without portfolio transaction costs; those
+            # are real and outside the OCF, so the gap is an unknown, never a silent zero (SC-7.8).
+            rates.append(
+                ProductRate(
+                    isin,
+                    "FUND_TRANSACTION",
+                    None,
+                    source_label=f"{doc['filename']} does not state portfolio transaction costs.",
+                )
+            )
     # Only CHF-valued positions enter the rate × value product. An unvalued line stays an unknown atom.
     hold_inputs = [
         HoldingInput(
@@ -937,6 +949,22 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             )
     current_atoms = atoms + cur_product + extra_product_atoms
     current = aggregate(current_atoms, scope_aum=total_aum or None)
+    hidden = hidden_costs(
+        holdings,
+        BASE_CCY,
+        {(a.institution or "", a.fee_code) for a in current_atoms if a.measurement != Measurement.UNKNOWN},
+    )
+    if hidden:
+        checks.append(
+            Check(
+                "hidden_costs",
+                "Hidden costs not yet estimated",
+                "info",
+                f"{len(hidden)} hidden cost(s) apply to these holdings but are not estimated: "
+                + ", ".join(sorted({h.label for h in hidden}))
+                + ". Shown apart, never in the total.",
+            )
+        )
 
     # bank's own reported product-cost estimate vs ours (reconciliation, never added)
     for d in documents:
@@ -1270,6 +1298,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             ],
             "current": summary_dict(current, current_atoms),
             "coverage": coverage,
+            "hidden_costs": [asdict(h) for h in hidden],
             "checks": [asdict(c) for c in checks],
             "requests": [asdict(r) for r in requests],
             "comparison_exclusions": excluded,
