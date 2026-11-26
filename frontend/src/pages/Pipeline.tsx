@@ -60,6 +60,7 @@ const ROLE: Record<string, string> = {
   corroborating: "Confirms another figure: not added again",
   not_a_paid_cost: "Information only: not a cost paid",
   unknown: "Amount unknown: not zero",
+  one_off: "Paid once: not in the annual total",
 };
 
 const REVIEW: Record<string, string> = {
