@@ -76,3 +76,9 @@ Bank figures may cover different periods or scopes; period alignment comes with 
 ## Issues Encountered
 
 - `make_synthetic_isin` keeps only 10 characters of the seed, so "EXPOST0001" and "EXPOST0002" collided.
+
+## Branch & Commits
+
+| Branch | Hash | Date | Description |
+| ------ | ---- | ---- | ----------- |
+| claude/project-thread-7crdzy | 3e9f4d6 | 2026-11-26 | Residual from the bank product-cost figure, tests |
