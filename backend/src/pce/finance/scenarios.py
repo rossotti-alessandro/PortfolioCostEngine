@@ -10,7 +10,7 @@ A proposal that changes instruments is never presented as a pure fee saving.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from enum import StrEnum
 
@@ -147,7 +147,16 @@ class ProductRate:
 
 
 def product_atoms(holdings: list[HoldingInput], rates: list[ProductRate], prefix: str) -> list[FeeAtom]:
-    """Turn dated product disclosures into annual economic cost atoms."""
+    """Turn dated product disclosures into annual economic cost atoms.
+
+    Lots of one instrument in one account (two purchase lots, a position split across sub-portfolios of
+    the statement) are one position: their values are summed before rate × value, so each cost is one atom.
+    """
+    lots: dict[tuple[str, str], HoldingInput] = {}
+    for h in holdings:
+        k = (h.account_id, h.instrument_id)
+        lots[k] = replace(lots[k], value=lots[k].value + h.value) if k in lots else h
+    holdings = list(lots.values())
     by_instr: dict[str, list[ProductRate]] = {}
     for r in rates:
         by_instr.setdefault(r.instrument_id, []).append(r)
