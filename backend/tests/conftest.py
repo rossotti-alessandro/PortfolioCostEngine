@@ -11,6 +11,7 @@ import pytest
 os.environ.setdefault("PCE_SECRET_KEY", "test-only-signing-key-" + "x" * 32)
 os.environ.setdefault("PCE_COOKIE_SECURE", "0")
 os.environ.setdefault("PCE_PUBLIC_ISIN_LOOKUP", "0")  # tests never call public registers (SC-6.3)
+os.environ.setdefault("PCE_REFERENCE_FX", "0")  # tests never call the ECB (SC-7.11)
 
 FEE_LINE = "Custody fee 0.25% p.a. CHF 1,250.00"
 
