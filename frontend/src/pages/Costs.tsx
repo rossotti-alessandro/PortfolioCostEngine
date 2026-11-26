@@ -229,6 +229,7 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
             </dd>
           </div>
         )}
+        {a.hidden_range && <HiddenRow a={a} />}
         <div className="px-6 py-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted">{t("Evidence coverage")}</dt>
@@ -243,6 +244,55 @@ function Answer({ a, onTrace }: { a: Analysis; onTrace: (x: TraceTarget) => void
         </div>
       </dl>
     </Card>
+  );
+}
+
+/** Hidden costs: a range beside the total, never in it (SC-7.14). Details stay folded. */
+function HiddenRow({ a }: { a: Analysis }) {
+  const [open, setOpen] = useState(false);
+  const r = a.hidden_range;
+  if (!r) return null;
+  return (
+    <div className="px-6 py-3.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <dt className="text-muted">{t("Hidden costs, not in the total")}</dt>
+        <dd>
+          <button
+            type="button"
+            className="text-[17px] font-semibold text-navy-900 hover:underline"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+          >
+            {r.estimated > 0 ? (
+              <>
+                <Money value={chf(r.low)} /> – <Money value={chf(r.high)} />
+              </>
+            ) : (
+              <span className="text-amber-700">{t("Not estimated")}</span>
+            )}
+          </button>
+        </dd>
+      </div>
+      {open && (
+        <ul className="mt-2 space-y-1.5 text-[12px] text-muted">
+          {a.hidden_costs.map((h) => (
+            <li key={h.key}>
+              <span className="font-medium text-ink">
+                {h.institution} · {t(h.label)}
+              </span>
+              {": "}
+              {h.status === "range" ? (
+                <>
+                  {chf(h.low ?? "0")} – {chf(h.high ?? "0")} <span className="block">{h.method}</span>
+                </>
+              ) : (
+                t("not estimated; needs {doc}", { doc: t(h.needs) })
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
