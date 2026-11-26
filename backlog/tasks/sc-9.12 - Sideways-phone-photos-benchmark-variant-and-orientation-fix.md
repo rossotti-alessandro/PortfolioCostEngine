@@ -81,3 +81,4 @@ Follow-up: upside-down pages from a scanner (not photos) are not turned.
 | claude/project-thread-12ht53 | 537203a | 2026-11-25 | turn sideways and upside-down photos upright; reject 7.815.22 |
 | claude/project-thread-12ht53 | f45c083 | 2026-11-26 | sparse sideways pages; OCR switches no longer leak |
 | claude/project-thread-12ht53 | 970a6fe | 2026-11-26 | RapidOCR line classifier off by default |
+| claude/project-thread-12ht53 | 59fe10e | 2026-11-26 | skip RapidOCR-only tests where the extra is absent (CI) |
