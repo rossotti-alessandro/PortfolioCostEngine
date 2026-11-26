@@ -7,9 +7,9 @@ owner: "Cover costs for every asset type"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-xhgbxu"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/79"
 created_date: "2026-11-26 00:15"
-updated_date: "2026-11-26 00:45"
+updated_date: "2026-11-26 00:25"
 labels:
   - finance
 dependencies: []
