@@ -144,19 +144,37 @@ def infer_asset_class(name: str, given: str | None, authoritative: bool = False)
     return cat, False
 
 
+# Fewer days than this and a report says too little about the year to extrapolate (SC-7.21): a one-day
+# report × 365 turned CHF 1'900 of fees into CHF 693'500. Its amounts count as printed, as a lower bound.
+MIN_ANNUALISE_DAYS = 28
+
+
+def _report_period(ps: str | None, pe: str | None) -> tuple[int | None, str]:
+    """Days a report covers and how to treat them: full, partial (annualise), short, reversed or unknown."""
+    if not (ps and pe):
+        return None, "unknown"
+    days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1
+    if days <= 0:
+        return None, "reversed"  # an extraction slip; annualising by a negative count flips every sign
+    if 360 <= days <= 366:
+        return days, "full"
+    return days, "short" if days < MIN_ANNUALISE_DAYS else "partial"
+
+
 def _product_gap(holding: dict) -> bool:
     """True when a missing KID must be an unknown product-cost atom, never a silent zero.
 
     Equity, cash, plain bonds, listed options and futures and physical metal have no ongoing charge, so
     they get no made-up TER (a bond fund is classed FUND by its name, and a KID for the bond's ISIN
-    makes it a FUND before this check; SC-9.10). A fund or ETF does, with or without an ISIN. Any
+    makes it a FUND before this check; SC-9.10). A fund, ETF or structured product does, with or without an
+    ISIN (a certificate read without its ISIN was a silent zero before SC-7.21). Any
     other holding does only when its ISIN is checksum-valid, so a joined KID can be asked for by
     share class.
     """
     kind = holding["asset_class"]
     if kind in ("CASH", "EQUITY", "BOND", "DERIVATIVE", "COMMODITY"):
         return False
-    if kind in ("FUND", "ETF"):
+    if kind in ("FUND", "ETF", "STRUCTURED"):
         return True
     isin = holding.get("isin") or ""
     return bool(isin and is_valid_isin(isin))
@@ -602,8 +620,29 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             if d["id"] not in inst["documents"]:
                 inst["documents"].append(d["id"])
             ps, pe = prof.get("period_start"), prof.get("period_end")
-            days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1 if ps and pe else None
-            if days and not 360 <= days <= 366:
+            days, period_kind = _report_period(ps, pe)
+            annualise = period_kind == "partial"
+            if period_kind == "reversed":
+                checks.append(
+                    Check(
+                        f"period:{d['id']}",
+                        f"{ik}: cost report period is impossible",
+                        "fail",
+                        f"The report ends ({pe}) before it starts ({ps}). Amounts are counted as printed, "
+                        "not annualised. Correct the dates.",
+                    )
+                )
+            elif period_kind == "short":
+                checks.append(
+                    Check(
+                        f"period:{d['id']}",
+                        f"{ik}: cost report covers 12 months",
+                        "warn",
+                        f"Report covers only {days} days, too few to annualise. Amounts are counted as "
+                        "printed: a lower bound, not the annual cost.",
+                    )
+                )
+            elif annualise:
                 checks.append(
                     Check(
                         f"period:{d['id']}",
@@ -613,41 +652,103 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                     )
                 )
             # Lines of one report with the same code are separate charges (custody fee and custody
-            # surcharge): summed into one atom (SC-7.16).
+            # surcharge): summed into one atom (SC-7.16). A line in a currency with no printed rate cannot
+            # be summed, but the cost exists: it becomes an unknown, never a silent zero (SC-7.21).
             lines: dict[str, list[tuple[dict, Decimal, str, tuple[str, ...]]]] = defaultdict(list)
+            unconverted: dict[str, list[dict]] = defaultdict(list)
             for f in by_doc[d["id"]]:
                 if f["kind"] != "fee_observed" or f["value"] is None:
                     continue
                 amt, fx_note, fx_ids = to_base(D(f["value"]), f.get("currency"), ik)
-                if amt is not None:
+                if amt is None:
+                    unconverted[f["fee_code"]].append(f)
+                else:
                     lines[f["fee_code"]].append((f, amt, fx_note, fx_ids))
-            for code, items in lines.items():
-                amt = sum((a for _f, a, _n, _i in items), ZERO)
-                fx_notes = "; ".join(n for _f, _a, n, _i in items if n)
-                formula = f"reported for {ps} – {pe}"
-                if len(items) > 1:
-                    formula += f", {len(items)} lines: " + " + ".join(f"{a:,.2f}" for _f, a, _n, _i in items)
-                formula += f"; {fx_notes}" if fx_notes else ""
-                if days and not 360 <= days <= 366:
-                    amt = amt * Decimal(365) / Decimal(days)
-                    formula += f", annualised × 365/{days}"
-                ids = tuple(x for f, _a, _n, fx_ids in items for x in (str(f["id"]), *fx_ids))
+            for code in dict.fromkeys([*lines, *unconverted]):
+                items = lines.get(code, [])
+                facts_of_code = [f for f, _a, _n, _i in items] + unconverted.get(code, [])
+                label = facts_of_code[0]["label"]
                 target = f"cur:{ik}:{code}"
                 if target in counted_period and counted_period[target] != (ps, pe):
                     seen_ps, seen_pe = counted_period[target]
                     checks.append(
                         Check(
                             f"older_report:{d['id']}:{code}",
-                            f"{ik}: older {items[0][0]['label']} not counted",
+                            f"{ik}: older {label} not counted",
                             "info",
                             f"This report covers {ps} – {pe}; the one for {seen_ps} – {seen_pe} is newer. "
                             "Only the latest 12 months count.",
-                            [f["id"] for f, _a, _n, _i in items],
+                            [f["id"] for f in facts_of_code],
                         )
                     )
                     continue
-                duplicate = target in counted_period
+                # Same period again (a second copy of the report): its unknowns are already listed, and its
+                # amount corroborates the counted atom instead of adding to it.
+                seen = target in counted_period
+                duplicate = seen and any(a.atom_id == target for a in atoms)
                 counted_period.setdefault(target, (ps, pe))
+                if unconverted.get(code) and not seen:
+                    ccys = ", ".join(sorted({f.get("currency") or "?" for f in unconverted[code]}))
+                    atoms.append(
+                        FeeAtom(
+                            f"{target}:unconverted",
+                            code,
+                            LAYER_BY_CODE.get(code, Layer.OTHER),
+                            f"{ik} · {label} ({ccys})",
+                            ik,
+                            None,
+                            Measurement.UNKNOWN,
+                            Incidence.TAX if code in TAX_CODES else Incidence.BILLED,
+                            evidence_ids=tuple(str(f["id"]) for f in unconverted[code]),
+                            note=f"Charged in {ccys} with no {ccys}/{BASE_CCY} rate on the documents: not "
+                            "converted and not counted as zero.",
+                        )
+                    )
+                if not items:
+                    continue
+                amt = sum((a for _f, a, _n, _i in items), ZERO)
+                ids = tuple(x for f, _a, _n, fx_ids in items for x in (str(f["id"]), *fx_ids))
+                if amt < 0:
+                    # A refund, a reversal or a misread minus. A negative annual fee is never a cost, and
+                    # counting it would lower the total (SC-7.21).
+                    checks.append(
+                        Check(
+                            f"negative_fee:{d['id']}:{code}",
+                            f"{ik}: {label} adds up to a negative amount",
+                            "fail",
+                            f"The {label} lines sum to {amt:,.2f}. A refund or a misread sign? Not counted; "
+                            "confirm the amount on the page.",
+                            [f["id"] for f, _a, _n, _i in items],
+                        )
+                    )
+                    if not seen:
+                        atoms.append(
+                            FeeAtom(
+                                f"{target}:negative",
+                                code,
+                                LAYER_BY_CODE.get(code, Layer.OTHER),
+                                f"{ik} · {label}",
+                                ik,
+                                None,
+                                Measurement.UNKNOWN,
+                                Incidence.TAX if code in TAX_CODES else Incidence.BILLED,
+                                evidence_ids=ids,
+                                note=f"Printed lines sum to {amt:,.2f}: under review, not counted.",
+                            )
+                        )
+                    continue
+                fx_notes = "; ".join(n for _f, _a, n, _i in items if n)
+                formula = f"reported for {ps} – {pe}"
+                if len(items) > 1:
+                    formula += f", {len(items)} lines: " + " + ".join(f"{a:,.2f}" for _f, a, _n, _i in items)
+                formula += f"; {fx_notes}" if fx_notes else ""
+                if annualise:
+                    assert days is not None
+                    # rounded to the cent here, as debits are, so the rows shown add up to the total
+                    amt = (amt * Decimal(365) / Decimal(days)).quantize(Decimal("0.01"))
+                    formula += f", annualised × 365/{days}"
+                elif period_kind == "short":
+                    formula += f", {days} days only: not annualised, a lower bound"
                 atoms.append(
                     FeeAtom(
                         f"rep:{d['id']}:{code}" if duplicate else target,
@@ -679,7 +780,11 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             if f["kind"] != "cash_debit" or f["value"] is None:
                 continue
             debit, _note, _ids = to_base(D(f["value"]), f.get("currency"), ik)
-            if debit is not None:
+            if debit is None:
+                # no printed rate: the debit exists but has no CHF amount; never dropped as zero (SC-7.21)
+                pools.setdefault((ik, f["fee_code"]), {"doc": d["id"], "periods": [], "items": []})
+                pools[(ik, f["fee_code"])].setdefault("unconverted", []).append(f)
+            else:
                 groups[f["fee_code"]].append((f, debit))
         for code, items in groups.items():
             pool = pools.setdefault((ik, code), {"doc": d["id"], "periods": [], "items": []})
@@ -699,6 +804,54 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     for (ik, code), pool in pools.items():
         items, doc_id = pool["items"], pool["doc"]
         periods = pool["periods"]
+        target = f"cur:{ik}:{code}"
+        reported = any(a.atom_id == target for a in atoms)
+        if pool.get("unconverted") and not reported:
+            ccys = ", ".join(sorted({f.get("currency") or "?" for f in pool["unconverted"]}))
+            atoms.append(
+                FeeAtom(
+                    f"{target}:unconverted",
+                    code,
+                    LAYER_BY_CODE.get(code, Layer.OTHER),
+                    f"{ik} · {pool['unconverted'][0]['label']} ({ccys})",
+                    ik,
+                    None,
+                    Measurement.UNKNOWN,
+                    Incidence.BILLED,
+                    evidence_ids=tuple(str(f["id"]) for f in pool["unconverted"]),
+                    note=f"Debited in {ccys} with no {ccys}/{BASE_CCY} rate on the documents: not converted "
+                    "and not counted as zero.",
+                )
+            )
+        if not items:
+            continue
+        if sum((v for _f, v in items), ZERO) < 0:
+            checks.append(
+                Check(
+                    f"negative_fee:{doc_id}:{code}",
+                    f"{ik}: {items[0][0]['label']} debits add up to a negative amount",
+                    "fail",
+                    "More was credited back than debited. A refund or a misread sign? Not counted; confirm "
+                    "the amounts on the statements.",
+                    [f["id"] for f, _v in items],
+                )
+            )
+            if not reported:
+                atoms.append(
+                    FeeAtom(
+                        f"{target}:negative",
+                        code,
+                        LAYER_BY_CODE.get(code, Layer.OTHER),
+                        f"{ik} · {items[0][0]['label']}",
+                        ik,
+                        None,
+                        Measurement.UNKNOWN,
+                        Incidence.BILLED,
+                        evidence_ids=tuple(str(f["id"]) for f, _v in items),
+                        note="Debits net to a negative amount: under review, not counted.",
+                    )
+                )
+            continue
         days = None
         if all(a and b for a, b in periods):
             covered: set[date] = set()  # union of the periods, so overlapping statements are not double-timed
@@ -719,10 +872,23 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             formula = what + (f" ÷ {k}" if k > 1 else "") + f" × {n} periods per year"
         elif days and 360 <= days <= 366:
             annual, measurement, formula = total, Measurement.OBSERVED, what + f" over {days} days"
-        elif days:
+        elif days and days >= MIN_ANNUALISE_DAYS:
             annual = total * Decimal(365) / Decimal(days)
             measurement = Measurement.ESTIMATED
             formula = what + f" over {days} days, annualised × 365/{days}"
+        elif days:
+            annual, measurement = total, Measurement.ESTIMATED
+            formula = what + f" over {days} days only: not annualised"
+            note = f"Statements cover {days} days, too few to annualise: a lower bound, not the annual fee."
+            checks.append(
+                Check(
+                    f"debit_period:{doc_id}:{code}",
+                    f"{ik}: period of {items[0][0]['label']} debits",
+                    "warn",
+                    f"The statements cover only {days} days, so these debits are counted as a lower bound.",
+                    [f["id"] for f, _v in items],
+                )
+            )
         else:
             annual, measurement = total, Measurement.ESTIMATED
             formula = what + " (period unknown, not annualised)"
@@ -737,8 +903,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
                 )
             )
         annual = annual.quantize(Decimal("0.01"))
-        target = f"cur:{ik}:{code}"
-        corroborates = any(a.atom_id == target for a in atoms)
+        corroborates = reported
         atoms.append(
             FeeAtom(
                 f"debit:{doc_id}:{code}" if corroborates else target,
@@ -1156,10 +1321,11 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
         if amt is None:
             continue
         ps, pe = prof.get("period_start"), prof.get("period_end")
-        days = (date.fromisoformat(pe) - date.fromisoformat(ps)).days + 1 if ps and pe else None
+        days, period_kind = _report_period(ps, pe)
         basis = f"bank figure {amt:,.2f}" + (f" for {ps} – {pe}" if days else "")
-        if days and not 360 <= days <= 366:
-            amt = amt * Decimal(365) / Decimal(days)
+        if period_kind == "partial":
+            assert days is not None
+            amt = (amt * Decimal(365) / Decimal(days)).quantize(Decimal("0.01"))
             basis += f", annualised × 365/{days}"
         explained = sum(
             (
