@@ -136,6 +136,74 @@ def _gap_fee(holding: dict) -> tuple[str, Layer, str]:
     )
 
 
+def _statement_signature(ik: str, as_of: str | None, facts: list[dict]) -> tuple | None:
+    """What makes two statements the same: bank, date and the multiset of (instrument, value, currency)."""
+    rows = sorted(
+        (f.get("isin") or f["label"], str(D(f["value"]).normalize()), f.get("currency") or "")
+        for f in facts
+        if f["kind"] == "position" and f["value"] is not None
+    )
+    return (ik, as_of, tuple(rows)) if rows else None
+
+
+def _merge_lots(holdings: list[dict]) -> list[dict]:
+    """One row per institution and instrument for the product-cost join; ``lots`` keeps the source rows.
+
+    Two lots of one ISIN would otherwise give two atoms with one id. A lot without a CHF value leaves the
+    merged value unknown, never a partial sum.
+    """
+    merged: dict[tuple[str, str], dict] = {}
+    for h in holdings:
+        k = (h["institution"], h["isin"] or h["name"])
+        if k not in merged:
+            merged[k] = {**h, "lots": [h]}
+            continue
+        m = merged[k]
+        m["lots"].append(h)
+        m["value"] = None if m["value"] is None or h["value"] is None else m["value"] + h["value"]
+    return list(merged.values())
+
+
+def _pick_product_docs(
+    documents: list[dict], by_doc: dict[int, list[dict]], checks: list[Check]
+) -> tuple[dict[str, list[dict]], dict[str, dict]]:
+    """One KID or termsheet per ISIN: the newest ``as_of``, the lowest document id on a tie.
+
+    Two versions of one KID (a re-download, another language, last year's) must not add their charges
+    twice. The others are named in a check, and a warning when their figures differ.
+    """
+    per_isin: dict[str, dict[int, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    doc_by_id = {d["id"]: d for d in documents}
+    for d in documents:
+        if d["doc_type"] in ("kid", "termsheet"):
+            for f in by_doc[d["id"]]:
+                if f.get("isin"):
+                    per_isin[f["isin"]][d["id"]].append(f)
+    facts_out: dict[str, list[dict]] = {}
+    meta_out: dict[str, dict] = {}
+    for isin, per_doc in per_isin.items():
+        order = sorted(per_doc, key=lambda i: ((doc_by_id[i].get("profile") or {}).get("as_of") or "", -i))
+        keep, others = order[-1], order[:-1]
+        facts_out[isin], meta_out[isin] = per_doc[keep], doc_by_id[keep]
+        if not others:
+            continue
+        figures = {(f["fee_code"], f.get("measurement"), f["value"]) for f in per_doc[keep]}
+        differ = any((f["fee_code"], f.get("measurement"), f["value"]) not in figures
+                     for i in others for f in per_doc[i])  # fmt: skip
+        names = ", ".join(doc_by_id[i]["filename"] for i in others)
+        checks.append(
+            Check(
+                f"duplicate:product:{isin}",
+                f"{isin}: more than one product document",
+                "warn" if differ else "info",
+                f"Costs taken from {doc_by_id[keep]['filename']} (the most recent). Not used: {names}."
+                + (" Their figures differ: check which version applies." if differ else ""),
+                [f["id"] for f in per_doc[keep]],
+            )
+        )
+    return facts_out, meta_out
+
+
 @dataclass
 class Check:
     key: str
@@ -246,7 +314,9 @@ def _claim_saving(cmp: Comparison, *, valued: bool, known: Decimal) -> None:
 def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: dict) -> dict:
     """documents: {id, filename, doc_type, profile}; facts: {id, document_id, key, kind, field, label, value,
     currency, isin, fee_code, measurement, extra, status}; proposal: see demo.spec.PROPOSAL_DEFAULTS."""
-    live = [f for f in facts if f.get("status") != "rejected"]
+    # Fixed order (by id), so a shuffled input gives byte-identical output and the same snapshot hash.
+    documents = sorted(documents, key=lambda d: d["id"])
+    live = sorted((f for f in facts if f.get("status") != "rejected"), key=lambda f: f["id"])
     by_doc: dict[int, list[dict]] = defaultdict(list)
     for f in live:
         by_doc[f["document_id"]].append(f)
@@ -280,11 +350,29 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     # ------------------------------------------------------------ institutions & positions
     holdings: list[dict] = []
     institutions: dict[str, dict] = {}
+    statements_seen: dict[tuple, dict] = {}
     for d in documents:
         if d["doc_type"] != "portfolio_statement":
             continue
         prof = d.get("profile") or {}
         ik = inst_key(prof.get("institution"))
+        # A re-downloaded or re-exported statement has other bytes, so the upload's sha256 check misses it.
+        # Same bank, same date and the same positions is the same statement: count it once.
+        sig = _statement_signature(ik, prof.get("as_of"), by_doc[d["id"]])
+        if sig and sig in statements_seen:
+            first = statements_seen[sig]
+            checks.append(
+                Check(
+                    f"duplicate:statement:{d['id']}",
+                    f"{d['filename']} repeats {first['filename']}",
+                    "warn",
+                    f"Same institution, valuation date and positions as {first['filename']}. "
+                    "Counted once; this copy is ignored.",
+                )
+            )
+            continue
+        if sig:
+            statements_seen[sig] = d
         inst = institutions.setdefault(
             ik,
             {
@@ -747,23 +835,19 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
             )
 
     # ------------------------------------------------------------ product costs
-    product_docs: dict[str, list[dict]] = defaultdict(list)
-    product_doc_meta: dict[str, dict] = {}
-    for d in documents:
-        if d["doc_type"] in ("kid", "termsheet"):
-            for f in by_doc[d["id"]]:
-                if f.get("isin"):
-                    product_docs[f["isin"]].append(f)
-                    product_doc_meta[f["isin"]] = d
+    product_docs, product_doc_meta = _pick_product_docs(documents, by_doc, checks)
     rates: list[ProductRate] = []
     extra_product_atoms: list[FeeAtom] = []
-    for h in holdings:
+    merged_holdings = _merge_lots(holdings)
+    for h in merged_holdings:
         if h["asset_class"] != "CASH" and product_docs.get(h["isin"] or ""):
             # A KID for this exact ISIN proves a packaged product, even when its name reads like a share
             # ("Comgest Monde C"); ignoring it would report the cost complete without the fund's charges.
             if h["asset_class"] in ("EQUITY", "BOND"):
                 is_sp = product_doc_meta[h["isin"]]["doc_type"] == "termsheet"
                 h["asset_class"] = "STRUCTURED" if is_sp else "FUND"
+                for lot in h["lots"]:
+                    lot["asset_class"] = h["asset_class"]
         elif not _product_gap(h):
             continue  # equity and cash: no invented TER
         isin = h["isin"]
@@ -920,7 +1004,7 @@ def analyse(prospect: dict, documents: list[dict], facts: list[dict], proposal: 
     for a in cur_product:
         if a.fee_code == "SP_ENTRY_COST" and a.measurement == Measurement.UNKNOWN:
             a.note = "Issuer margin not disclosed in the termsheet."
-            h = next(x for x in holdings if x["isin"] == a.instrument_id)
+            h = next(x for x in merged_holdings if x["isin"] == a.instrument_id)
             requests.append(
                 MissingRequest(
                     f"sp:{a.instrument_id}",
