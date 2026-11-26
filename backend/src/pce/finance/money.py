@@ -45,7 +45,9 @@ def parse_amount(raw: str) -> Decimal:
     Handles ``1'234'567.89`` (Swiss), ``1’234.50``, ``1.234.567,89`` (EU),
     ``1,234,567.89`` (US), ``-1 234,50`` and trailing minus ``1'200.00-``.
     Ambiguous single-separator inputs like ``1.200`` or ``1,200`` are rejected
-    so a human can confirm the locale instead of the engine guessing.
+    so a human can confirm the locale instead of the engine guessing. So are malformed
+    groups like ``7.815.22``: OCR misread the decimal comma, and the digits alone cannot say
+    whether the amount is 7,815.22 or 781,522.
     """
     s = raw.strip().replace(" ", " ").replace("CHF", "").replace("EUR", "").replace("USD", "")
     s = s.strip()
@@ -65,7 +67,11 @@ def parse_amount(raw: str) -> Decimal:
             s = s.replace(".", "").replace(",", ".")
         else:  # US: 1,234.56
             s = s.replace(",", "")
-    elif has_comma:
+    for sep in ".,":
+        groups = s.split(sep)
+        if len(groups) > 2 and not (len(groups[0]) <= 3 and all(len(g) == 3 for g in groups[1:])):
+            raise ValueError(f"malformed amount {raw!r}: digit groups are not thousands")
+    if has_comma and not has_dot:
         parts = s.split(",")
         if len(parts) == 2 and len(parts[1]) == 3 and len(parts[0]) <= 3:
             raise ValueError(f"ambiguous amount {raw!r}: thousands or decimal separator?")
@@ -73,7 +79,7 @@ def parse_amount(raw: str) -> Decimal:
             s = s.replace(",", ".")
         else:
             s = s.replace(",", "")
-    elif has_dot:
+    elif has_dot and not has_comma:
         parts = s.split(".")
         if len(parts) > 2:
             s = s.replace(".", "")

@@ -23,6 +23,7 @@ GATES: dict[str, dict[str, float]] = {
     "scan": {"words": 98.0, "figures": 98.0, "holdings": 97.0, "fees": 95.0, "wrong_accepted": 1.0},
     "scan_poor": {"words": 95.0, "figures": 95.0, "holdings": 90.0, "fees": 90.0, "wrong_accepted": 1.0},
     "photo": {"words": 97.0, "figures": 97.0, "holdings": 95.0, "fees": 95.0, "wrong_accepted": 1.0},
+    "photo_sideways": {"words": 97.0, "figures": 97.0, "holdings": 95.0, "fees": 95.0, "wrong_accepted": 1.0},
     "photo_hard": {"words": 93.0, "figures": 93.0, "holdings": 85.0, "fees": 85.0, "wrong_accepted": 1.0},
     "annotated": {"words": 97.0, "figures": 97.0, "holdings": 97.0, "fees": 95.0, "wrong_accepted": 1.0},
     "handwritten": {"figures": 80.0},
@@ -37,6 +38,8 @@ def _variant_bytes(variant: str, pdf: bytes, gold: dict, seed: int) -> bytes:
         return degrade.scan(pdf, seed, poor=variant == "scan_poor")
     if variant in ("photo", "photo_hard"):
         return degrade.photo(pdf, seed, hard=variant == "photo_hard")
+    if variant == "photo_sideways":
+        return degrade.photo(pdf, seed, sideways=True)
     if variant == "annotated":
         return degrade.annotated(pdf, gold, seed)
     raise ValueError(variant)
