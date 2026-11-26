@@ -1,15 +1,15 @@
 ---
 id: SC-5.24
 title: On-demand expert agent for hard extractions
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Build expert agent for hard extractions"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-1i20qh"
 pr: ""
 created_date: "2026-11-26 23:40"
-updated_date: "2026-11-26 23:40"
+updated_date: "2026-11-26 23:24"
 labels:
   - extraction
   - privacy
