@@ -191,6 +191,9 @@ def product_atoms(holdings: list[HoldingInput], rates: list[ProductRate], prefix
             # FEE_TAXONOMY specifies average value × rate × days/365. Statements here carry today's
             # value only, and the pinned P-1042 total is this form (900'000 × 1.08% = 9'720). Left as is.
             amount = h.value * D(r.rate_pct) / Decimal(100)
+            # An issuer's entry margin is paid once (fee table: one_off), never every year (SC-7.17).
+            one_off = r.fee_code == "SP_ENTRY_COST"
+            what = "one-off entry cost, paid once" if one_off else "current value × disclosed annual rate"
             atoms.append(
                 FeeAtom(
                     aid,
@@ -203,11 +206,12 @@ def product_atoms(holdings: list[HoldingInput], rates: list[ProductRate], prefix
                     Incidence.EMBEDDED,
                     h.account_id,
                     h.instrument_id,
+                    recurring=not one_off,
                     included_in=parent,
                     rate_bps=D(r.rate_pct) * 100,
                     basis_amount=h.value,
                     evidence_ids=r.evidence_ids,
-                    formula=f"{h.value:,.2f} × {D(r.rate_pct)}% (current value × disclosed annual rate)",
+                    formula=f"{h.value:,.2f} × {D(r.rate_pct)}% ({what})",
                     note=r.source_label,
                 )
             )
