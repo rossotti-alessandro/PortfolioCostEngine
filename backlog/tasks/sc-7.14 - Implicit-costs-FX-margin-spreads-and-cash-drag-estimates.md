@@ -1,15 +1,15 @@
 ---
 id: SC-7.14
 title: Implicit costs: FX margin, spreads and cash drag estimates
-status: To Do
+status: "In Progress"
 assignee: []
-owner: ""
-model: ""
-progress: 0
-branch: ""
+owner: "Compute every portfolio cost end to end"
+model: "claude-opus-5-5"
+progress: 5
+branch: "claude/project-thread-p3z1fq"
 pr: ""
 created_date: "2026-11-25 20:50"
-updated_date: "2026-11-25 20:50"
+updated_date: "2026-11-26 11:27"
 labels:
   - finance
 dependencies:
