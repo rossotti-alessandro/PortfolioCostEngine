@@ -274,6 +274,7 @@ function AtomView({ atom, ledger, onPick }: { atom: Atom; ledger: Ledger; onPick
           </Badge>
           {atom.role === "included_in_parent" && <Badge tone="violet">{t("Included in parent · not added")}</Badge>}
           {atom.role === "corroborating" && <Badge tone="violet">{t("Second evidence · counted once")}</Badge>}
+          {atom.role === "one_off" && <Badge>{t("One-off · not in the annual total")}</Badge>}
           {atom.role === "not_a_paid_cost" && <Badge>{t("Not a paid cost · not counted")}</Badge>}
         </div>
         <p className="text-[12.5px] text-muted">

@@ -539,6 +539,7 @@ function LedgerTable({
                                 ` · ${t("included in the fund's ongoing charge, not added")}`}
                               {x.role === "corroborating" &&
                                 ` · ${t("second source for the same charge, counted once")}`}
+                              {x.role === "one_off" && ` · ${t("paid once, not in the annual total")}`}
                               {x.role === "not_a_paid_cost" &&
                                 ` · ${t("{status}, not a paid cost", { status: t(MEASUREMENT[x.measurement]?.label ?? "").toLowerCase() })}`}
                             </div>
