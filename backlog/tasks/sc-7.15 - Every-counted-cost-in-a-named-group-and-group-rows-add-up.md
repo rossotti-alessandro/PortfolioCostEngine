@@ -1,11 +1,11 @@
 ---
 id: SC-7.15
 title: Every counted cost in a named group, and group rows add up
-status: "In Progress"
+status: Done
 assignee: []
 owner: "Audit cost categories for consistency"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-6oi8gs"
 pr: ""
 created_date: "2026-11-26 00:12"
@@ -17,6 +17,7 @@ dependencies: []
 parent_task_id: SC-7
 priority: P1
 paths_owned:
+  - "frontend/src/pages/Costs.tsx"
   - "backend/src/pce/finance/scenarios.py"
   - "backend/src/pce/report.py"
   - "backend/tests/test_cost_groups.py"
@@ -63,14 +64,19 @@ and structured-product entry cost counted every year are a separate finance stor
 
 ## Acceptance Criteria
 
-- [ ] #1 A cost report with "Fremde Spesen" counts it under L3, and no counted atom has layer `other`
-- [ ] #2 Every L1-L10 code in fee_taxonomy.csv present in `LAYER_BY_CODE` has the table's layer
-- [ ] #3 PDF group rows sum to "Total known" when a cost sits outside the six usual groups
-- [ ] #4 Existing finance and report tests stay green
+- [x] #1 A cost report with "Fremde Spesen" counts it under L3, and no counted atom has layer `other`
+- [x] #2 Every L1-L10 code in fee_taxonomy.csv present in `LAYER_BY_CODE` has the table's layer
+- [x] #3 PDF group rows sum to "Total known" when a cost sits outside the six usual groups
+- [x] #4 Existing finance and report tests stay green
 
 ## Implementation Notes
 
+Also owns `frontend/src/pages/Costs.tsx` (uses the shared `LAYER_ORDER`). PDF layer names now match the app ("Taxes on fees & trades", since L9 holds stamp duty and foreign transaction tax too).
+
 ## Outcome
+
+- **Status**: completed
+- `LAYER_BY_CODE` covers the 19 billed codes of the fee table; `report.py` `LAYER_NAMES` and `LAYER_ORDER` in `format.ts` list every layer. Four tests in `backend/tests/test_cost_groups.py` (three failed on main). Full backend suite green.
 
 ## Issues Encountered
 
@@ -78,3 +84,4 @@ and structured-product entry cost counted every year are a separate finance stor
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-6oi8gs | 44c36da | 2026-11-26 | LAYER_BY_CODE follows the fee table; every layer in report and pages |
