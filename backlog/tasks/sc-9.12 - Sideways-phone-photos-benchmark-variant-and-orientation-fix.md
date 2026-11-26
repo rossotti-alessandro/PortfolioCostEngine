@@ -1,15 +1,15 @@
 ---
 id: SC-9.12
 title: Sideways phone photos: benchmark variant and orientation fix
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Prove and raise accuracy on realistic portfolios"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-12ht53"
 pr: ""
 created_date: "2026-11-25 22:45"
-updated_date: "2026-11-25 23:24"
+updated_date: "2026-11-26 00:40"
 labels:
   - evaluation
   - extraction
@@ -55,14 +55,22 @@ A page that is mostly a wide table with few text lines could be misjudged; check
 
 ## Acceptance Criteria
 
-- [ ] #1 Unit test: a page photographed at 90 and 270 degrees comes out with text running across
-- [ ] #2 Benchmark `photo_sideways` reads holdings like `photo`; `photo` and `photo_hard` do not drop
+- [x] #1 Unit test: a page photographed at 90 and 270 degrees comes out with text running across
+- [x] #2 Benchmark `photo_sideways` reads holdings like `photo`; `photo` and `photo_hard` do not drop
 
 ## Implementation Notes
 
 ## Outcome
 
-- **Status**: partial
+- **Status**: completed
+
+Benchmark 2026-11-26 (`--n 18`, report in `docs/research/REALISTIC_BENCHMARK.md`): sideways photos read
+100% of holdings and 98.96% of fees (before: 0 holdings on a sideways page); dark photos holdings
+63.8 -> 78.3%, fees 51.0 -> 87.5%; phone photos fees 99.0 -> 100%. Wrong values without a review flag: 0 in
+every condition (dark photos were 1.2%). Also: RapidOCR line classifier off (it flipped upright lines on
+dark photos), RapidOCR switches no longer leak between calls, `parse_amount` rejects non-thousands digit
+groups ("7.815.22"). Tests: `test_photo.py` (sideways, upside down, switch leak), `test_engine.py`.
+Follow-up: upside-down pages from a scanner (not photos) are not turned.
 
 ## Issues Encountered
 
@@ -70,3 +78,6 @@ A page that is mostly a wide table with few text lines could be misjudged; check
 
 | Branch | Hash | Date | Description |
 | ------ | ---- | ---- | ----------- |
+| claude/project-thread-12ht53 | 537203a | 2026-11-25 | turn sideways and upside-down photos upright; reject 7.815.22 |
+| claude/project-thread-12ht53 | f45c083 | 2026-11-26 | sparse sideways pages; OCR switches no longer leak |
+| claude/project-thread-12ht53 | 970a6fe | 2026-11-26 | RapidOCR line classifier off by default |
