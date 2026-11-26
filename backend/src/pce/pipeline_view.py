@@ -19,6 +19,7 @@ KIND_LABELS = {
     "doc_total": "Printed totals",
     "fee_observed": "Fees charged",
     "cash_debit": "Fee debits",
+    "transaction": "Trades",
     "fee_rule": "Tariff rules",
     "product_cost": "Product costs",
     "reported": "Reported cost figures",

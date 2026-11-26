@@ -689,6 +689,70 @@ def parse_cost_report(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact
     return facts
 
 
+# SC-7.18: a trade line on a transaction list. A line naming a fee is a fee debit, never a trade.
+_BUY = re.compile(r"\b(buy|bought|purchase|acquisto|kauf|achat)\b", re.I)
+_SELL = re.compile(r"\b(sell|sold|sale|vendita|verkauf|vente)\b", re.I)
+_FX_TRADE = re.compile(
+    r"\bfx spot\b|\bspot\b|conversion|cambio valuta|devisen(?:kauf|verkauf|handel)|change au comptant|"
+    r"\b[A-Z]{3}\s*/\s*[A-Z]{3}\b"
+)
+_FEE_WORD = re.compile(
+    r"commission|\bfees?\b|charge|spese|gebühr|courtage|brokerage|frais|\btax|stamp|bollo|stempel|tassa",
+    re.I,
+)
+_NUMBER = re.compile(r"^-?\d[\d'’.,]*$")
+_QTY_TOLERANCE = Decimal("0.01")
+
+
+def _trade_fact(ln: Line, page: PageInfo, day: str, ccy: str | None, n: int) -> Fact | None:
+    """A buy, sell or FX conversion line: date, side, ISIN, quantity, gross amount (last number)."""
+    text = " ".join(c.text for c in ln.cells[1:])
+    if _FEE_WORD.search(text):
+        return None
+    hit = _isin_at(ln)
+    side = (
+        "fx"
+        if _FX_TRADE.search(text)
+        else "buy"
+        if _BUY.search(text)
+        else "sell"
+        if _SELL.search(text)
+        else None
+    )
+    if side is None or (side != "fx" and hit is None):
+        return None
+    start = hit[0] + 1 if hit else 1
+    nums = []
+    for c in ln.cells[start:]:
+        t = c.text.strip()
+        if _NUMBER.match(t) and not find_dates(t):
+            try:
+                nums.append(abs(parse_amount(t)))
+            except ValueError:
+                continue
+    if not nums:
+        return None
+    gross, quantity = nums[-1], None
+    if len(nums) >= 3:
+        qty, price = nums[-3], nums[-2]
+        # shares: quantity × price; bonds: nominal × price in %. Anything else: quantity not trusted.
+        if any(abs(qty * price / k - gross) <= gross * _QTY_TOLERANCE for k in (1, 100)):
+            quantity = str(qty)
+    codes = [c.text.strip() for c in ln.cells[1:] if c.text.strip() in CURRENCIES]
+    return Fact(
+        key=f"trade:{n}",
+        kind="transaction",
+        field="gross_amount",
+        label=text,
+        value=str(gross),
+        currency=codes[0] if codes else ccy or "CHF",
+        isin=hit[1] if hit else None,
+        measurement="observed",
+        extra={"booking_date": day, "side": side, "quantity": quantity},
+        evidence=_ev(ln, page),
+    )
+
+
 def parse_cash_statement(pages: list[PageInfo], prof: DocumentProfile) -> list[Fact]:
     facts: list[Fact] = []
     ccy = prof.currency
@@ -699,6 +763,9 @@ def parse_cash_statement(pages: list[PageInfo], prof: DocumentProfile) -> list[F
                 if m and re.search(r"conto|account|konto|compte", ln.text, re.I):
                     ccy = m.group(1)
             dates = find_dates(ln.cells[0].text) if ln.cells else []
+            if dates and (trade := _trade_fact(ln, page, dates[0], ccy, len(facts))):
+                facts.append(trade)
+                continue
             amounts = _amount_cells(ln)
             if not dates or not amounts or len(ln.cells) < 3:
                 continue

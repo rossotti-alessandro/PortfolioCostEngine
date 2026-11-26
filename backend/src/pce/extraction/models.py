@@ -65,7 +65,9 @@ class Fact(BaseModel):
     """One extracted value with provenance. ``value`` is a decimal string, never a float."""
 
     key: str  # stable within a document, e.g. "position:ZZGEQLDRA013"
-    kind: str  # position | doc_total | fee_observed | cash_debit | fee_rule | product_cost | reported | meta
+    # position | doc_total | fee_observed | cash_debit | transaction | fee_rule | product_cost | reported
+    # | meta
+    kind: str
     field: str
     label: str
     value: str | None = None

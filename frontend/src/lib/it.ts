@@ -354,6 +354,7 @@ export const IT: Record<string, string> = {
   Totals: "Totali",
   "Fees charged": "Commissioni addebitate",
   "Fee debits": "Addebiti commissionali",
+  Trades: "Operazioni su titoli e cambi",
   "Contract terms": "Condizioni contrattuali",
   "Reported by bank": "Comunicato dalla banca",
   "Document details": "Dettagli del documento",

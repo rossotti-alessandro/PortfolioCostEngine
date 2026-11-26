@@ -228,6 +228,26 @@ class Position(Base):
     __table_args__ = (UniqueConstraint("tenant_id", "fact_id"),)
 
 
+class Transaction(Base):
+    """One trade or FX conversion from a transaction list (SC-7.18): the turnover trading costs scale with."""
+
+    __tablename__ = "transaction"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    prospect_id: Mapped[int] = mapped_column(ForeignKey("prospect.id"), index=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), index=True)
+    isin: Mapped[str | None] = mapped_column(String(12), nullable=True)  # None for an FX conversion
+    booking_date: Mapped[str] = mapped_column(String(10))
+    side: Mapped[str] = mapped_column(String(8))  # buy | sell | fx
+    quantity: Mapped[str | None] = mapped_column(
+        String(40), nullable=True
+    )  # None: not printed or not consistent
+    currency: Mapped[str] = mapped_column(String(3))
+    gross_ccy: Mapped[str] = mapped_column(String(40))  # Decimal as string, in ``currency``
+    fact_id: Mapped[int] = mapped_column(Integer)
+    __table_args__ = (UniqueConstraint("tenant_id", "fact_id"),)
+
+
 def data_dir() -> Path:
     d = Path(os.environ.get("PCE_DATA_DIR", Path(__file__).resolve().parents[3] / "var"))
     d.mkdir(parents=True, exist_ok=True)
