@@ -249,7 +249,7 @@ internal margin kept out of the client payload.
 | # | Gap | Where | Impact | Effort | Story |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Expected-cost checklist has 3 items per bank; FX margin, fund transaction costs, stamp duty, VAT, structured costs, cash interest never become UNKNOWN, so `is_complete` can be true while layers are unexamined | `analysis.py:38` `SERVICE_CORE` | High | Small | SC-7.8 (done) |
-| 2 | Bank ex-post product-cost total used only as cross-check; no KID means product cost unknown | `analysis.py:921` | High | Small | SC-7.9 |
+| 2 | Bank ex-post product-cost total used only as cross-check; no KID means product cost unknown | `analysis.py:921` | High | Small | SC-7.9 (done: KIDs stay counted, the unexplained rest of the bank figure is added once) |
 | 3 | Same-fee debits in one cash statement collapse: later ones become corroborating; with no period word the single debit counts as observed annual. 4 x CHF 500 gives CHF 500 | `analysis.py:508-509` | High | Small | SC-7.7 (done, PR #66) |
 | 4 | No transaction table or parser for transaction lists | `db.py`, `extraction/parsers.py` | High for active portfolios | Medium | SC-7.12 |
 | 5 | No Account / Instrument / Position / Transaction tables; holdings are dicts rebuilt from facts; atoms carry no currency or period | `db.py` | High | Large | SC-7.12 |

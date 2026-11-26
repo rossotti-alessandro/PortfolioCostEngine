@@ -1,11 +1,11 @@
 ---
 id: SC-7.9
 title: Use the bank's ex-post product cost when KIDs are missing
-status: "In Progress"
+status: "Done"
 assignee: []
 owner: "Design complete portfolio cost protocol"
 model: "claude-opus-5-5"
-progress: 5
+progress: 100
 branch: "claude/project-thread-7crdzy"
 pr: ""
 created_date: "2026-11-25 20:50"
@@ -52,11 +52,27 @@ Bank figures may cover different periods or scopes; period alignment comes with 
 
 ## Acceptance Criteria
 
-- [ ] #1 Prospect with ex-post report and no KIDs: product cost known at bank figure, not unknown
-- [ ] #2 Prospect with both: counted once, reconciliation warning when they differ over 5%
+- [x] #1 Prospect with ex-post report and no KIDs: product cost known at bank figure, not unknown
+- [x] #2 Prospect with both: counted once, reconciliation warning when they differ over 5%
 
 ## Implementation Notes
 
+- Owned paths as listed, plus docs/research/COST_PROTOCOL.md (gap 4 status).
+- Changed from the proposed approach: KID figures (tier T3) outrank the bank aggregate (tier T4), so they stay
+  counted. Only the part of the bank figure they do not explain is added, as one residual atom
+  `cur:<bank>:PRODUCT_REPORTED`. If the KIDs already explain the whole bank figure, nothing is added and the
+  gaps stay unknown (a parent equal to the bank figure would have cut CHF 450 of KID-evidenced cost from the
+  P-1042 demo).
+- The residual exists only in the current cost picture. Comparison scenarios keep per-holding product costs,
+  so it can create no saving.
+- Unknown product atoms the residual covers stay visible with materiality `minor`, so the cost can read complete.
+
 ## Outcome
 
+- **Status**: completed
+- `backend/tests/test_expost_fallback.py`: 6 tests, 3 fail on main, all pass here. P-1042 gold totals unchanged.
+- Existing reconciliation check (KID sum vs bank figure, warn over 5%) kept.
+
 ## Issues Encountered
+
+- `make_synthetic_isin` keeps only 10 characters of the seed, so "EXPOST0001" and "EXPOST0002" collided.
