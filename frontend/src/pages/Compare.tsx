@@ -15,15 +15,13 @@ import {
   inputCls,
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { BOUND_TEXT, LAYER, chf, cn, savingParts } from "@/lib/format";
+import { BOUND_TEXT, LAYER, LAYER_ORDER, chf, cn, savingParts } from "@/lib/format";
 import { t, tm } from "@/lib/i18n";
 import type { Analysis, Atom, Comparison, Ledger, ProposalConfig } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-
-const COMPARE_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L9"];
 
 export default function ComparePage() {
   const pid = Number(useParams().id);
@@ -286,7 +284,7 @@ export default function ComparePage() {
 function LayerCompare({ cur, prop, cmp, firm }: { cur: Ledger; prop: Ledger; cmp: Comparison; firm: string }) {
   const sv = savingParts(cmp.annual_saving, cmp.bound);
   const unknown = new Set(cur.atoms.filter((x) => x.role === "unknown").map((x) => x.layer));
-  const rows = COMPARE_LAYERS.map((k) => ({
+  const rows = LAYER_ORDER.map((k) => ({
     k,
     a: Number(cur.by_layer[k] ?? 0),
     b: Number(prop.by_layer[k] ?? 0),
