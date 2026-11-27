@@ -18,7 +18,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+import httpx
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
@@ -44,8 +45,16 @@ from .db import (
     make_session_factory,
 )
 from .demo import spec
-from .extraction import documents
-from .extraction.models import DOC_TYPE_LABELS, DocType
+from .extraction import documents, expert
+from .extraction.models import (
+    DOC_TYPE_LABELS,
+    DocType,
+    DocumentProfile,
+    Evidence,
+    ExtractionResult,
+    Fact,
+)
+from .extraction.models import Review as FactReview
 from .extraction.parsers import PARSERS, classify
 from .extraction.vocab import FEE_LABEL_NAMES, load_taxonomy
 from .finance import fx, implicit
@@ -470,6 +479,7 @@ def health() -> dict:
         "version": __version__,
         "ocr": bool(shutil.which("tesseract")),
         "network_calls": "none",
+        "expert": bool(os.environ.get("PCE_EXPERT_URL")),  # SC-5.24: the review shows "Ask the expert"
     }
 
 
@@ -899,6 +909,106 @@ def review_fact(fid: int, body: ReviewIn, db: DB, c: C) -> dict:
     refresh_book(db, c, get_prospect(db, c, get_doc(db, c, f.document_id).prospect_id))
     db.commit()
     return fact_out(f)
+
+
+def _set_expert_status(db: Session, d: Document, **status: Any) -> None:
+    d.profile = {**(d.profile or {}), "expert": {**(d.profile or {}).get("expert", {}), **status}}
+    db.commit()
+
+
+def _expert_job(tenant: str, user: str, did: int, chat: expert.Chat, model: str) -> None:
+    """Ask the expert about one document's open doubts and possible misses (SC-5.24), in the background.
+    Proposals are written next to the facts as they come; no value, status or total is changed."""
+    from .extraction.layout import read_pdf
+
+    with SessionFactory() as db:
+        d = db.scalar(select(Document).where(Document.id == did, Document.tenant_id == tenant))
+        if d is None:
+            return
+        rows = db.scalars(
+            select(FactRow).where(FactRow.document_id == did, FactRow.tenant_id == tenant)
+        ).all()
+        open_rows = {r.key: r for r in rows if r.status == "extracted"}
+        facts = [
+            Fact(key=r.key, kind=r.kind, field=r.field, label=r.label, value=r.value_current,
+                 fee_code=r.fee_code, isin=r.isin, evidence=Evidence(**r.evidence),
+                 review=FactReview(**r.extra["review"]) if (r.extra or {}).get("review") else None)
+            for r in open_rows.values()
+        ]  # fmt: skip
+        result = ExtractionResult(
+            profile=DocumentProfile.model_validate(d.profile),
+            facts=facts,
+            extractor_version=d.extractor_version,
+        )
+        # asked before: a doubt that already has a proposal, a miss that already became a candidate
+        asked = {r.key for r in rows if r.key.startswith("expert:") or "expert" in (r.extra or {})}
+        items = [
+            i for i in expert.escalate(result) if i.fact_key not in asked and f"expert:{i.id}" not in asked
+        ]
+        _set_expert_status(db, d, status="running", done=0, total=len(items), model=model, error=None)
+        try:
+            data = Path(d.storage_path).read_bytes()
+            pages = {p.number: p for p in read_pdf(data)}
+            reread = expert.pixel_reader(data)
+            counts: dict[str, int] = {}
+            for n, item in enumerate(items, start=1):
+                page = pages.get(item.page)
+                if page is None or not page.lines:
+                    continue
+                prop = expert.ask(item, page, chat, model, reread)
+                counts[prop.action] = counts.get(prop.action, 0) + 1
+                if item.fact_key in open_rows:
+                    r = open_rows[item.fact_key]
+                    r.extra = {**(r.extra or {}), "expert": prop.model_dump()}
+                elif prop.action == "new":  # a candidate fee, never in a total (fee_mention)
+                    db.add(
+                        FactRow(
+                            tenant_id=tenant, document_id=did, key=f"expert:{item.id}", kind="fee_mention",
+                            field="rate_pct" if prop.unit == "%" else "amount", label=item.label[:200],
+                            value_extracted=prop.value, value_current=prop.value, currency=prop.currency,
+                            fee_code=item.fee_code,
+                            extra={"expert": prop.model_dump(),
+                                   "review": {"status": "needs_review", "reasons": ["expert_proposal"]}},
+                            evidence={"page": prop.page, "bbox": prop.bbox, "snippet": prop.quote,
+                                      "engine": f"expert:{model}", "confidence": 0.5},
+                        )
+                    )  # fmt: skip
+                _set_expert_status(db, d, done=n)
+            _set_expert_status(db, d, status="done")
+            detail = {"document_id": did, "model": model, "items": len(items), **counts}
+            db.add(
+                AuditEvent(
+                    tenant_id=tenant,
+                    prospect_id=d.prospect_id,
+                    user=user,
+                    action="document.expert",
+                    detail=detail,
+                )
+            )
+            db.commit()
+        except (httpx.HTTPError, OSError, KeyError, ValueError, expert.ExpertRefused) as exc:
+            db.rollback()
+            _set_expert_status(db, d, status="failed", error=exc.__class__.__name__)
+
+
+@app.post("/api/documents/{did}/expert", status_code=202)
+def ask_expert(did: int, db: DB, c: C, tasks: BackgroundTasks) -> dict:
+    """Escalate this document's doubtful values and possible misses to the expert agent (SC-5.24).
+    Local model by default; a hosted one only with PCE_ALLOW_EXTERNAL_AI=true and name masking."""
+    d = get_doc(db, c, did)
+    if not d.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "the expert reads PDF pages only")
+    if (d.profile or {}).get("expert", {}).get("status") == "running":
+        raise HTTPException(409, "the expert is already working on this document")
+    try:
+        chat, model = expert.client()
+    except expert.ExpertRefused as exc:
+        raise HTTPException(409, str(exc)) from exc
+    _set_expert_status(db, d, status="queued", done=0, total=0, model=model, error=None)
+    audit(db, c, d.prospect_id, "document.expert_requested", document_id=d.id)
+    db.commit()
+    tasks.add_task(_expert_job, c.tenant, c.user, d.id, chat, model)
+    return {"status": "queued", "model": model}
 
 
 @app.get("/api/facts/{fid}/history")

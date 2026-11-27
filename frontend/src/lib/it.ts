@@ -1,5 +1,20 @@
 /** Italian UI strings, keyed by the English source string used in t(). Keep financial terms as used by Swiss banks. */
 export const IT: Record<string, string> = {
+  "Ask the expert": "Chiedi all'esperto",
+  "Checking {done} of {total}…": "Verifica {done} di {total}…",
+  "The expert stopped ({error}). Values are unchanged.":
+    "L'esperto si è fermato ({error}). I valori non sono cambiati.",
+  "Done. Its suggestions are shown on each value.": "Fatto. I suggerimenti sono mostrati su ogni valore.",
+  "Checks the values that need you, and looks for missed fees.":
+    "Controlla i valori da verificare e cerca costi non letti.",
+  "The expert agrees with this value": "L'esperto conferma questo valore",
+  "The expert reads a different value": "L'esperto legge un valore diverso",
+  "The expert found this fee": "L'esperto ha trovato questo costo",
+  "The expert thinks this is not a cost": "Per l'esperto questo non è un costo",
+  "The expert could not tell": "L'esperto non sa dirlo",
+  "Use this value": "Usa questo valore",
+  "A suggestion only: check it on the page before you decide.":
+    "Solo un suggerimento: verificalo sulla pagina prima di decidere.",
   "More information": "Maggiori informazioni",
   "{pass} checks passed · {fail} need attention": "{pass} controlli superati · {fail} da verificare",
   "Strongest evidence for each cost layer": "Evidenza più forte per ogni livello di costo",

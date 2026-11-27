@@ -26,6 +26,7 @@ export default function ReviewPage() {
   const [activeId, setActiveId] = useState<number | null>(Number(sp.get("fact")) || null);
   const active = facts.data?.find((f) => f.id === activeId) ?? null;
   const [editing, setEditing] = useState<"correct" | "reject" | null>(null);
+  const [prefill, setPrefill] = useState<string | null>(null); // the expert's value, offered in the dialog
   const [queue, setQueue] = useState<QueueKey | null>(null);
   const qc = useQueryClient();
   // Open on what needs a person; a document with nothing flagged opens on all its values.
@@ -118,13 +119,23 @@ export default function ReviewPage() {
         onCorrect={() => setEditing("correct")}
         onReject={() => setEditing("reject")}
         onUndo={() => active && review.mutate({ id: active.id, action: "reset", reason: "reset" })}
+        doc={doc}
+        pid={pid}
+        onUseExpert={(value) => {
+          setPrefill(value);
+          setEditing("correct");
+        }}
       />
       {active && (
         <EditDialog
           mode={editing}
           fact={active}
+          initial={prefill}
           busy={review.isPending}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            setPrefill(null);
+          }}
           onSubmit={(value, reason) => review.mutate({ id: active.id, action: editing!, value, reason })}
         />
       )}
@@ -135,23 +146,25 @@ export default function ReviewPage() {
 function EditDialog({
   mode,
   fact,
+  initial,
   busy,
   onClose,
   onSubmit,
 }: {
   mode: "correct" | "reject" | null;
   fact: Fact;
+  initial: string | null;
   busy: boolean;
   onClose: () => void;
   onSubmit: (value: string | undefined, reason: string) => void;
 }) {
-  const [value, setValue] = useState(fact.value ?? "");
+  const [value, setValue] = useState(initial ?? fact.value ?? "");
   const [reason, setReason] = useState("");
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset the form whenever the dialog opens for another action
   useEffect(() => {
-    setValue(fact.value ?? "");
+    setValue(initial ?? fact.value ?? "");
     setReason("");
-  }, [fact, mode]);
+  }, [fact, mode, initial]);
   return (
     <Dialog
       open={!!mode}

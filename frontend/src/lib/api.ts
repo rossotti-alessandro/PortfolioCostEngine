@@ -242,6 +242,9 @@ export const api = {
   },
   setDocType: (docId: number, doc_type: string) => req(`/api/documents/${docId}`, json({ doc_type }, "PATCH")),
   facts: (docId: number) => req<Fact[]>(`/api/documents/${docId}/facts`),
+  health: () => req<{ status: string; ocr: boolean; expert: boolean }>("/api/health"),
+  askExpert: (docId: number) =>
+    req<{ status: string; model: string }>(`/api/documents/${docId}/expert`, { method: "POST" }),
   pipeline: (docId: number) => req<DocumentPipeline>(`/api/documents/${docId}/pipeline`),
   sheet: (docId: number) =>
     req<{ sheets: { name: string; rows: (string | null)[][] }[] }>(`/api/documents/${docId}/sheet`),

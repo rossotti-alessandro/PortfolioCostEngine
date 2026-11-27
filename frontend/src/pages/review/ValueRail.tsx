@@ -1,12 +1,13 @@
 /** Side rail for the value being checked. The page stays the large region; this column only holds the decision. */
 
+import { AskExpert, ExpertSuggestion } from "@/components/Expert";
 import { SourceCrop } from "@/components/SourceCrop";
 import { Badge, Button, Card, ErrorBox, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/format";
 import { t, tm } from "@/lib/i18n";
 import { whyYou } from "@/lib/trail";
-import type { Fact } from "@/lib/types";
+import type { DocumentRow, Fact } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Check, ChevronRight, History, Pencil, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -29,6 +30,9 @@ export function ValueRail({
   onCorrect,
   onReject,
   onUndo,
+  doc,
+  pid,
+  onUseExpert,
 }: {
   all: Fact[];
   ordered: Fact[];
@@ -46,6 +50,9 @@ export function ValueRail({
   onCorrect: () => void;
   onReject: () => void;
   onUndo: () => void;
+  doc: DocumentRow | undefined;
+  pid: number;
+  onUseExpert: (value: string) => void;
 }) {
   const [listOpen, setListOpen] = useState(true);
   const reviewed = all.filter((f) => f.status !== "extracted").length;
@@ -78,6 +85,7 @@ export function ValueRail({
           <kbd className="rounded border border-line px-1">e</kbd> {t("correct")} ·{" "}
           <kbd className="rounded border border-line px-1">r</kbd> {t("reject")}
         </div>
+        {doc && <AskExpert doc={doc} pid={pid} open={all.filter(QUEUE[0].test).length} />}
         <div className="mt-2 flex flex-wrap gap-1" role="tablist" aria-label={t("Values to show")}>
           {QUEUE.map((q) => {
             const n = all.filter(q.test).length;
@@ -122,6 +130,7 @@ export function ValueRail({
               <span>{t("Why you: {reasons}", { reasons: why.join("; ") })}</span>
             </div>
           )}
+          <ExpertSuggestion fact={active} onUse={onUseExpert} />
           {!isSheet && docId && active.evidence.page && active.evidence.bbox && (
             <div className="mt-2.5">
               <SourceCrop

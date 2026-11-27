@@ -235,3 +235,49 @@ def test_report_without_statement_shows_no_total():
     text = pdf_text(client.get(f"/api/prospects/{pid}/report.pdf", headers=D).content)
     assert "Costs are not calculated yet" in text
     assert "CHF 0" not in text and "saving" not in text.lower()
+
+
+def test_expert_proposals_are_stored_beside_the_fact_and_change_nothing(statement_pdf, monkeypatch):
+    from pce.extraction import expert
+
+    pid = seeded()
+    up = client.post(
+        f"/api/prospects/{pid}/documents",
+        headers=A,
+        files=[("files", ("expert-statement.pdf", statement_pdf.read_bytes(), "application/pdf"))],
+    ).json()["results"][0]
+    did = next(d["id"] for d in client.get(f"/api/prospects/{pid}/documents", headers=A).json()
+               if d["filename"] == up["filename"])  # fmt: skip
+    facts = client.get(f"/api/documents/{did}/facts", headers=A).json()
+    target = next(f for f in facts if f["value"] is not None and f["evidence"].get("bbox"))
+    before = client.get(f"/api/prospects/{pid}/analysis", headers=A).json()["current"]["total_known"]
+
+    def escalate(result, limit=40):
+        f = next(x for x in result.facts if x.key == target["key"])
+        return [expert.Item(id="doubt:t", kind="doubt", page=1, bbox=f.evidence.bbox, label=f.label,
+                            value=f.value, fact_key=f.key)]  # fmt: skip
+
+    printed = "1,250.00" if target["field"] == "amount" else "0.25%"
+    reply = json.dumps({"answer": "confirm", "line": 1, "printed": printed, "reason": "SYNTHETIC"})
+    monkeypatch.setattr(expert, "escalate", escalate)
+    monkeypatch.setattr(expert, "client", lambda: ((lambda messages: reply), "scripted"))
+    assert client.post(f"/api/documents/{did}/expert", headers=B).status_code == 404  # other tenant
+    r = client.post(f"/api/documents/{did}/expert", headers=A)
+    assert r.status_code == 202, r.text
+    after = {f["id"]: f for f in client.get(f"/api/documents/{did}/facts", headers=A).json()}
+    got = after[target["id"]]
+    assert got["extra"]["expert"]["value"] is not None and got["extra"]["expert"]["dropped"] == ""
+    assert (got["value"], got["status"]) == (target["value"], target["status"])
+    assert client.get(f"/api/prospects/{pid}/analysis", headers=A).json()["current"]["total_known"] == before
+    doc = next(d for d in client.get(f"/api/prospects/{pid}/documents", headers=A).json() if d["id"] == did)
+    assert doc["profile"]["expert"]["status"] == "done"
+
+
+def test_expert_refuses_a_hosted_model_without_the_privacy_flag(monkeypatch):
+    pid = seeded()
+    docs = client.get(f"/api/prospects/{pid}/documents", headers=A).json()
+    did = next(d["id"] for d in docs if d["filename"].lower().endswith(".pdf"))
+    monkeypatch.setenv("PCE_EXPERT_URL", "https://api.example.com/v1")
+    monkeypatch.delenv("PCE_ALLOW_EXTERNAL_AI", raising=False)
+    r = client.post(f"/api/documents/{did}/expert", headers=A)
+    assert r.status_code == 409 and "PCE_ALLOW_EXTERNAL_AI" in r.text
