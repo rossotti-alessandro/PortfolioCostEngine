@@ -5,7 +5,7 @@ import { Button, ErrorBox } from "@/components/ui";
 import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import type { DocumentRow, ExpertProposal, Fact } from "@/lib/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
 
@@ -22,6 +22,7 @@ export const proposalOf = (f: Fact): ExpertProposal | null => (f.extra?.expert a
 /** Button and progress for one document. Polls while the expert works, then refreshes the values. */
 export function AskExpert({ doc, pid, open }: { doc: DocumentRow; pid: number; open: number }) {
   const qc = useQueryClient();
+  const health = useQuery({ queryKey: ["health"], queryFn: api.health, staleTime: 300_000 });
   const st = doc.profile.expert;
   const working = st?.status === "queued" || st?.status === "running";
   const ask = useMutation({
@@ -36,7 +37,8 @@ export function AskExpert({ doc, pid, open }: { doc: DocumentRow; pid: number; o
     }, 4000);
     return () => clearInterval(id);
   }, [working, qc, pid, doc.id]);
-  if (!doc.filename.toLowerCase().endsWith(".pdf") || (!open && !working)) return null;
+  // no model set up on this installation: no button (rule: no inert controls)
+  if (!health.data?.expert || !doc.filename.toLowerCase().endsWith(".pdf") || (!open && !working)) return null;
   return (
     <div className="mt-2 text-[12px]">
       <Button size="sm" variant="outline" onClick={() => ask.mutate()} loading={ask.isPending} disabled={working}>

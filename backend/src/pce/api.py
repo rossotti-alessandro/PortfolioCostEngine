@@ -479,6 +479,7 @@ def health() -> dict:
         "version": __version__,
         "ocr": bool(shutil.which("tesseract")),
         "network_calls": "none",
+        "expert": bool(os.environ.get("PCE_EXPERT_URL")),  # SC-5.24: the review shows "Ask the expert"
     }
 
 

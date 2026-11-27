@@ -18,7 +18,8 @@ printed* on that line. Then deterministic guards decide what survives:
 - Document text is data. A page that says "ignore your instructions" can at worst yield an unpinned or a
   wrong-but-cited proposal, which a person still checks.
 
-Privacy (ADR 0004): the default endpoint is a local OpenAI-compatible server (llama.cpp, Ollama). A
+Off unless ``PCE_EXPERT_URL`` is set. Privacy (ADR 0004): use a local OpenAI-compatible server (llama.cpp,
+Ollama). A
 non-local endpoint is refused unless ``PCE_ALLOW_EXTERNAL_AI=true`` and the PII masking of
 ``pce.pii.redact`` is available; every message is masked before it leaves.
 """
@@ -46,7 +47,6 @@ from .models import Evidence, ExtractionResult, Fact
 from .numbers import CURRENCY_WORDS, PrintedNumber, find_numbers
 from .verify import second_reading
 
-DEFAULT_URL = "http://127.0.0.1:11434/v1"  # Ollama's OpenAI-compatible API; llama.cpp works the same way
 TOOLS = ("lines", "reread", "sum")
 MAX_STEPS = 4  # tool calls + the answer
 WINDOW = 4  # lines above and below the item shown first (prompt size is the CPU cost)
@@ -423,7 +423,9 @@ def _masker() -> Callable[[str], str] | None:
 
 def client(url: str | None = None, model: str | None = None, key: str | None = None) -> tuple[Chat, str]:
     """A chat function for the configured endpoint, or ``ExpertRefused`` if privacy rules forbid it."""
-    url = (url or os.environ.get("PCE_EXPERT_URL") or DEFAULT_URL).rstrip("/")
+    url = (url or os.environ.get("PCE_EXPERT_URL") or "").rstrip("/")
+    if not url:  # off unless someone set up a model: e.g. Ollama at http://127.0.0.1:11434/v1
+        raise ExpertRefused("no expert model is set up (PCE_EXPERT_URL)")
     model = model or os.environ.get("PCE_EXPERT_MODEL", "qwen3:4b-instruct")
     key = key or os.environ.get("PCE_EXPERT_API_KEY", "")
     mask: Callable[[str], str] = str

@@ -51,8 +51,9 @@ The answer is `confirm`, `correct`, `new`, `not_a_fee` or `abstain`, with the li
 
 ## Privacy
 
-- Default endpoint: a local OpenAI-compatible server (`PCE_EXPERT_URL`, default Ollama on
-  `127.0.0.1:11434`; llama.cpp works the same). Loopback and private addresses only.
+- Off until `PCE_EXPERT_URL` is set; the review shows the button only then. Use a local
+  OpenAI-compatible server (Ollama on `127.0.0.1:11434/v1`, or llama.cpp). Loopback and private
+  addresses need no flag.
 - A hosted model (for example Claude through its OpenAI-compatible API) is refused unless
   `PCE_ALLOW_EXTERNAL_AI=true` **and** the name and address masking of SC-11.9 is installed
   (`pce.pii.redact` + `pce.pii.names_available()`). Every message is masked before it leaves. Amounts,
@@ -64,7 +65,7 @@ The answer is `confirm`, `correct`, `new`, `not_a_fee` or `abstain`, with the li
 
 | Variable | Default | |
 |---|---|---|
-| `PCE_EXPERT_URL` | `http://127.0.0.1:11434/v1` | OpenAI-compatible chat endpoint |
+| `PCE_EXPERT_URL` | unset (expert off) | OpenAI-compatible chat endpoint, e.g. `http://127.0.0.1:11434/v1` |
 | `PCE_EXPERT_MODEL` | `qwen3:4b-instruct` | model name on that server |
 | `PCE_EXPERT_API_KEY` | empty | only for a hosted endpoint |
 | `PCE_EXPERT_TIMEOUT` | 300 s | per model call |
@@ -74,7 +75,45 @@ Q4_K_M GGUF (Apache-2.0), 4 CPU cores, no GPU. With Ollama: `ollama pull qwen3:4
 
 ## Results
 
-RESULTS_PLACEHOLDER
+Local model: Qwen3-4B-Instruct-2507 Q4_K_M through llama.cpp, 4 CPU cores, about 20 s per item.
+Raw results: `artifacts/expert/<set>/results.json` (not in git; regenerate with the commands below).
+
+**Realistic statements** (SC-9.8 generator, 6 SYNTHETIC statements x 2 hardest conditions: fax-quality scan
+and dark phone photo; 95 escalated items: 45 fees, 50 holdings):
+
+| | poor scan | dark photo | both |
+|---|---|---|---|
+| items escalated | 42 | 53 | 95 |
+| confirmed a right reading | 28 | 41 | 69 |
+| confirmed a wrong reading | 3 | 3 | 6 |
+| proposed a correction (all wrong) | 3 | 0 | 3 |
+| called a real fee "not a cost" | 0 | 2 | 2 |
+| no answer (abstained or dropped by the guards) | 8 | 7 | 15 |
+| right, of the answers given | 82% | 89% | 86% |
+| missed fees recovered for review | 0 of 6 | 0 of 3 | 0 of 9 |
+
+The 6 wrong confirmations are column mix-ups on holdings (the unit price confirmed instead of the market
+value) and OCR misreads that are printed that way in the OCR text. The guards dropped 13 answers that
+cited a figure not on the item's row.
+
+**Corpus fee pages** (54 real public pages, 813 hand-checked fee figures, `groundtruth.json`): the
+pipeline escalated only 15 items (14 doubts, 1 possible miss). The expert confirmed 5 right readings,
+confirmed 1 wrong one, called 1 fee line "not a cost" and gave no usable answer on 8. It recovered no
+missed fee: the pipeline's misses on these pages are silent (no flag, no possible-miss line), so they never
+reach the expert.
+
+**What this means**
+
+1. The workflow, the guards and the privacy gate work: no proposal changed a value, nothing unprinted got
+   through, and a hosted model cannot be reached without the flag and the masking.
+2. A local 4B model on CPU is a second opinion that is right about 85% of the time. That is not good enough
+   to accept anything on its word, so its proposals stay suggestions and the analyst decides. It saves
+   time mainly by confirming right readings with the line quoted.
+3. It does not find what the pipeline never flags. Two levers would: a stronger model (the hosted vision
+   model scored about 98% found and 1% wrong on public pages, but needs the privacy decision and SC-11.9
+   masking; or a local 8B+ model on a GPU), and a "sweep the whole page" mode for silent misses.
+4. Holdings questions need the column header and quantity x price: a `multiply` check on the row would
+   catch the price-for-value confusions.
 
 ## Re-run
 

@@ -222,3 +222,9 @@ def test_reread_text_can_pin_a_figure_the_first_reader_misread():
     assert "read again from the image: Custody fee CHF 1'250.50" in sent[1][-1]["content"]
     assert (p.action, p.value, p.bbox) == ("correct", "1250.50", [50.0, 120.0, 266.0, 130.0])
     assert len(calls) == 1 and p.reason.startswith("from the reread")
+
+
+def test_expert_is_off_until_a_model_is_set_up(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("PCE_EXPERT_URL", raising=False)
+    with pytest.raises(expert.ExpertRefused, match="PCE_EXPERT_URL"):
+        expert.client()

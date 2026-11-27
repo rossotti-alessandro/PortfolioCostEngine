@@ -27,6 +27,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from pce.extraction import expert
+from pce.extraction.numbers import find_numbers
 from pce.extraction.parsers import extract
 
 POSITIONS_PER_DOC = 5  # holdings also reconcile to the printed total; sample them, keep every fee item
@@ -146,7 +147,8 @@ def ocrbench(pages_dir: Path, chat, model) -> list[dict]:
             continue
         data = pdf.read_bytes()
         res, pages = extract(pdf.name, data)
-        vals = {v for v in (_dec(x["value"]) for x in g["items"]) if v is not None}
+        # gold is written as printed ("3,00%", "CHF 350", "Fino a 308 Euro"): read it with the app's parser
+        vals = {n.value for x in g["items"] for n in find_numbers(x["value"])[:1]}
         read = {_dec(f.value) for f in res.facts if f.value is not None}
         missed = vals - read
         doc_rows = run_doc(res, pages, data, lambda item, vals=vals: vals, chat, model)
