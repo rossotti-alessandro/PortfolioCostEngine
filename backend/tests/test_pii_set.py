@@ -1,7 +1,7 @@
 """SC-11.9: the rules hide every structured identifier on the SYNTHETIC PII set and flag nothing else.
 
-Names, addresses and birth dates are not rule territory (0% by design); they need the local model
-(docs/research/PII_MEASUREMENT.md).
+Names, addresses and birth dates are not rule territory (0% by design); the local model covers them
+(tests/test_pii_names.py, docs/research/PII_MEASUREMENT.md).
 """
 
 from evaluation.pii_set import pages, rules, score

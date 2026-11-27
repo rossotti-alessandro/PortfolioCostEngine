@@ -9,7 +9,7 @@ without a label, national phone formats, OCR letter/digit swaps, surnames alone 
 holders. Distractors that must stay visible: ISINs, valor numbers, amounts, dates, rates, the bank's own
 BIC.
 
-    uv run python -m tests.evaluation.pii_set     # scores pce.pii (rules) on the set
+    uv run python -m tests.evaluation.pii_set     # scores the rules, and rules + name model if installed
 """
 
 from __future__ import annotations
@@ -139,6 +139,34 @@ WORDS = {
 }
 # Public fund ISINs and the bank's own BIC: must stay visible.
 ISINS = ["IE00B4L5Y983", "LU0274208692", "CH0012032048", "IE00B5BMR087", "LU1681043599"]
+# Product, bank and manager names: public and needed by the cost analysis. A redactor must leave them visible.
+FUNDS = [
+    "iShares Core MSCI World UCITS ETF",
+    "Vanguard FTSE All-World UCITS ETF",
+    "Pictet-Global Megatrend Selection P",
+    "UBS (Lux) Bond Fund - CHF Flexible",
+    "Raiffeisen Futura Swiss Stock",
+    "Swisscanto (CH) Equity Fund Swiss",
+    "Lombard Odier Funds - Golden Age",
+    "Amundi MSCI Emerging Markets",
+    "Franklin Templeton Global Bond",
+    "JPMorgan Funds - Europe Equity Plus",
+    "Fidelity Funds - World Fund",
+    "Roche Holding AG",
+    "Nestlé SA",
+    "BlackRock Global Funds - World Gold",
+]
+BANKS = [
+    "Banca dello Stato del Cantone Ticino",
+    "Zürcher Kantonalbank",
+    "Banque Cantonale Vaudoise",
+    "Julius Bär & Co. AG",
+    "Banca Popolare di Sondrio (Suisse) SA",
+    "Edmond de Rothschild (Suisse) S.A.",
+    "Safe Capital SA",
+    "PostFinance AG",
+    "Credit Agricole Italia",
+]
 
 
 def _iban(rng: random.Random, country: str) -> str:
@@ -249,10 +277,12 @@ def make_page(seed: int, lang: str) -> Page:
     p.put("\n\n")
     # Holdings table: none of this is personal data.
     p.put(f"{w['valor']}    ISIN            {w['value']} CHF\n")
+    names = random.Random(seed + 7)  # noqa: S311 - separate stream keeps the gold pages unchanged
     for isin in rng.sample(ISINS, 3):
         value = f"{rng.randint(10, 900)}'{rng.randint(100, 999)}.{rng.randint(10, 99)}"
-        p.put(f"{rng.randint(1000000, 99999999)}    {isin}    {value}\n")
-    p.put(f"{w['fee']}\n\n")
+        p.put(f"{rng.randint(1000000, 99999999)}    {names.choice(FUNDS)}  {isin}    {value}\n")
+    p.put(f"{w['fee']}\n")
+    p.put(f"Custodian: {names.choice(BANKS)}   Manager: {names.choice(BANKS)}\n\n")
     # Harder cases: number repeated without its label (page header of page 2), unlabelled national phone,
     # surname alone in a salutation, a card number in a transaction line.
     p.put(f"{last.upper()} {first.upper()[0]}.", "name")
@@ -329,5 +359,18 @@ def report(res: dict) -> str:
     return "\n".join(lines)
 
 
+def combined(text: str) -> list[tuple[str, int, int]]:
+    """Rules plus the local name model (``pce.pii.detect_all``); rules only when the model is missing."""
+    from pce import pii
+
+    return [(s.kind, s.start, s.end) for s in pii.detect_all(text)]
+
+
 if __name__ == "__main__":
-    print(report(score(rules, pages())))
+    from pce import pii
+
+    print("Rules:\n" + report(score(rules, pages())))
+    if pii.names_available():
+        print("\nRules + local name model:\n" + report(score(combined, pages())))
+    else:
+        print("\nName model not installed: uv sync --extra pii && uv run python -m pce.pii_names --download")

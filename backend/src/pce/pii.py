@@ -2,8 +2,9 @@
 
 Rules only, no model and no network: IBAN, Swiss AHV/AVS number and payment card (check digits
 via python-stdnum), email, phone, and account/client numbers that sit next to a label. Check
-digits are enforced so random digit runs are not flagged. Names and addresses need a model
-(SC-11.9). ISINs are never flagged: public lookups depend on them (ADR 0004).
+digits are enforced so random digit runs are not flagged. Names, addresses and birth dates come from
+the optional local model in ``pce.pii_names`` (SC-11.9); ``redact`` combines both and is the one call to
+make before any text leaves the app. ISINs are never flagged: public lookups depend on them (ADR 0004).
 
 A ``Span`` holds offsets, never the matched text, so spans can be logged safely.
 """
@@ -17,9 +18,10 @@ from pydantic import BaseModel, ConfigDict
 from stdnum import iban, luhn
 from stdnum.ch import ssn
 
+from pce.errors import PceError
 from pce.finance.isin import is_valid_isin
 
-Kind = Literal["iban", "ahv", "card", "account", "phone", "email"]
+Kind = Literal["iban", "ahv", "card", "account", "phone", "email", "name", "address", "birth_date"]
 
 
 class Span(BaseModel):
@@ -73,6 +75,7 @@ _COMPOUND_ACCOUNT = re.compile(
 
 # Earlier kinds win when spans overlap.
 _PRIORITY: dict[str, int] = {"iban": 0, "ahv": 1, "card": 2, "account": 3, "phone": 4, "email": 5}
+_MODEL_PRIORITY = {"name": 6, "address": 7, "birth_date": 8}
 
 
 def _ibans(text: str) -> list[Span]:
@@ -159,3 +162,49 @@ def mask(text: str, spans: list[Span]) -> str:
         pos = s.end
     out.append(text[pos:])
     return "".join(out)
+
+
+class LeakError(PceError):
+    """Masked text still holds an identifier the rules find: never send it."""
+
+
+def names_available() -> bool:
+    """True when the local name and address model is installed (extra ``pii`` plus downloaded weights)."""
+    from pce import pii_names
+
+    return pii_names.available()
+
+
+def detect_all(text: str) -> list[Span]:
+    """Rule identifiers plus, when the local model is available, names, addresses and birth dates.
+
+    A model span overlapping a rule span is merged into it, so the model can widen a mask but never
+    narrow or drop one the rules found."""
+    spans = detect(text)
+    if not names_available():
+        return spans
+    from pce import pii_names
+
+    spans = spans + [Span(kind=f.kind, start=f.start, end=f.end) for f in pii_names.detect(text).spans]
+    spans.sort(key=lambda s: (s.start, -(s.end - s.start)))
+    kept: list[Span] = []
+    for s in spans:
+        if kept and s.start < kept[-1].end:
+            last = kept[-1]
+            kind = min(last.kind, s.kind, key=lambda k: {**_PRIORITY, **_MODEL_PRIORITY}[k])
+            kept[-1] = Span(kind=kind, start=last.start, end=max(last.end, s.end))
+            continue
+        kept.append(s)
+    return kept
+
+
+def redact(text: str) -> str:
+    """Mask every personal identifier this machine can find. Call before any text leaves the app.
+
+    Amounts, rates, ISINs, valor numbers and ordinary dates stay visible. Without the local model only the
+    rule identifiers are masked: check ``names_available()`` before sending text to an outside service.
+    Raises ``LeakError`` if a rule identifier survives masking (a guard against a masking bug)."""
+    out = mask(text, detect_all(text))
+    if detect(out):
+        raise LeakError("an identifier survived masking")
+    return out

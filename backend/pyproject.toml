@@ -45,6 +45,11 @@ docling = ["docling==2.148.0"]
 # onnxruntime MIT; pulls opencv-python-headless Apache-2.0, shapely BSD-3, pyclipper MIT, omegaconf BSD-3,
 # flatbuffers Apache-2.0, protobuf BSD-3, colorlog MIT, tqdm MPL-2.0/MIT. No network at run time. Install with: uv sync --extra rapidocr
 rapidocr = ["rapidocr==3.10.0", "onnxruntime==1.32.0"]
+# Names, addresses and birth dates for PII masking (SC-11.9): GLiNER2 2.2.0 Apache-2.0, run locally
+# (the "local" extra pulls torch BSD-3, transformers Apache-2.0, peft Apache-2.0, safetensors Apache-2.0).
+# Weights: fastino/gliner2-privacy-filter-PII-multi, Apache-2.0, mDeBERTa-v3 encoder (MIT), fetched once
+# with `uv run python -m pce.pii_names --download`, then loaded offline. Install with: uv sync --extra pii
+pii = ["gliner2[local]==2.2.0"]
 # Local OCR/VLM candidates for the SC benchmark story only (heavy; not installed by default).
 vlm = ["paddleocr==3.7.0"]
 
