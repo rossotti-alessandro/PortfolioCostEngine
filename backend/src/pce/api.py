@@ -985,7 +985,7 @@ def _expert_job(tenant: str, user: str, did: int, chat: expert.Chat, model: str)
                 )
             )
             db.commit()
-        except (httpx.HTTPError, OSError, KeyError, ValueError) as exc:
+        except (httpx.HTTPError, OSError, KeyError, ValueError, expert.ExpertRefused) as exc:
             db.rollback()
             _set_expert_status(db, d, status="failed", error=exc.__class__.__name__)
 

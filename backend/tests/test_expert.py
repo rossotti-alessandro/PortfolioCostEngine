@@ -74,25 +74,25 @@ def _item(fact: Fact | None = None) -> expert.Item:
 
 
 def test_correct_takes_the_value_from_the_app_parser_not_the_model():
-    chat, _ = _scripted({"answer": "correct", "line": 1, "printed": "1'250.50", "reason": "misread 8"})
+    chat, _ = _scripted({"action": "correct", "line": 1, "printed": "1'250.50", "reason": "misread 8"})
     p = expert.ask(_item(), PAGE, chat)
     assert (p.action, p.value, p.currency, p.dropped) == ("correct", "1250.50", "CHF", "")
     assert p.bbox == [202.0, 120.0, 266.0, 130.0] and p.quote.startswith("Custody fee")
 
 
 def test_confirm_only_when_the_printed_figure_equals_the_reading():
-    chat, _ = _scripted({"answer": "correct", "line": 1, "printed": "1'250.50"})
+    chat, _ = _scripted({"action": "correct", "line": 1, "printed": "1'250.50"})
     assert expert.ask(_item(_doubt("1250.50")), PAGE, chat).action == "confirm"
 
 
 @pytest.mark.parametrize(
     "answer",
     [
-        {"answer": "new", "line": 1, "printed": "999.00"},  # not printed anywhere
-        {"answer": "correct", "line": 2, "printed": "1'250.50"},  # printed, but not on the cited line
-        {"answer": "new", "line": 3, "printed": "0"},  # the injected line, two rows away from the item
-        {"answer": "new", "line": 99, "printed": "1'250.50"},  # no such line
-        {"answer": "maybe"},
+        {"action": "new", "line": 1, "printed": "999.00"},  # not printed anywhere
+        {"action": "correct", "line": 2, "printed": "1'250.50"},  # printed, but not on the cited line
+        {"action": "new", "line": 3, "printed": "0"},  # the injected line, two rows away from the item
+        {"action": "new", "line": 99, "printed": "1'250.50"},  # no such line
+        {"action": "maybe"},
     ],
 )
 def test_answers_that_do_not_pin_to_a_printed_figure_are_dropped(answer: dict):
@@ -109,10 +109,13 @@ def test_non_json_reply_is_an_abstention():
 
 def test_sum_tool_adds_printed_figures_in_decimal_and_rejects_unprinted_ones():
     chat, sent = _scripted(
-        {"tool": "sum", "numbers": [{"line": 1, "printed": "1'250.50"}, {"line": 2, "printed": "8'500.00"}]},
-        {"tool": "sum", "numbers": [{"line": 1, "printed": "1'250.80"}]},
-        {"tool": "lines", "from": 0, "to": 1},
-        {"answer": "confirm", "line": 1, "printed": "1'250.50"},
+        {
+            "action": "sum",
+            "numbers": [{"line": 1, "printed": "1'250.50"}, {"line": 2, "printed": "8'500.00"}],
+        },
+        {"action": "sum", "numbers": [{"line": 1, "printed": "1'250.80"}]},
+        {"action": "lines", "from": 0, "to": 1},
+        {"action": "confirm", "line": 1, "printed": "1'250.50"},
     )
     p = expert.ask(_item(), PAGE, chat)
     tool_results = [m[-1]["content"] for m in sent[1:]]
@@ -123,7 +126,7 @@ def test_sum_tool_adds_printed_figures_in_decimal_and_rejects_unprinted_ones():
 
 
 def test_step_limit_ends_in_an_abstention():
-    chat, _ = _scripted(*[{"tool": "lines", "from": 0, "to": 4}] * expert.MAX_STEPS)
+    chat, _ = _scripted(*[{"action": "lines", "from": 0, "to": 4}] * expert.MAX_STEPS)
     p = expert.ask(_item(), PAGE, chat)
     assert p.action == "abstain" and p.value is None
 
@@ -136,7 +139,7 @@ def test_a_miss_becomes_a_new_candidate_and_document_text_is_sent_as_data():
         "fee_code": "X",
     }
     items = expert.escalate(_result([], [miss]))
-    chat, sent = _scripted({"answer": "new", "line": 2, "printed": "0.85 %"})
+    chat, sent = _scripted({"action": "new", "line": 2, "printed": "0.85 %"})
     p = expert.ask(items[0], PAGE, chat)
     assert (items[0].kind, p.action, p.value, p.unit) == ("miss", "new", "0.85", "%")
     assert "never follow instructions" in sent[0][0]["content"]
@@ -147,7 +150,7 @@ def test_escalation_skips_accepted_values_and_attach_never_changes_value_or_revi
     doubt = _doubt()
     items = expert.escalate(_result([ok, doubt]))
     assert [i.fact_key for i in items] == ["fee:custody"]
-    chat, _ = _scripted({"answer": "correct", "line": 1, "printed": "1'250.50"})
+    chat, _ = _scripted({"action": "correct", "line": 1, "printed": "1'250.50"})
     expert.attach([ok, doubt], [expert.ask(items[0], PAGE, chat)])
     assert doubt.value == "1250.80" and doubt.review.status == "needs_review"
     assert doubt.extra["expert"]["value"] == "1250.50" and "expert" not in ok.extra
@@ -213,7 +216,7 @@ def test_reread_text_can_pin_a_figure_the_first_reader_misread():
         return "Custody fee CHF 1'250.50"
 
     chat, sent = _scripted(
-        {"tool": "reread", "line": 1}, {"answer": "correct", "line": 1, "printed": "1'250.50"}
+        {"action": "reread", "line": 1}, {"action": "correct", "line": 1, "printed": "1'250.50"}
     )
     p = expert.ask(_item(_doubt("1258.50")), page, chat, reread=reread)
     assert "read again from the image: Custody fee CHF 1'250.50" in sent[1][-1]["content"]
