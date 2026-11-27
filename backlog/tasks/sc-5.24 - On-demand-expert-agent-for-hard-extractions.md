@@ -7,9 +7,9 @@ owner: "Build expert agent for hard extractions"
 model: "claude-opus-5-5"
 progress: 100
 branch: "claude/project-thread-1i20qh"
-pr: ""
+pr: "https://github.com/rossotti-alessandro/PortfolioCostEngine/pull/91"
 created_date: "2026-11-26 23:40"
-updated_date: "2026-11-27 01:21"
+updated_date: "2026-11-27 01:26"
 labels:
   - extraction
   - privacy
